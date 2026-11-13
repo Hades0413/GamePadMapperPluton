@@ -38,15 +38,20 @@ export function ProfilePreview({
         <rect width={width} height={height} fill="url(#grid)" />
       )}
       {config.bindings.map((b) => (
-        <BindingShape key={b.key} binding={b} r={r} font={font} />
+        <BindingShape key={b.key} binding={b} r={r} font={font} onImage={!!background} />
       ))}
     </svg>
   );
 }
 
-function BindingShape({ binding: b, r, font }: { binding: Binding; r: number; font: number }) {
+function BindingShape({
+  binding: b, r, font, onImage,
+}: { binding: Binding; r: number; font: number; onImage: boolean }) {
   const layer = b.modifier !== null;
-  const fill = layer ? 'fill-warning/25 stroke-warning' : 'fill-primary/25 stroke-primary';
+  // Sobre una captura: relleno mas opaco y borde claro para que se distingan del juego.
+  const fill = onImage
+    ? (layer ? 'fill-warning/75 stroke-white' : 'fill-primary-strong/75 stroke-white')
+    : (layer ? 'fill-warning/25 stroke-warning' : 'fill-primary/25 stroke-primary');
   const label = (
     <text
       x={b.at.x}
@@ -55,7 +60,8 @@ function BindingShape({ binding: b, r, font }: { binding: Binding; r: number; fo
       textAnchor="middle"
       fontSize={layer ? font * 0.8 : font}
       fontWeight="600"
-      className="pointer-events-none fill-ink select-none"
+      className="pointer-events-none fill-white select-none"
+      style={onImage ? { paintOrder: 'stroke', stroke: 'rgba(0,0,0,.6)', strokeWidth: font * 0.12 } : undefined}
     >
       {layer ? `${shortLabel(b.modifier ?? '')}+${shortLabel(b.button)}` : shortLabel(b.button)}
     </text>
@@ -65,15 +71,15 @@ function BindingShape({ binding: b, r, font }: { binding: Binding; r: number; fo
     case 'stick':
       return (
         <g>
-          <circle cx={b.at.x} cy={b.at.y} r={b.radius} className="fill-accent/10 stroke-accent" strokeWidth={r * 0.08} />
-          <circle cx={b.at.x} cy={b.at.y} r={r * 0.9} className="fill-accent/30 stroke-accent" strokeWidth={r * 0.06} />
+          <circle cx={b.at.x} cy={b.at.y} r={b.radius} className={onImage ? 'fill-accent/25 stroke-white' : 'fill-accent/10 stroke-accent'} strokeWidth={r * 0.08} />
+          <circle cx={b.at.x} cy={b.at.y} r={r * 0.9} className={onImage ? 'fill-accent/75 stroke-white' : 'fill-accent/30 stroke-accent'} strokeWidth={r * 0.06} />
           {label}
         </g>
       );
     case 'look':
       return (
         <g>
-          <circle cx={b.at.x} cy={b.at.y} r={r * 1.6} className="fill-accent/10 stroke-accent" strokeWidth={r * 0.06}
+          <circle cx={b.at.x} cy={b.at.y} r={r * 1.6} className={onImage ? 'fill-accent/30 stroke-white' : 'fill-accent/10 stroke-accent'} strokeWidth={r * 0.06}
             strokeDasharray={`${r * 0.3} ${r * 0.2}`} />
           {label}
         </g>

@@ -10,7 +10,7 @@ import { errorMessage } from '../../lib/errorMessage';
 import { Alert } from '../ui/Alert';
 import { Button } from '../ui/Button';
 import { Field } from '../ui/Field';
-import { ProfilePreview } from './ProfilePreview';
+import { PreviewPanel } from './PreviewPanel';
 
 export interface ProfileFormValues {
   conf: string;
@@ -157,18 +157,20 @@ export function ProfileForm({
       </div>
 
       <aside className="space-y-3 lg:sticky lg:top-24 lg:self-start" aria-label="Vista previa">
-        <h2 className="font-semibold">Vista previa</h2>
         {parsed?.ok ? (
-          <>
-            <ProfilePreview config={parsed.config} />
-            <p className="text-xs text-muted">
-              {parsed.config.bindings.length} botones · pantalla {parsed.config.screen.width}×{parsed.config.screen.height}
-            </p>
-          </>
+          <PreviewPanel config={parsed.config} background={existingGame?.backgroundUrl ?? null}
+            footer={(
+              <p className="text-xs text-muted">
+                {parsed.config.bindings.length} botones · pantalla {parsed.config.screen.width}×{parsed.config.screen.height}
+              </p>
+            )} />
         ) : (
-          <div className="card flex aspect-video items-center justify-center p-6 text-center text-sm text-muted">
-            Aquí verás dónde toca cada botón cuando el perfil sea válido.
-          </div>
+          <>
+            <h2 className="font-semibold">Vista previa</h2>
+            <div className="card flex aspect-video items-center justify-center p-6 text-center text-sm text-muted">
+              Aquí verás dónde toca cada botón cuando el perfil sea válido.
+            </div>
+          </>
         )}
       </aside>
     </form>

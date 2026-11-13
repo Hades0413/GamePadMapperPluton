@@ -1,5 +1,5 @@
 import type {
-  GameChanges, ImportedGame, ModerationRepository, ReportedProfile,
+  GameChanges, ImportedGame, ModerationRepository, PlayScreenshot, ReportedProfile,
 } from '@application/ports/ModerationRepository';
 import type { GameImageFile, GameImageKind } from '@domain/game/GameImage';
 import { AppError } from '@domain/shared/AppError';
@@ -47,17 +47,34 @@ export class SupabaseModerationRepository implements ModerationRepository {
     }));
   }
 
-  async importGameFromPlay(packageName: string, updateName: boolean): Promise<ImportedGame> {
-    const { data, error } = await this.#db.functions.invoke('importar-juego', {
-      body: { package: packageName, updateName },
-    });
+  /** Llama a la funcion importar-juego; si responde { error }, ese es el mensaje para el usuario. */
+  async #invoke(body: Record<string, unknown>): Promise<unknown> {
+    const { data, error } = await this.#db.functions.invoke('importar-juego', { body });
     if (error) {
-      // La funcion responde { error: 'mensaje' } con el motivo.
       const context = (error as { context?: Response }).context;
       const detail = context ? await context.json().catch(() => null) as { error?: string } | null : null;
       throw detail?.error ? new AppError('INVALID_INPUT', detail.error) : toAppError(error);
     }
+    return data;
+  }
+
+  async importGameFromPlay(packageName: string, updateName: boolean): Promise<ImportedGame> {
+    const data = await this.#invoke({ package: packageName, updateName });
     return parse(z.object({ name: z.string().nullable(), iconUrl: z.string(), nameUpdated: z.boolean() }), data);
+  }
+
+  async listPlayScreenshots(packageName: string): Promise<readonly PlayScreenshot[]> {
+    const data = await this.#invoke({ package: packageName, action: 'capturas' });
+    const shots = parse(z.object({ screenshots: z.array(z.object({ id: z.string(), thumb: z.string() })) }), data).screenshots;
+    // Solo miniaturas de Google Play (las muestra el navegador del admin al elegir).
+    return shots
+      .filter((s) => /^https:\/\/play-lh\.googleusercontent\.com\/[A-Za-z0-9_=-]+$/.test(s.thumb))
+      .map((s) => ({ id: s.id, thumbUrl: s.thumb }));
+  }
+
+  async useBackgroundFromPlay(packageName: string, screenshotId: string): Promise<string> {
+    const data = await this.#invoke({ package: packageName, action: 'fondo', image: screenshotId });
+    return parse(z.object({ backgroundUrl: z.string() }), data).backgroundUrl;
   }
 
   async uploadGameImage(packageName: string, kind: GameImageKind, file: GameImageFile): Promise<string> {

@@ -10,6 +10,7 @@ import { prepareGameImage } from '../../lib/images';
 import { useImportGame, useSetGameImage, useUpdateGame } from '../../queries/moderation';
 import { paths } from '../../routes/paths';
 import { FilePicker } from './FilePicker';
+import { PlayGallery } from './PlayGallery';
 import { Feedback, Step } from './Step';
 
 /** Subir / quitar una imagen del juego, con su vista previa y mensajes. */
@@ -62,8 +63,9 @@ function BackgroundStep({ game }: { game: Game }) {
   return (
     <Step n={2} title="Captura del juego" done={!!game.backgroundUrl}>
       <p className="text-sm text-muted">
-        Se usa para la vista previa «Sobre el juego». Haz una captura <strong className="text-ink">en horizontal y en
-        partida</strong> (con los controles táctiles a la vista), sin tu nombre ni el chat.
+        Se usa para la vista previa «Sobre el juego». Lo ideal: una captura tuya <strong className="text-ink">en
+        horizontal y en partida</strong> (con los controles táctiles a la vista), sin tu nombre ni el chat. También
+        puedes elegir una de Google Play.
       </p>
       {game.backgroundUrl ? (
         <img src={game.backgroundUrl} alt={`Captura de ${game.name}`}
@@ -75,8 +77,9 @@ function BackgroundStep({ game }: { game: Game }) {
       )}
       <div className="flex flex-wrap gap-2">
         <FilePicker variant="primary" disabled={image.pending} onFile={image.upload}>
-          {image.pending ? 'Subiendo…' : game.backgroundUrl ? 'Cambiar captura' : 'Subir captura'}
+          {image.pending ? 'Subiendo…' : game.backgroundUrl ? 'Subir otra captura' : 'Subir captura'}
         </FilePicker>
+        <PlayGallery packageName={game.packageName} gameName={game.name} />
         {game.backgroundUrl && <Button size="sm" variant="ghost" onClick={image.remove}>Quitar</Button>}
       </div>
       <Feedback ok={image.done && 'Captura actualizada'} error={image.error} />

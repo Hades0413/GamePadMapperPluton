@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router';
 import { BindingTable } from '../components/profile/BindingTable';
 import { LikeButton } from '../components/profile/LikeButton';
 import { ProfileActions } from '../components/profile/ProfileActions';
-import { ProfilePreview } from '../components/profile/ProfilePreview';
+import { PreviewPanel } from '../components/profile/PreviewPanel';
 import { ReportButton } from '../components/profile/ReportDialog';
 import { Alert, ErrorAlert } from '../components/ui/Alert';
 import { errorMessage } from '../lib/errorMessage';
@@ -49,8 +49,6 @@ export default function ProfilePage() {
   const { data: account } = useAccount();
   const parsed = useMemo(() => (profile ? validateConf(profile.conf) : null), [profile]);
   const { data: game } = useGame(profile?.packageName);
-  const [overGame, setOverGame] = useState(true);
-  const background = overGame ? (game?.backgroundUrl ?? null) : null;
   useDocumentTitle(profile ? `${profile.title} — ${profile.gameName ?? profile.packageName}` : undefined,
     profile?.description || undefined);
 
@@ -104,26 +102,8 @@ export default function ProfilePage() {
 
       {parsed?.ok ? (
         <div className="grid gap-6 lg:grid-cols-5">
-          <section className="space-y-3 lg:col-span-3" aria-labelledby="preview">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 id="preview" className="font-semibold">Vista previa</h2>
-              {game?.backgroundUrl && (
-                <div role="tablist" aria-label="Fondo" className="inline-flex rounded-lg border border-line bg-surface p-0.5 text-xs">
-                  {([[true, 'Sobre el juego'], [false, 'Esquema']] as const).map(([value, label]) => (
-                    <button key={label} type="button" role="tab" aria-selected={overGame === value}
-                      onClick={() => setOverGame(value)}
-                      className={`rounded-md px-3 py-1 ${overGame === value ? 'bg-surface-2 text-ink' : 'text-muted hover:text-ink'}`}>
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-            <ProfilePreview config={parsed.config} background={background} />
-            <p className="text-xs text-muted">
-              Morado: botones · Amarillo: capas (mantener otro botón) · Turquesa: joystick, cámara y deslizar.
-              {background && ' La captura del juego es orientativa: si tu pantalla tiene otra proporción, los botones pueden quedar algo desplazados.'}
-            </p>
+          <section className="lg:col-span-3" aria-label="Vista previa">
+            <PreviewPanel config={parsed.config} background={game?.backgroundUrl ?? null} />
           </section>
           <section className="card space-y-3 p-4 lg:col-span-2" aria-labelledby="bindings">
             <h2 id="bindings" className="font-semibold">Botones ({parsed.config.bindings.length})</h2>

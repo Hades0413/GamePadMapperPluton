@@ -5,7 +5,8 @@ import type { GetAuthor } from '@application/authors/GetAuthor';
 import type { GetGame } from '@application/games/GetGame';
 import type { ListGames } from '@application/games/ListGames';
 import type {
-  BanAuthor, ImportGameFromPlay, ListReportedProfiles, ModerateProfile, SetGameImage, UpdateGame,
+  BanAuthor, ImportGameFromPlay, ListPlayScreenshots, ListReportedProfiles, ModerateProfile, SetGameImage,
+  UpdateGame, UseBackgroundFromPlay,
 } from '@application/moderation/ModerationUseCases';
 import type { DeleteProfile } from '@application/profiles/DeleteProfile';
 import type { GetLikedProfiles } from '@application/profiles/GetLikedProfiles';
@@ -43,6 +44,8 @@ export interface UseCases {
   readonly updateGame: UpdateGame;
   readonly importGameFromPlay: ImportGameFromPlay;
   readonly setGameImage: SetGameImage;
+  readonly listPlayScreenshots: ListPlayScreenshots;
+  readonly useBackgroundFromPlay: UseBackgroundFromPlay;
 }
 
 export interface SiteLinks {
