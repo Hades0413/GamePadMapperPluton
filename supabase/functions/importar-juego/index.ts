@@ -1,13 +1,17 @@
 // Supabase Edge Function "importar-juego" (Deno).
 //
-// Solo para administradores. Lee la ficha PUBLICA de un juego en Google Play y:
+// Lee la ficha PUBLICA de un juego en Google Play y:
+//  - accion "rellenar" (cualquier usuario con sesion): pone icono y captura SOLO si el juego
+//    aun no los tiene (nunca sustituye lo que puso la moderacion). Se usa al subir un perfil.
+//  Solo administradores:
 //  - accion "icono" (por defecto): nombre oficial + copia del icono en Storage (iconos/).
 //  - accion "capturas": devuelve las capturas horizontales de la ficha para elegir una.
 //  - accion "fondo": copia en Storage (fondos/) la captura elegida y la pone como fondo del juego.
 // Las imagenes se COPIAN a Storage: la web y la app nunca cargan imagenes de otros sitios.
 //
 // Seguridad:
-//  - Requiere sesion (JWT) y que el usuario sea administrador (authors.is_admin).
+//  - Requiere sesion (JWT). Todo es solo para administradores salvo "rellenar", que cualquier
+//    usuario no bloqueado puede usar pero solo completa lo vacio y solo desde la ficha oficial.
 //  - El paquete se valida con la misma regla que la base de datos y no admite apps del sistema.
 //  - Solo se descarga de play.google.com y play-lh.googleusercontent.com, con tamano maximo.
 //  - Usa la clave de servicio que Supabase inyecta en la funcion (nunca sale del servidor).
@@ -109,12 +113,12 @@ Deno.serve(async (req) => {
   const service = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
   const db = createClient(url, service, { auth: { persistSession: false } });
 
-  // 1. Solo administradores
+  // 1. Sesion valida (y admin para todo salvo "rellenar")
   const jwt = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
   const { data: user } = await db.auth.getUser(jwt);
   if (!user?.user) return reply(401, { error: 'Inicia sesión.' });
   const { data: author } = await db.from('authors').select('is_admin,is_banned').eq('id', user.user.id).maybeSingle();
-  if (!author?.is_admin || author.is_banned) return reply(403, { error: 'Solo para administradores.' });
+  if (!author || author.is_banned) return reply(403, { error: 'Tu cuenta no puede hacer esto.' });
 
   // 2. Peticion y paquete validos
   let body: { package?: unknown; updateName?: unknown; action?: unknown; image?: unknown };
@@ -123,13 +127,44 @@ Deno.serve(async (req) => {
   } catch {
     return reply(400, { error: 'Petición no válida.' });
   }
-  const action = body.action === 'capturas' || body.action === 'fondo' ? body.action : 'icono';
+  const action = body.action === 'capturas' || body.action === 'fondo' || body.action === 'rellenar' ? body.action : 'icono';
+  if (action !== 'rellenar' && !author.is_admin) return reply(403, { error: 'Solo para administradores.' });
   const pkg = typeof body.package === 'string' ? body.package.trim() : '';
   if (pkg.length > 150 || !PACKAGE.test(pkg) || SENSITIVE.test(pkg)) return reply(400, { error: 'Paquete no válido.' });
-  const { data: game } = await db.from('games').select('package').eq('package', pkg).maybeSingle();
-  if (!game) return reply(404, { error: 'Ese juego no existe en la comunidad.' });
+  const { data: game } = await db.from('games').select('package,icon_url,background_url,is_hidden').eq('package', pkg).maybeSingle();
+  if (!game || game.is_hidden) return reply(404, { error: 'Ese juego no existe en la comunidad.' });
 
   try {
+    // 3. Rellenar lo que falte (no sustituye nada; para usuarios al subir un perfil)
+    if (action === 'rellenar') {
+      if (game.icon_url && game.background_url) {
+        return reply(200, { package: pkg, iconUrl: game.icon_url, backgroundUrl: game.background_url });
+      }
+      const html = await playPage(pkg);
+      if (html instanceof Response) return html;
+      const changes: Record<string, string> = {};
+      if (!game.icon_url) {
+        const icon = playBase(meta(html, 'og:image') ?? '');
+        if (icon) changes.icon_url = await copyImage(db, `${icon}=s256`, 'iconos', pkg, MAX_ICON_BYTES);
+      }
+      if (!game.background_url) {
+        const first = screenshots(html)[0];
+        if (first) changes.background_url = await copyImage(db, `${first}=w1600`, 'fondos', pkg, MAX_BACKGROUND_BYTES);
+      }
+      if (Object.keys(changes).length > 0) {
+        // .is(null): si otro lo relleno a la vez, no se pisa.
+        if (changes.icon_url) await db.from('games').update({ icon_url: changes.icon_url }).eq('package', pkg).is('icon_url', null);
+        if (changes.background_url) {
+          await db.from('games').update({ background_url: changes.background_url }).eq('package', pkg).is('background_url', null);
+        }
+      }
+      return reply(200, {
+        package: pkg,
+        iconUrl: game.icon_url ?? changes.icon_url ?? null,
+        backgroundUrl: game.background_url ?? changes.background_url ?? null,
+      });
+    }
+
     // 3a. Copiar como fondo una captura elegida (solo si de verdad esta en la ficha del juego)
     if (action === 'fondo') {
       const chosen = typeof body.image === 'string' ? playBase(body.image) : null;

@@ -7,6 +7,7 @@ import {
   DeleteAccount, GetCurrentAccount, ObserveSession, SignInWithGitHub, SignOut, TakeReturnPath,
 } from '@application/auth/AuthUseCases';
 import { GetAuthor } from '@application/authors/GetAuthor';
+import { FillGameImages } from '@application/games/FillGameImages';
 import { GetGame } from '@application/games/GetGame';
 import { ListGames } from '@application/games/ListGames';
 import {
@@ -46,6 +47,7 @@ export function createServices(env: Env): Services {
     useCases: {
       listGames: new ListGames(games),
       getGame: new GetGame(games),
+      fillGameImages: new FillGameImages(games),
       listGameProfiles: new ListGameProfiles(profiles),
       listAuthorProfiles: new ListAuthorProfiles(profiles),
       getProfile: new GetProfile(profiles),

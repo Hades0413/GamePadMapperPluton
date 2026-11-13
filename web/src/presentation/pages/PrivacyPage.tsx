@@ -43,8 +43,9 @@ export default function PrivacyPage() {
         </li>
         <li>Lo que publicas (perfiles, título y descripción) es <strong>público</strong> junto con tu nombre de usuario.</li>
         <li>
-          Los iconos y capturas de los juegos los añade solo la moderación (el icono se toma de la ficha pública
-          del juego en Google Play) y se guardan en nuestros servidores: la web no carga imágenes de otros sitios.
+          Los iconos y capturas de los juegos se toman de la ficha pública de cada juego en Google Play (o los
+          sube la moderación) y se guardan en nuestros servidores: la web y la app no cargan imágenes de otros
+          sitios. Los usuarios no suben imágenes.
         </li>
         <li>Guardamos qué perfiles te gustan y los reportes que haces (estos solo los ve la moderación).</li>
         <li>

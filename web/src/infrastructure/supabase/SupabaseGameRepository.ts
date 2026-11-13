@@ -3,7 +3,7 @@ import type { Game } from '@domain/game/Game';
 import type { Page } from '@domain/shared/Page';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
-import { parse, unwrap } from './errors';
+import { parse, toAppError, unwrap } from './errors';
 import { toGame } from './mappers';
 import { rangeOf, toPage } from './pagination';
 import { GAME_COLUMNS, gameRow } from './rows';
@@ -28,6 +28,11 @@ export class SupabaseGameRepository implements GameRepository {
     if (query.search) request = request.ilike('name', `%${query.search}%`);
     const rows = parse(z.array(gameRow), unwrap(await request));
     return toPage(rows.map(toGame), query);
+  }
+
+  async fillImagesFromPlay(packageName: string): Promise<void> {
+    const { error } = await this.#db.functions.invoke('importar-juego', { body: { package: packageName, action: 'rellenar' } });
+    if (error) throw toAppError(error);
   }
 
   async findByPackage(packageName: string): Promise<Game | null> {

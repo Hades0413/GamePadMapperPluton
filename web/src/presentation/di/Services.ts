@@ -2,6 +2,7 @@ import type {
   DeleteAccount, GetCurrentAccount, ObserveSession, SignInWithGitHub, SignOut, TakeReturnPath,
 } from '@application/auth/AuthUseCases';
 import type { GetAuthor } from '@application/authors/GetAuthor';
+import type { FillGameImages } from '@application/games/FillGameImages';
 import type { GetGame } from '@application/games/GetGame';
 import type { ListGames } from '@application/games/ListGames';
 import type {
@@ -22,6 +23,7 @@ import type { UpdateProfile } from '@application/profiles/UpdateProfile';
 export interface UseCases {
   readonly listGames: ListGames;
   readonly getGame: GetGame;
+  readonly fillGameImages: FillGameImages;
   readonly listGameProfiles: ListGameProfiles;
   readonly listAuthorProfiles: ListAuthorProfiles;
   readonly getProfile: GetProfile;

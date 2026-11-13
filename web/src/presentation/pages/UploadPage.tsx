@@ -7,6 +7,7 @@ import { ProfileForm, type ProfileFormValues } from '../components/profile/Profi
 import { decodeBase64Url } from '../lib/files';
 import { loadDraft, saveDraft } from '../lib/sessionDraft';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
+import { useFillGameImages } from '../queries/games';
 import { usePublishProfile } from '../queries/profiles';
 import { paths } from '../routes/paths';
 
@@ -36,6 +37,7 @@ export default function UploadPage() {
   const [params] = useSearchParams();
   const [{ values: initial, fromLink }] = useState(() => initialValues(params.get('juego')));
   const publish = usePublishProfile();
+  const fill = useFillGameImages();
   const navigate = useNavigate();
 
   return (
@@ -57,6 +59,8 @@ export default function UploadPage() {
             onSubmit={(v) => publish.mutate(v, {
               onSuccess: (id) => {
                 saveDraft(DRAFT_KEY, null);
+                // Icono y captura del juego desde Google Play si aun no los tiene (en segundo plano).
+                fill.mutate(v.packageName.trim());
                 void navigate(paths.profile(id), { replace: true });
               },
             })} />
