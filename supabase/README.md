@@ -7,6 +7,7 @@ Base de datos, inicio de sesión e imágenes de la comunidad (web y app). El esq
 |---|---|
 | `migrations/20261113000000_comunidad.sql` | Tablas, permisos, validación de perfiles, moderación |
 | `migrations/20261113020000_imagenes_de_juegos.sql` | Icono y captura de cada juego en Storage (cubo `juegos`) |
+| `migrations/20261113030000_reglas_de_imagenes.sql` | Reglas de las URL de imágenes sin depender de funciones internas (necesario para `importar-juego`) |
 | `functions/importar-juego/` | Edge Function: nombre e icono del juego desde su ficha pública de Google Play (solo admins) |
 
 ## Puesta en marcha (una sola vez)

@@ -1,27 +1,11 @@
 import type { ComponentProps, ReactNode } from 'react';
 import { Link, type LinkProps } from 'react-router';
+import { buttonClassName, type ButtonSize, type ButtonVariant } from './buttonStyles';
 import { Spinner } from './Spinner';
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
-type Size = 'sm' | 'md' | 'lg';
-
-const VARIANT: Record<Variant, string> = {
-  primary: 'bg-primary-strong text-white hover:bg-primary shadow-lg shadow-primary-strong/20',
-  secondary: 'border border-line bg-surface-2 text-ink hover:border-primary/60',
-  ghost: 'text-muted hover:bg-surface-2 hover:text-ink',
-  danger: 'bg-danger/15 text-danger border border-danger/40 hover:bg-danger/25',
-};
-
-const SIZE: Record<Size, string> = {
-  sm: 'h-8 px-3 text-sm gap-1.5',
-  md: 'h-10 px-4 text-sm gap-2',
-  lg: 'h-12 px-6 text-base gap-2',
-};
-
-function buttonClass(variant: Variant = 'primary', size: Size = 'md', extra = ''): string {
-  return `inline-flex items-center justify-center rounded-xl font-medium transition-colors
-    disabled:pointer-events-none disabled:opacity-50 ${VARIANT[variant]} ${SIZE[size]} ${extra}`;
-}
+type Variant = ButtonVariant;
+type Size = ButtonSize;
+const buttonClass = buttonClassName;
 
 interface Common {
   variant?: Variant;
