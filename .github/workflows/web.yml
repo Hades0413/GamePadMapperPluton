@@ -2,7 +2,8 @@
 # Configuracion (Settings > Secrets and variables > Actions > Variables), todo PUBLICO:
 #   SUPABASE_URL        https://<proyecto>.supabase.co
 #   SUPABASE_ANON_KEY   clave publica (anon / publishable). NUNCA la service_role.
-#   SITE_URL            (opcional) https://hades0413.github.io/GamePadMapperPluton
+#   SITE_URL            https://hades0413.github.io/GamePadMapperPluton (en minusculas: debe coincidir
+#                       con las Redirect URLs de Supabase)
 # Y en Settings > Pages > Source: "GitHub Actions".
 name: web
 

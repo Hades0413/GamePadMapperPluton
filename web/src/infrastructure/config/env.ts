@@ -34,7 +34,9 @@ export function readEnv(source: Record<string, unknown> = import.meta.env): Env 
   return {
     supabaseUrl: e.VITE_SUPABASE_URL.replace(/\/+$/, ''),
     supabaseAnonKey: e.VITE_SUPABASE_ANON_KEY,
-    siteUrl: e.VITE_SITE_URL.replace(/\/+$/, ''),
+    // new URL() pone el dominio en minusculas: Supabase compara las direcciones de vuelta del
+    // inicio de sesion distinguiendo mayusculas (Hades0413.github.io != hades0413.github.io).
+    siteUrl: new URL(e.VITE_SITE_URL).href.replace(/\/+$/, ''),
     basePath: e.VITE_BASE_PATH,
     playUrl: e.VITE_PLAY_URL,
     repoUrl: e.VITE_REPO_URL,
