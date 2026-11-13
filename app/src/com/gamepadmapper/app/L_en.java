@@ -656,5 +656,8 @@ final class L_en {
         m.put("por @", "by @");
         m.put("«Me gusta» y «Reportar» se abren en la web (con tu cuenta de GitHub).", "“Like” and “Report” open on the website (with your GitHub account).");
         m.put("¿Qué perfil quieres subir?", "Which profile do you want to upload?");
+        m.put("Perfiles de la comunidad para tus juegos", "Community profiles for your games");
+        m.put(" y ", " and ");
+        m.put(" más", " more");
     }
 }

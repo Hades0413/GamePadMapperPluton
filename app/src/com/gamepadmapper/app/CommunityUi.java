@@ -63,6 +63,13 @@ final class CommunityUi {
         ui.dialog.show();
     }
 
+    /** Abre directamente la ficha de un perfil (enlace desde la web). */
+    static void openProfile(Activity a, Host host, String id) {
+        CommunityUi ui = new CommunityUi(a, host);
+        ui.go(() -> ui.showProfile(id, L.t("Perfiles de la comunidad")));
+        ui.dialog.show();
+    }
+
     private CommunityUi(Activity a, Host host) {
         this.a = a;
         this.host = host;
@@ -324,6 +331,10 @@ final class CommunityUi {
 
     private void showPage(LinearLayout list, LinearLayout target, String pkg, boolean recent, int page,
                           List<Community.Item> items) {
+        // Juego no instalado: el titulo era el paquete; se usa el nombre de la comunidad.
+        if (!items.isEmpty() && pkg.contentEquals(title.getText()) && !items.get(0).gameName.isEmpty()) {
+            title.setText(items.get(0).gameName);
+        }
         if (items.isEmpty() && page == 0) {
             empty(L.t("Aún no hay perfiles para este juego."));
             webRow(Community.gameUrl(pkg));

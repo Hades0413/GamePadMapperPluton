@@ -92,7 +92,7 @@ export default function ProfilePage() {
         <ProfileActions profile={profile} />
         <p className="text-xs text-muted">
           {canShare()
-            ? <>«Enviar a la app» abre el menú Compartir: elige <strong>Gamepad Mapper Plutón</strong> y se importa. </>
+            ? <>«Abrir en la app» muestra el perfil en Gamepad Mapper Plutón para instalarlo; «Enviar a la app» lo comparte por el menú de Android. </>
             : <>Abre esta página en tu teléfono Android para enviarlo directamente a la app. </>}
           Las posiciones se adaptan solas a la resolución de tu pantalla.
         </p>

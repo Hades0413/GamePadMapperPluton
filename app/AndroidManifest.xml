@@ -55,6 +55,14 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/plain" />
             </intent-filter>
+            <!-- "Abrir en la app" desde la web: gpmapper://perfil/<id> y gpmapper://juego/<paquete> -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="gpmapper" android:host="perfil" />
+                <data android:scheme="gpmapper" android:host="juego" />
+            </intent-filter>
         </activity>
 
         <receiver

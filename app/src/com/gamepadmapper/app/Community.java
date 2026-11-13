@@ -86,6 +86,23 @@ public final class Community {
         }
     }
 
+    /**
+     * Juegos de la comunidad usando la cache si tiene menos de maxAgeMs (para el aviso de Inicio:
+     * como mucho una peticion cada pocas horas). Llamar fuera del hilo principal.
+     */
+    public static List<Game> gamesRecent(Context c, long maxAgeMs) throws IOException {
+        File f = cacheFile(c, "games");
+        if (f.exists() && System.currentTimeMillis() - f.lastModified() < maxAgeMs) {
+            String cached = loadCache(c, "games");
+            if (cached != null) {
+                List<Game> out = new ArrayList<>();
+                parseGames(cached, out);
+                return out;
+            }
+        }
+        return games(c);
+    }
+
     /** Una pagina de perfiles de un juego (page desde 0). */
     public static List<Item> profiles(Context c, String pkg, boolean recent, int page) throws IOException {
         if (!PACKAGE.matcher(pkg).matches()) return Collections.emptyList();
