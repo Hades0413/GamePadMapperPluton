@@ -79,18 +79,34 @@ export function useDeleteProfile() {
   });
 }
 
-/** "Me gusta" con respuesta inmediata en pantalla (se corrige si el servidor falla). */
+/**
+ * «Me gusta» con respuesta inmediata: el corazon y el numero cambian al pulsar (optimista) y luego
+ * se usa el total exacto que devuelve el servidor. Si falla, se deshace. No recarga las listas
+ * (sus contadores se recalculan en el servidor cada minuto): menos peticiones con mucha gente.
+ */
 export function useToggleLike() {
   const { toggleLike } = useUseCases();
   const client = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => toggleLike.execute(id),
-    onSuccess: (liked, id) => {
+    onMutate: async (id) => {
+      const likedKey = keys.liked([id]);
+      await client.cancelQueries({ queryKey: likedKey });
+      const prevLiked = client.getQueryData<ReadonlySet<string>>(likedKey);
+      const prevProfile = client.getQueryData<GameProfile | null>(keys.profile(id));
+      const wasLiked = prevLiked?.has(id) ?? false;
+      client.setQueryData<ReadonlySet<string>>(likedKey, wasLiked ? new Set() : new Set([id]));
       client.setQueryData<GameProfile | null>(keys.profile(id), (p) =>
-        p ? { ...p, likeCount: Math.max(0, p.likeCount + (liked ? 1 : -1)) } : p,
-      );
-      void client.invalidateQueries({ queryKey: keys.allLiked });
-      void client.invalidateQueries({ queryKey: keys.allProfiles });
+        p ? { ...p, likeCount: Math.max(0, p.likeCount + (wasLiked ? -1 : 1)) } : p);
+      return { prevLiked, prevProfile };
+    },
+    onError: (_e, id, ctx) => {
+      client.setQueryData(keys.liked([id]), ctx?.prevLiked);
+      client.setQueryData(keys.profile(id), ctx?.prevProfile);
+    },
+    onSuccess: (result, id) => {
+      client.setQueryData<ReadonlySet<string>>(keys.liked([id]), result.liked ? new Set([id]) : new Set());
+      client.setQueryData<GameProfile | null>(keys.profile(id), (p) => (p ? { ...p, likeCount: result.likeCount } : p));
     },
   });
 }

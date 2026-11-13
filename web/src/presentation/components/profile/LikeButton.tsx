@@ -26,7 +26,7 @@ export function LikeButton({ id, count }: { id: string; count: number }) {
 
   return (
     <div className="flex flex-col gap-1">
-      <Button variant="secondary" onClick={onClick} loading={toggle.isPending} aria-pressed={isLiked}
+      <Button variant="secondary" onClick={onClick} disabled={toggle.isPending} aria-pressed={isLiked}
         icon={<HeartIcon filled={isLiked} className={`size-4 ${isLiked ? 'text-danger' : ''}`} />}>
         {compactNumber(count)} me gusta
       </Button>

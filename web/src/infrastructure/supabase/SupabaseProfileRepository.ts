@@ -1,5 +1,6 @@
 import type { NewProfile, ProfileChanges, ProfileRepository } from '@application/ports/ProfileRepository';
-import type { GameProfile, GameProfileSummary, ProfileSort } from '@domain/profile/GameProfile';
+import type { GameProfile, GameProfileSummary, LikeResult, ProfileSort } from '@domain/profile/GameProfile';
+import { AppError } from '@domain/shared/AppError';
 import type { ReportReason } from '@domain/report/ReportReason';
 import type { Page, PageRequest } from '@domain/shared/Page';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -71,8 +72,12 @@ export class SupabaseProfileRepository implements ProfileRepository {
     unwrap(await this.#db.rpc('delete_profile', { p_id: id }));
   }
 
-  async toggleLike(id: string): Promise<boolean> {
-    return parse(z.boolean(), unwrap(await this.#db.rpc('toggle_like', { p_id: id })));
+  async toggleLike(id: string): Promise<LikeResult> {
+    const rows = parse(z.array(z.object({ liked: z.boolean(), like_count: z.number().int() })),
+      unwrap(await this.#db.rpc('like_profile', { p_id: id })));
+    const row = rows[0];
+    if (!row) throw new AppError('UNKNOWN', 'El servidor no respondió al «me gusta».');
+    return { liked: row.liked, likeCount: row.like_count };
   }
 
   async likedAmong(ids: readonly string[]): Promise<ReadonlySet<string>> {

@@ -1,4 +1,4 @@
-import type { GameProfile, GameProfileSummary, ProfileSort } from '@domain/profile/GameProfile';
+import type { GameProfile, GameProfileSummary, LikeResult, ProfileSort } from '@domain/profile/GameProfile';
 import type { ReportReason } from '@domain/report/ReportReason';
 import type { Page, PageRequest } from '@domain/shared/Page';
 
@@ -23,8 +23,8 @@ export interface ProfileRepository {
   publish(profile: NewProfile): Promise<string>;
   update(id: string, changes: ProfileChanges): Promise<void>;
   delete(id: string): Promise<void>;
-  /** Devuelve true si el perfil queda con "me gusta". */
-  toggleLike(id: string): Promise<boolean>;
+  /** Da o quita «me gusta»; devuelve el estado final y el total exacto. */
+  toggleLike(id: string): Promise<LikeResult>;
   /** Cuales de estos perfiles tienen "me gusta" del usuario actual. */
   likedAmong(ids: readonly string[]): Promise<ReadonlySet<string>>;
   report(id: string, reason: ReportReason, details: string): Promise<void>;
