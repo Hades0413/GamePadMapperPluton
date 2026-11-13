@@ -113,7 +113,8 @@ bump: ## Sube la version: make bump V=1.2  (versionCode +1 automatico)
 	@new=$$(( $(CODE) + 1 ))
 	@sed -i.bak -e 's/android:versionName="[^"]*"/android:versionName="$(V)"/' \
 		-e "s/android:versionCode=\"[^\"]*\"/android:versionCode=\"$$new\"/" app/AndroidManifest.xml
-	@sed -i.bak -e 's/GamepadMapperPluton-[0-9][0-9.]*\.apk/GamepadMapperPluton-$(V).apk/' README.md
+	@sed -i.bak -e 's/GamepadMapperPluton-[0-9][0-9.]*\.apk/GamepadMapperPluton-$(V).apk/' \
+		-e 's/^Versión \*\*[0-9][0-9.]*\*\*/Versión **$(V)**/' README.md
 	@rm -f app/AndroidManifest.xml.bak README.md.bak
 	@echo "✅ Version $(V) (versionCode $$new). Revisa, haz commit y luego: make release"
 
