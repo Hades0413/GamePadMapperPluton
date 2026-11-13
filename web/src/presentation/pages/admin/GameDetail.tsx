@@ -68,8 +68,8 @@ function BackgroundStep({ game }: { game: Game }) {
         puedes elegir una de Google Play.
       </p>
       {game.backgroundUrl ? (
-        <img src={game.backgroundUrl} alt={`Captura de ${game.name}`}
-          className="aspect-video w-full rounded-xl border border-line object-cover" />
+        // Completa y con su proporcion real (igual que se ve en la vista previa).
+        <img src={game.backgroundUrl} alt={`Captura de ${game.name}`} className="h-auto w-full rounded-xl border border-line" />
       ) : (
         <div className="flex h-28 items-center justify-center rounded-xl border border-dashed border-line text-sm text-muted">
           Aún no tiene captura

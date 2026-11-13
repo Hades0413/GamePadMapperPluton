@@ -21,19 +21,19 @@ export function PlayGallery({ packageName, gameName }: { packageName: string; ga
       <Button size="sm" variant="secondary" onClick={() => setOpen(true)}>Elegir de Google Play</Button>
       <Dialog open={open} onClose={() => setOpen(false)} title={`Capturas de ${gameName} en Google Play`}>
         <p className="text-sm text-muted">
-          Elige una en la que se vea <strong className="text-ink">la partida</strong> a pantalla completa. Muchas son
-          imágenes promocionales: con ellas los botones no coincidirán con el juego.
+          Las 3 primeras capturas de la ficha. Elige una en la que se vea <strong className="text-ink">la partida</strong>;
+          si son promocionales, los botones no coincidirán con el juego (mejor sube una captura tuya).
         </p>
         {shots.isPending ? <PageSpinner /> : shots.error ? (
           <Alert tone="error">{errorMessage(shots.error)}</Alert>
         ) : shots.data.length === 0 ? (
           <p className="text-sm text-muted">La ficha no tiene capturas horizontales.</p>
         ) : (
-          <div className="grid max-h-[55vh] grid-cols-2 gap-2 overflow-y-auto pr-1">
+          <div className="grid max-h-[60vh] gap-2 overflow-y-auto pr-1">
             {shots.data.map((s) => (
               <button key={s.id} type="button" onClick={() => setPicked(s.id)} aria-pressed={picked === s.id}
                 className={`overflow-hidden rounded-lg border-2 transition-colors ${picked === s.id ? 'border-primary' : 'border-transparent hover:border-line'}`}>
-                <img src={s.thumbUrl} alt="" loading="lazy" referrerPolicy="no-referrer" className="aspect-video w-full object-cover" />
+                <img src={s.thumbUrl} alt="" loading="lazy" referrerPolicy="no-referrer" className="h-auto w-full" />
               </button>
             ))}
           </div>

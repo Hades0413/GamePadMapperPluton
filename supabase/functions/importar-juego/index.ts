@@ -23,6 +23,11 @@ const SENSITIVE =
 /** Imagen de Google Play: dominio fijo y ruta sin caracteres raros. */
 const PLAY_IMAGE = /^https:\/\/play-lh\.googleusercontent\.com\/[A-Za-z0-9_-]{20,300}$/;
 const MAX_ICON_BYTES = 512 * 1024;
+/** Cuantas capturas de la ficha se ofrecen (y entre cuales se puede elegir). */
+const MAX_SCREENSHOTS = 3;
+/** Limites por usuario y hora, y espera minima entre "rellenar" del mismo juego. */
+const LIMITS_PER_HOUR: Record<string, number> = { rellenar: 10, capturas: 20, fondo: 20, icono: 20 };
+const FILL_COOLDOWN_MS = 10 * 60_000;
 const MAX_BACKGROUND_BYTES = 1024 * 1024;
 const ALLOWED_ORIGIN = Deno.env.get('SITE_ORIGIN') ?? 'https://hades0413.github.io';
 
@@ -76,7 +81,7 @@ function screenshots(html: string): string[] {
     if (size && Number(size[1]) <= Number(size[2])) continue;   // solo horizontales
     const base = playBase(decode(src));
     if (base && !out.includes(base)) out.push(base);
-    if (out.length >= 16) break;
+    if (out.length >= MAX_SCREENSHOTS) break;
   }
   return out;
 }
@@ -131,6 +136,18 @@ Deno.serve(async (req) => {
   if (action !== 'rellenar' && !author.is_admin) return reply(403, { error: 'Solo para administradores.' });
   const pkg = typeof body.package === 'string' ? body.package.trim() : '';
   if (pkg.length > 150 || !PACKAGE.test(pkg) || SENSITIVE.test(pkg)) return reply(400, { error: 'Paquete no válido.' });
+  // 3. Limites de uso (antes de descargar nada de Google Play)
+  const since = new Date(Date.now() - 3600_000).toISOString();
+  const { count } = await db.from('edge_function_calls').select('*', { count: 'exact', head: true })
+    .eq('user_id', user.user.id).eq('action', action).gte('created_at', since);
+  if ((count ?? 0) >= (LIMITS_PER_HOUR[action] ?? 10)) {
+    return reply(429, { error: 'Has hecho esto demasiadas veces. Inténtalo dentro de un rato.' });
+  }
+  await db.from('edge_function_calls').insert({ user_id: user.user.id, action, package: pkg });
+  // Limpieza de registros viejos de este usuario
+  await db.from('edge_function_calls').delete().eq('user_id', user.user.id)
+    .lt('created_at', new Date(Date.now() - 86_400_000).toISOString());
+
   const { data: game } = await db.from('games').select('package,icon_url,background_url,is_hidden').eq('package', pkg).maybeSingle();
   if (!game || game.is_hidden) return reply(404, { error: 'Ese juego no existe en la comunidad.' });
 
@@ -138,6 +155,12 @@ Deno.serve(async (req) => {
     // 3. Rellenar lo que falte (no sustituye nada; para usuarios al subir un perfil)
     if (action === 'rellenar') {
       if (game.icon_url && game.background_url) {
+        return reply(200, { package: pkg, iconUrl: game.icon_url, backgroundUrl: game.background_url });
+      }
+      // Si alguien ya lo intento hace poco para este juego (p. ej. no esta en Google Play), no repetir.
+      const { count: recent } = await db.from('edge_function_calls').select('*', { count: 'exact', head: true })
+        .eq('package', pkg).eq('action', 'rellenar').gte('created_at', new Date(Date.now() - FILL_COOLDOWN_MS).toISOString());
+      if ((recent ?? 0) > 1) {
         return reply(200, { package: pkg, iconUrl: game.icon_url, backgroundUrl: game.background_url });
       }
       const html = await playPage(pkg);
