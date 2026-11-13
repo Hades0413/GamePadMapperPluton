@@ -206,6 +206,24 @@ public class Profile {
         Profile p = new Profile();
         p.file = f;
         try (BufferedReader r = new BufferedReader(new InputStreamReader(new FileInputStream(f), StandardCharsets.UTF_8))) {
+            read(p, r);
+        }
+        return p;
+    }
+
+    /** Perfil a partir de su texto (sin archivo): para la vista previa de los perfiles de la comunidad. */
+    public static Profile parse(String text) {
+        Profile p = new Profile();
+        try (BufferedReader r = new BufferedReader(new java.io.StringReader(text))) {
+            read(p, r);
+        } catch (IOException ignored) {
+            // un StringReader no falla
+        }
+        return p;
+    }
+
+    private static void read(Profile p, BufferedReader r) throws IOException {
+        {
             String line;
             while ((line = r.readLine()) != null) {
                 int hash = line.indexOf('#');
@@ -281,7 +299,6 @@ public class Profile {
                 }
             }
         }
-        return p;
     }
 
     private static float f(String s) {

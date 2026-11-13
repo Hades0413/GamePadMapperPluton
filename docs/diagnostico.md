@@ -5,8 +5,7 @@ adaptarlo a otro teléfono o mando.
 
 ## Equipo
 
-- Redmi Note 9, `merlinx`, MediaTek MT6768. Pantalla de 1080×2340.
-- crDroid v12.12 (Android 16, `BP4A.251205.006`), no oficial para merlinx.
+- Teléfono MediaTek con pantalla de 1080×2340 y ROM personalizada con Android 16.
 - Mando Seisa SJA-1006, reportado por ShootingPlus como `GamepadPlus V3`
   (fabricante ShanWan BM-763, firmware 1.09).
 - Pantalla táctil real: `fts_ts` (`/dev/input/event4`).

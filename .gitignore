@@ -71,3 +71,6 @@ $RECYCLE.BIN/
 .externalNativeBuild/
 captures/
 .claude/
+
+# --- Notas internas del autor (no publicas) ---------------------------
+CONTEXTO.md

@@ -20,10 +20,8 @@ Base de datos e inicio de sesión de la web (`web/`). Todo el esquema está en
    - Redirect URLs: `https://hades0413.github.io/GamePadMapperPluton/` y, para desarrollo,
      `http://localhost:5173/`
 6. **Límite de filas por petición** (*Project Settings → Data API*): *Max rows* = `100`.
-7. **Hacerte administrador:** inicia sesión una vez en la web con GitHub y, en el *SQL Editor*:
-   ```sql
-   update public.authors set is_admin = true where username = 'Hades0413';
-   ```
+7. **Administradores:** se asignan solo desde el panel de Supabase del dueño del proyecto (columna
+   `is_admin`). El API público no permite leer ni cambiar ese dato.
 8. **Claves para la web** (*Project Settings → API Keys*): la URL del proyecto y la clave **publishable / anon**.
    Van en `web/.env.local` (desarrollo) y en GitHub → *Settings → Secrets and variables → Actions → Variables*
    como `SUPABASE_URL` y `SUPABASE_ANON_KEY` (publicación). La clave **secret / service_role no se usa nunca**.

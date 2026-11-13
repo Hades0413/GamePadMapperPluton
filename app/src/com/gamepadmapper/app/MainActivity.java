@@ -1617,6 +1617,19 @@ public class MainActivity extends Activity {
             sheet.addView(hint);
         }
 
+        sheet.addView(Ui.menuRow(this, R.drawable.ic_people, Ui.OK, L.t("Perfiles de la comunidad"),
+                L.t("Ver los que han subido otros jugadores"), v -> {
+                    d.dismiss();
+                    openCommunity(pkg);
+                }));
+        if (!list.isEmpty() && !Library.isSensitivePackage(pkg)) {
+            sheet.addView(Ui.menuRow(this, R.drawable.ic_upload, Ui.PRIMARY, L.t("Subir a la comunidad"),
+                    L.t("Se abre la web con tu perfil listo para publicar"), v -> {
+                        d.dismiss();
+                        uploadToCommunity(list);
+                    }));
+        }
+
         if (Games.isHidden(this, pkg)) {
             sheet.addView(Ui.menuRow(this, R.drawable.ic_hide, Ui.WARN, L.t("La burbuja está oculta en este juego"),
                     L.t("Toca para volver a mostrarla"), v -> {
@@ -1739,6 +1752,41 @@ public class MainActivity extends Activity {
                 .show();
     }
 
+    // ------------------------------------------------------------------ comunidad
+    /** Perfiles de la comunidad (de todos los juegos, o solo de pkg). */
+    private void openCommunity(String pkg) {
+        CommunityUi.open(this, this::installWithConfirm, pkg, pkg != null ? Games.label(this, pkg) : null);
+    }
+
+    /** Abre la web con el perfil ya cargado para publicarlo (alli se inicia sesion con GitHub). */
+    private void uploadToCommunity(List<Profile> list) {
+        if (list.size() == 1) {
+            uploadToCommunity(list.get(0));
+            return;
+        }
+        String[] names = new String[list.size()];
+        for (int i = 0; i < names.length; i++) names[i] = list.get(i).displayName();
+        new AlertDialog.Builder(this).setTitle(L.t("¿Qué perfil quieres subir?"))
+                .setItems(names, (d, which) -> uploadToCommunity(list.get(which)))
+                .setNegativeButton(L.t("Cancelar"), null).show();
+    }
+
+    private void uploadToCommunity(Profile p) {
+        try (FileInputStream in = new FileInputStream(p.file)) {
+            String conf = Library.readLimited(in);
+            Library.validate(conf);
+            if (conf.getBytes(StandardCharsets.UTF_8).length > 16384) {
+                Toast.makeText(this, L.t("El perfil es demasiado grande para la web (máximo 16 KB)"), Toast.LENGTH_LONG).show();
+                return;
+            }
+            startActivity(new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(Community.uploadUrl(conf))));
+        } catch (android.content.ActivityNotFoundException e) {
+            Toast.makeText(this, L.t("No hay navegador disponible"), Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Toast.makeText(this, e.getMessage(), Toast.LENGTH_LONG).show();
+        }
+    }
+
     // ------------------------------------------------------------------ biblioteca
     /** Fuente elegida, o por defecto: el catalogo del repositorio (si hay) o el incluido en la app. */
     private String catalogUrl() {
@@ -1748,6 +1796,8 @@ public class MainActivity extends Activity {
 
     private View libraryCard() {
         LinearLayout c = card();
+        c.addView(Ui.menuRow(this, R.drawable.ic_people, Ui.OK, L.t("Perfiles de la comunidad"),
+                L.t("Los que han subido otros jugadores para tus juegos"), v -> openCommunity(null)));
         c.addView(Ui.menuRow(this, R.drawable.ic_download, Ui.PRIMARY, L.t("Descargar perfiles"),
                 L.t("Perfiles listos para tus juegos"), v -> openCatalog()));
         c.addView(Ui.menuRow(this, R.drawable.ic_add, Ui.PRIMARY, L.t("Importar"),

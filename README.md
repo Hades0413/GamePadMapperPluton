@@ -2,7 +2,7 @@
 
 Convierte cualquier mando en toques de pantalla en juegos de Android, **sin root ni PC**
 (servicio de accesibilidad), con un modo root opcional más rápido (módulo Magisk).
-Versión **1.1** · Creado por **Hades0413**.
+Versión **1.3** · Creado por **Hades0413**.
 
 **Descargar:** el APK y los módulos de Magisk están en
 [Releases](https://github.com/Hades0413/GamePadMapperPluton/releases/latest).
@@ -48,11 +48,8 @@ Después de instalarla, Play Protect puede avisar de la app: elige *Mantener* / 
 > te ofrece importarlos. Para copiarlos o editarlos fuera de la app,
 > usa *Perfiles › Exportar todos*. Al desinstalar, Android pregunta si conservar los datos.
 
-> **Contexto completo del proyecto** (arquitectura, formatos, decisiones, pruebas,
-> pendientes): ver [CONTEXTO.md](CONTEXTO.md).
-
 Empezó como arreglos y herramientas para usar el mando **Seisa SJA-1006 / GamepadPlus V3**
-(ShootingPlus V3) en un **Redmi Note 9 (merlinx, MT6768)** con **crDroid 12.12 (Android 16)**.
+(ShootingPlus V3) en Android 16, y creció hasta funcionar con cualquier mando y teléfono.
 
 ## El problema
 
@@ -272,8 +269,11 @@ make doctor    # comprueba herramientas, clave de firma y teléfono
 make build     # pruebas + módulos + APK + AAB (Google Play) en dist/
 make run       # instala por USB y abre la app
 make logs      # registro de depuración en vivo (make logs-off para apagarlo)
-make bump V=1.2 && git commit -am "Versión 1.2" && make release   # publica en GitHub
 ```
+
+**Publicar una versión** (`main` está protegida): sube la versión en una rama (`make bump V=x.y`),
+fusiónala en `develop` por pull request, abre el pull request `develop` → `main` y, ya fusionado,
+`git checkout main && git pull && make release` crea el tag y GitHub publica el Release.
 
 **Google Play:** sube `dist/GamepadMapper-<versión>.aab` (lo genera `make aab` o `make build`). Ya
 cumple: `targetSdk 36` (obligatorio desde el 31/08/2026), AAB firmado con tu clave de subida, y el
@@ -327,22 +327,14 @@ tools/platform-tools/    adb y fastboot de Google (NO subir a GitHub)
 
 ## Root y recuperación
 
-- Bootloader **desbloqueado** (`fastboot getvar unlocked: yes`). La ROM lo muestra como
-  "locked" por spoofing.
-- Partición `boot` única, sin slots A/B.
-- Root instalado con **Magisk v31.1** parcheando el `boot.img` de
-  `crDroidAndroid-16.0-20260925-merlinx-v12.12.zip`.
+El root es **opcional** (la app funciona sin él). Si usas el módulo con Magisk o KernelSU:
 
-**Si el teléfono no arranca**, entra en fastboot (Volumen − + Encendido) y restaura el original:
-
-```powershell
-fastboot flash boot backups\boot_original_crDroid-v12.12-20260925.img
-fastboot reboot
-```
-
-**Si actualizas crDroid**, se pierde el root: parchea con Magisk el `boot.img` de la nueva
-versión y vuelve a flashearlo. El módulo sigue instalado y vuelve a funcionar en cuanto
-Magisk está activo.
+- Guarda siempre una copia del `boot.img` original de tu ROM antes de parchearlo, fuera del
+  repositorio (la carpeta `backups/` está excluida de git).
+- **Si el teléfono no arranca** tras parchear, entra en fastboot y vuelve a flashear tu `boot.img`
+  original (`fastboot flash boot <tu-boot-original>.img` y `fastboot reboot`).
+- **Si actualizas la ROM** se pierde el root: parchea con Magisk el `boot.img` de la nueva versión.
+  El módulo sigue instalado y vuelve a funcionar en cuanto el root está activo.
 
 ## Web y perfiles de la comunidad
 
