@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pad_service_label">Gamepad Mapper Plutón</string>
+    <string name="pad_service_desc">Convierte los botones y sticks de tu mando en toques de pantalla en los juegos que tengan un perfil. Lee solo el mando (no lo que escribes ni el contenido de las apps) y toca la pantalla en los puntos que tú configures. En el resto de apps el mando funciona normal.</string>
+</resources>

@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Informar de un problema de seguridad
+    url: https://github.com/Hades0413/GamePadMapperPluton/security/advisories/new
+    about: De forma privada. No abras un issue público para vulnerabilidades.

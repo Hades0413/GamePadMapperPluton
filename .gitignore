@@ -1,0 +1,73 @@
+# =====================================================================
+#  Gamepad Mapper Pluton - .gitignore
+#  Solo se sube el codigo fuente, recursos, scripts y documentacion.
+# =====================================================================
+
+# --- SECRETOS: clave de firma de la app (NUNCA subir) -----------------
+keystore/
+*.jks
+*.keystore
+*.p12
+*.pem
+password.txt
+local.properties
+signing.properties
+
+# --- Herramientas de terceros copiadas localmente (~1 GB) -------------
+# adb/fastboot, zig, jdk, android-sdk: ver CONTEXTO.md (seccion Compilar)
+tools/
+platform-tools/
+
+# --- Imagenes y copias del telefono del autor -------------------------
+backups/
+*.img
+
+# --- Salidas de compilacion -------------------------------------------
+dist/
+app/build/
+build/
+out/
+*.apk
+*.aab
+*.idsig
+*.ap_
+*.dex
+*.class
+*.o
+*.obj
+*.a
+*.so
+
+# Binarios nativos compilados (se generan con los build.ps1)
+mapper/module/gpmapper
+experimental/gpbridge/gpbridge
+experimental/fakepad/fakepad
+
+# Zips de modulos generados (los modulos se empaquetan con build.ps1)
+*.zip
+
+# --- Registros y temporales -------------------------------------------
+*.log
+*.tmp
+*.bak
+*.swp
+*~
+.~lock.*
+
+# --- Sistema operativo -------------------------------------------------
+Thumbs.db
+ehthumbs.db
+desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+._*
+
+# --- Editores / IDE ----------------------------------------------------
+.vscode/
+.idea/
+*.iml
+.gradle/
+.cxx/
+.externalNativeBuild/
+captures/
+.claude/
