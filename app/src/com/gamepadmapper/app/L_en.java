@@ -659,5 +659,9 @@ final class L_en {
         m.put("Perfiles de la comunidad para tus juegos", "Community profiles for your games");
         m.put(" y ", " and ");
         m.put(" más", " more");
+        m.put("Sobre el juego", "Over the game");
+        m.put("Esquema", "Layout");
+        m.put(" · la captura del juego es orientativa", " · the game screenshot is approximate");
+        m.put("Los nombres e iconos de los juegos pertenecen a sus dueños.", "Game names and icons belong to their owners.");
     }
 }

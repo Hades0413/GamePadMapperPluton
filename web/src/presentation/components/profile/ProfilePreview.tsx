@@ -5,7 +5,9 @@ import { shortLabel } from '../../lib/labels';
  * Dibujo de la pantalla con cada boton en su sitio (lo mismo que se ve en el editor de la app).
  * Los botones de una capa (L2+A) se dibujan en otro color.
  */
-export function ProfilePreview({ config, className = '' }: { config: ProfileConfig; className?: string }) {
+export function ProfilePreview({
+  config, background = null, className = '',
+}: { config: ProfileConfig; background?: string | null; className?: string }) {
   const { width, height } = config.screen;
   const unit = Math.min(width, height);
   const r = unit * 0.045;
@@ -26,7 +28,15 @@ export function ProfilePreview({ config, className = '' }: { config: ProfileConf
           <path d="M0 0 10 5 0 10z" className="fill-accent" />
         </marker>
       </defs>
-      <rect width={width} height={height} fill="url(#grid)" />
+      {background ? (
+        <>
+          {/* Captura del juego que cubre la pantalla del perfil (se recorta si la proporcion no coincide). */}
+          <image href={background} width={width} height={height} preserveAspectRatio="xMidYMid slice" />
+          <rect width={width} height={height} fill="#000" fillOpacity="0.28" />
+        </>
+      ) : (
+        <rect width={width} height={height} fill="url(#grid)" />
+      )}
       {config.bindings.map((b) => (
         <BindingShape key={b.key} binding={b} r={r} font={font} />
       ))}

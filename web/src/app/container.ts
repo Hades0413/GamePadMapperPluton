@@ -9,7 +9,9 @@ import {
 import { GetAuthor } from '@application/authors/GetAuthor';
 import { GetGame } from '@application/games/GetGame';
 import { ListGames } from '@application/games/ListGames';
-import { BanAuthor, ListReportedProfiles, ModerateProfile, UpdateGame } from '@application/moderation/ModerationUseCases';
+import {
+  BanAuthor, ImportGameFromPlay, ListReportedProfiles, ModerateProfile, SetGameImage, UpdateGame,
+} from '@application/moderation/ModerationUseCases';
 import { DeleteProfile } from '@application/profiles/DeleteProfile';
 import { GetLikedProfiles } from '@application/profiles/GetLikedProfiles';
 import { GetProfile } from '@application/profiles/GetProfile';
@@ -63,6 +65,8 @@ export function createServices(env: Env): Services {
       moderateProfile: new ModerateProfile(moderation),
       banAuthor: new BanAuthor(moderation),
       updateGame: new UpdateGame(moderation),
+      importGameFromPlay: new ImportGameFromPlay(moderation),
+      setGameImage: new SetGameImage(moderation),
     },
   };
 }

@@ -3,6 +3,8 @@ export interface Game {
   readonly packageName: string;
   readonly name: string;
   readonly iconUrl: string | null;
+  /** Captura del juego (horizontal) para dibujar la vista previa de los perfiles encima. */
+  readonly backgroundUrl: string | null;
   readonly profileCount: number;
   readonly lastProfileAt: Date | null;
 }

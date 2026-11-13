@@ -45,14 +45,26 @@ public final class Community {
 
     private static final Pattern UUID = Pattern.compile("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
     private static final Pattern PACKAGE = Pattern.compile("^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)+$");
+    /** Solo imagenes del Storage del proyecto (como exige la base de datos). */
+    static final Pattern IMAGE = Pattern.compile(
+            "^https://[a-z0-9]+\\.supabase\\.co/storage/v1/object/public/juegos/(iconos|fondos)/[A-Za-z0-9._-]{1,160}(\\?v=[0-9]{1,15})?$");
+
+    static String image(JSONObject o, String field) {
+        String u = o.optString(field, "");
+        return !o.isNull(field) && IMAGE.matcher(u).matches() ? u : null;
+    }
 
     public static final class Game {
         public String pkg, name;
         public int profiles;
+        /** Imagenes del Storage del proyecto (o null). */
+        public String iconUrl, backgroundUrl;
     }
 
     public static final class Item {
         public String id, pkg, gameName, title, description, author;
+        /** Icono y captura del juego (o null). */
+        public String gameIcon, gameBackground;
         public int likes, buttons, screenW, screenH;
         public long createdAt;
         /** Texto .conf (solo al pedir un perfil concreto). */
@@ -70,7 +82,7 @@ public final class Community {
         try {
             List<Game> out = new ArrayList<>();
             for (int from = 0; from < MAX_GAMES; from += SERVER_MAX_ROWS) {
-                String json = get("games?select=package,name,profile_count&profile_count=gt.0"
+                String json = get("games?select=package,name,profile_count,icon_url,background_url&profile_count=gt.0"
                         + "&order=profile_count.desc,name.asc", from, from + SERVER_MAX_ROWS - 1);
                 if (from == 0) saveCache(c, cacheKey, json);
                 int n = parseGames(json, out);
@@ -137,7 +149,7 @@ public final class Community {
     }
 
     private static final String SUMMARY = "id,package,title,description,screen_w,screen_h,binding_count,"
-            + "like_count,created_at,author:authors!game_profiles_author_id_fkey(username),game:games(name)";
+            + "like_count,created_at,author:authors!game_profiles_author_id_fkey(username),game:games(name,icon_url,background_url)";
 
     // ---------------------------------------------------------------- enlaces a la web
 
@@ -194,6 +206,8 @@ public final class Community {
                 g.pkg = o.optString("package", "");
                 g.name = clean(o.optString("name", ""), 60);
                 g.profiles = Math.max(0, o.optInt("profile_count", 0));
+                g.iconUrl = image(o, "icon_url");
+                g.backgroundUrl = image(o, "background_url");
                 if (PACKAGE.matcher(g.pkg).matches() && !g.name.isEmpty() && !Library.isSensitivePackage(g.pkg)) out.add(g);
             }
             return a.length();
@@ -222,6 +236,8 @@ public final class Community {
                 it.author = au != null ? clean(au.optString("username", ""), 39) : "";
                 JSONObject ga = o.optJSONObject("game");
                 it.gameName = ga != null ? clean(ga.optString("name", ""), 60) : "";
+                it.gameIcon = ga != null ? image(ga, "icon_url") : null;
+                it.gameBackground = ga != null ? image(ga, "background_url") : null;
                 if (withConf) {
                     it.conf = o.optString("conf", "");
                     if (it.conf.length() > 16384) continue;

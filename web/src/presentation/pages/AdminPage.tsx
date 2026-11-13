@@ -9,7 +9,12 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { PageSpinner } from '../components/ui/Spinner';
 import { timeAgo } from '../lib/format';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
-import { useBanAuthor, useModerateProfile, useReportedProfiles, useUpdateGame } from '../queries/moderation';
+import type { GameImageKind } from '@domain/game/GameImage';
+import { prepareGameImage } from '../lib/images';
+import { useGame } from '../queries/games';
+import {
+  useBanAuthor, useImportGame, useModerateProfile, useReportedProfiles, useSetGameImage, useUpdateGame,
+} from '../queries/moderation';
 import { useDeleteProfile } from '../queries/profiles';
 import { paths } from '../routes/paths';
 
@@ -49,33 +54,103 @@ function ReportedRow({ item }: { item: ReportedProfile }) {
   );
 }
 
-function GameEditor() {
-  const update = useUpdateGame();
-  const [form, setForm] = useState({ packageName: '', name: '', iconUrl: '', hidden: false });
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    update.mutate(form);
-  };
+function ImageSlot({
+  label, hint, url, kind, packageName, aspect,
+}: {
+  label: string; hint: string; url: string | null; kind: GameImageKind; packageName: string; aspect: string;
+}) {
+  const set = useSetGameImage();
+  const [prepError, setPrepError] = useState<string | null>(null);
+  const error = prepError ?? (set.error ? errorMessage(set.error) : null);
   return (
-    <form onSubmit={submit} className="card grid gap-3 p-5 sm:grid-cols-2">
-      <h2 className="font-semibold sm:col-span-2">Editar un juego</h2>
-      <input className="input font-mono text-sm" placeholder="Paquete (com.empresa.juego)" value={form.packageName}
-        onChange={(e) => setForm({ ...form, packageName: e.target.value })} aria-label="Paquete" />
-      <input className="input" placeholder="Nombre" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-        aria-label="Nombre" />
-      <input className="input sm:col-span-2" placeholder="Icono https://… (opcional)" value={form.iconUrl}
-        onChange={(e) => setForm({ ...form, iconUrl: e.target.value })} aria-label="Icono" />
-      <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" checked={form.hidden} onChange={(e) => setForm({ ...form, hidden: e.target.checked })}
-          className="accent-primary-strong" />
-        Ocultar el juego y no admitir perfiles nuevos
-      </label>
-      <div className="flex items-center justify-end gap-3">
-        {update.isSuccess && <span className="text-sm text-success">Guardado</span>}
-        <Button type="submit" loading={update.isPending}>Guardar</Button>
+    <div className="space-y-2">
+      <p className="text-sm font-medium">{label}</p>
+      <div className={`flex items-center justify-center overflow-hidden rounded-xl border border-line bg-surface-2 ${aspect}`}>
+        {url ? <img src={url} alt="" className="h-full w-full object-cover" /> : <span className="text-xs text-muted">Sin imagen</span>}
       </div>
-      {update.error && <div className="sm:col-span-2"><Alert tone="error">{errorMessage(update.error)}</Alert></div>}
-    </form>
+      <p className="text-xs text-muted">{hint}</p>
+      <div className="flex flex-wrap gap-2">
+        <label className={`${set.isPending ? 'pointer-events-none opacity-50' : ''} cursor-pointer rounded-xl border border-line bg-surface-2 px-3 py-1.5 text-sm hover:border-primary`}>
+          {set.isPending ? 'Subiendo…' : 'Subir imagen'}
+          <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = '';
+            if (!file) return;
+            setPrepError(null);
+            prepareGameImage(file, kind).then(
+              (img) => set.mutate({ packageName, kind, file: img }),
+              (err: unknown) => setPrepError(errorMessage(err)),
+            );
+          }} />
+        </label>
+        {url && <Button size="sm" variant="ghost" onClick={() => set.mutate({ packageName, kind, file: null })}>Quitar</Button>}
+      </div>
+      {error && <p className="text-xs text-danger">{error}</p>}
+    </div>
+  );
+}
+
+function GameDetails({ packageName }: { packageName: string }) {
+  const { data: game, isPending, error } = useGame(packageName);
+  const update = useUpdateGame();
+  const importer = useImportGame();
+  const [name, setName] = useState<string | null>(null);
+  const [hidden, setHidden] = useState<boolean | null>(null);
+  if (isPending) return <PageSpinner />;
+  if (error) return <Alert tone="error">{errorMessage(error)}</Alert>;
+  if (!game) return <p className="text-sm text-muted">Ese juego no existe todavía en la comunidad (se crea con su primer perfil).</p>;
+  const currentName = name ?? game.name;
+  const currentHidden = hidden ?? false;
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center gap-3">
+        <Button variant="secondary" loading={importer.isPending}
+          onClick={() => importer.mutate({ packageName, updateName: true }, { onSuccess: (r) => r.name && setName(r.name) })}>
+          Obtener nombre e icono de Google Play
+        </Button>
+        {importer.isSuccess && <span className="text-sm text-success">Actualizado desde Google Play</span>}
+        {importer.error && <span className="text-sm text-danger">{errorMessage(importer.error)}</span>}
+      </div>
+      <div className="grid gap-5 sm:grid-cols-[160px_1fr]">
+        <ImageSlot label="Icono" hint="Se recorta en cuadrado (256 px)." url={game.iconUrl} kind="icon"
+          packageName={packageName} aspect="aspect-square" />
+        <ImageSlot label="Fondo para la vista previa"
+          hint="Captura real del juego en horizontal, sin datos personales (nombres, chat). Se reduce y se le quitan los metadatos."
+          url={game.backgroundUrl} kind="background" packageName={packageName} aspect="aspect-video" />
+      </div>
+      <form className="grid gap-3 sm:grid-cols-[1fr_auto]" onSubmit={(e: FormEvent) => {
+        e.preventDefault();
+        update.mutate({ packageName, name: currentName, hidden: currentHidden });
+      }}>
+        <input className="input" value={currentName} onChange={(e) => setName(e.target.value)} aria-label="Nombre" />
+        <Button type="submit" loading={update.isPending}>Guardar nombre</Button>
+        <label className="flex items-center gap-2 text-sm sm:col-span-2">
+          <input type="checkbox" checked={currentHidden} onChange={(e) => setHidden(e.target.checked)} className="accent-primary-strong" />
+          Ocultar el juego y no admitir perfiles nuevos
+        </label>
+        {update.isSuccess && <span className="text-sm text-success">Guardado</span>}
+        {update.error && <div className="sm:col-span-2"><Alert tone="error">{errorMessage(update.error)}</Alert></div>}
+      </form>
+    </div>
+  );
+}
+
+function GameEditor() {
+  const [input, setInput] = useState('');
+  const [pkg, setPkg] = useState('');
+  return (
+    <section className="card space-y-4 p-5">
+      <h2 className="font-semibold">Editar un juego</h2>
+      <form className="flex gap-2" onSubmit={(e: FormEvent) => {
+        e.preventDefault();
+        setPkg(input.trim());
+      }}>
+        <input className="input font-mono text-sm" placeholder="Paquete (com.empresa.juego)" value={input}
+          onChange={(e) => setInput(e.target.value)} aria-label="Paquete" />
+        <Button type="submit" variant="secondary">Abrir</Button>
+      </form>
+      {pkg && <GameDetails key={pkg} packageName={pkg} />}
+    </section>
   );
 }
 

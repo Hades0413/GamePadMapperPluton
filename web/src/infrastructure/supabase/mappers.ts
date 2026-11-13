@@ -7,7 +7,9 @@ import type { AuthorRow, GameRow, ProfileRow, ProfileSummaryRow } from './rows';
 const safeAvatar = (url: string | null) =>
   url && url.startsWith('https://avatars.githubusercontent.com/') ? url : null;
 
-const safeIcon = (url: string | null) => (url && /^https:\/\/[^\s"'<>]+$/.test(url) ? url : null);
+/** Solo imagenes del Storage del proyecto (la base de datos ya lo exige; se comprueba otra vez). */
+const GAME_IMAGE = /^https:\/\/[a-z0-9]+\.supabase\.co\/storage\/v1\/object\/public\/juegos\/(iconos|fondos)\/[A-Za-z0-9._-]{1,160}(\?v=[0-9]{1,15})?$/;
+const safeImage = (url: string | null) => (url && GAME_IMAGE.test(url) ? url : null);
 
 export const toAuthor = (row: AuthorRow): Author => ({
   id: row.id,
@@ -18,7 +20,8 @@ export const toAuthor = (row: AuthorRow): Author => ({
 export const toGame = (row: GameRow): Game => ({
   packageName: row.package,
   name: row.name,
-  iconUrl: safeIcon(row.icon_url),
+  iconUrl: safeImage(row.icon_url),
+  backgroundUrl: safeImage(row.background_url),
   profileCount: row.profile_count,
   lastProfileAt: row.last_profile_at ? new Date(row.last_profile_at) : null,
 });
