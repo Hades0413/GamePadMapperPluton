@@ -1,5 +1,5 @@
 import type { ReportedProfile } from '@application/ports/ModerationRepository';
-import { useState, type FormEvent } from 'react';
+import { useDeferredValue, useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
 import { RequireAccount } from '../components/auth/RequireAccount';
 import { Alert, ErrorAlert } from '../components/ui/Alert';
@@ -11,7 +11,9 @@ import { timeAgo } from '../lib/format';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 import type { GameImageKind } from '@domain/game/GameImage';
 import { prepareGameImage } from '../lib/images';
-import { useGame } from '../queries/games';
+import { GameIcon } from '../components/profile/GameIcon';
+import { SearchIcon } from '../components/ui/icons';
+import { useGame, useGames } from '../queries/games';
 import {
   useBanAuthor, useImportGame, useModerateProfile, useReportedProfiles, useSetGameImage, useUpdateGame,
 } from '../queries/moderation';
@@ -135,21 +137,60 @@ function GameDetails({ packageName }: { packageName: string }) {
   );
 }
 
+/** Lista de juegos con buscador por nombre: no hace falta saberse el paquete. */
+function GamePicker({ selected, onSelect }: { selected: string; onSelect: (pkg: string) => void }) {
+  const [search, setSearch] = useState('');
+  const deferred = useDeferredValue(search);
+  const { data, isPending, error, hasNextPage, fetchNextPage, isFetchingNextPage } = useGames(deferred.trim());
+  const games = data?.pages.flatMap((p) => p.items) ?? [];
+  return (
+    <div className="space-y-3">
+      <div className="relative">
+        <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted" />
+        <input type="search" className="input pl-9" placeholder="Buscar juego por nombre…" value={search}
+          maxLength={40} onChange={(e) => setSearch(e.target.value)} aria-label="Buscar juego" />
+      </div>
+      {isPending ? <PageSpinner /> : error ? <Alert tone="error">{errorMessage(error)}</Alert> : games.length === 0 ? (
+        <p className="text-sm text-muted">No hay juegos con ese nombre.</p>
+      ) : (
+        <ul className="grid max-h-80 gap-1 overflow-y-auto pr-1 sm:grid-cols-2">
+          {games.map((g) => (
+            <li key={g.packageName}>
+              <button type="button" onClick={() => onSelect(g.packageName)} aria-pressed={selected === g.packageName}
+                className={`flex w-full items-center gap-3 rounded-xl border px-3 py-2 text-left transition-colors ${
+                  selected === g.packageName ? 'border-primary bg-surface-2' : 'border-transparent hover:bg-surface-2'}`}>
+                <GameIcon name={g.name} iconUrl={g.iconUrl} size={36} />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium">{g.name}</span>
+                  <span className="block truncate font-mono text-xs text-muted">{g.packageName}</span>
+                </span>
+                {(!g.iconUrl || !g.backgroundUrl) && (
+                  <span className="shrink-0 rounded bg-warning/15 px-1.5 py-0.5 text-[10px] text-warning">
+                    {!g.iconUrl && !g.backgroundUrl ? 'Sin icono ni fondo' : !g.iconUrl ? 'Sin icono' : 'Sin fondo'}
+                  </span>
+                )}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {hasNextPage && (
+        <Button size="sm" variant="ghost" loading={isFetchingNextPage} onClick={() => void fetchNextPage()}>Ver más juegos</Button>
+      )}
+    </div>
+  );
+}
+
 function GameEditor() {
-  const [input, setInput] = useState('');
   const [pkg, setPkg] = useState('');
   return (
     <section className="card space-y-4 p-5">
-      <h2 className="font-semibold">Editar un juego</h2>
-      <form className="flex gap-2" onSubmit={(e: FormEvent) => {
-        e.preventDefault();
-        setPkg(input.trim());
-      }}>
-        <input className="input font-mono text-sm" placeholder="Paquete (com.empresa.juego)" value={input}
-          onChange={(e) => setInput(e.target.value)} aria-label="Paquete" />
-        <Button type="submit" variant="secondary">Abrir</Button>
-      </form>
-      {pkg && <GameDetails key={pkg} packageName={pkg} />}
+      <div>
+        <h2 className="font-semibold">Editar un juego</h2>
+        <p className="text-sm text-muted">Elige un juego para ponerle icono, captura de fondo o cambiarle el nombre.</p>
+      </div>
+      <GamePicker selected={pkg} onSelect={setPkg} />
+      {pkg && <div className="border-t border-line pt-4"><GameDetails key={pkg} packageName={pkg} /></div>}
     </section>
   );
 }
