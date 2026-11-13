@@ -595,8 +595,9 @@ public class OverlayService extends Service {
     private boolean onlyDefaults = false;   // el perfil solo tiene la distribucion inicial
     private boolean detecting = false;
     private final List<Ghost> ghosts = new ArrayList<>();
-    private static final int CAPTURE_FRAMES = 6;
-    private static final long CAPTURE_INTERVAL_MS = 450;
+    /** Deteccion automatica: unos 10 s de juego (12 capturas). Mas capturas = mejor distingue lo fijo. */
+    private static final int CAPTURE_FRAMES = 12;
+    private static final long CAPTURE_INTERVAL_MS = 850;
 
     private void autoDetectIntro() {
         if (editor == null || detecting) return;
@@ -609,7 +610,7 @@ public class OverlayService extends Service {
             return;
         }
         showBanner(L.t("Detectar botones del juego"),
-                L.t("Entra en una partida con los controles a la vista. Al tocar Empezar, juega 3 segundos ")
+                L.t("Entra en una partida con los controles a la vista. Al tocar Empezar, juega 10 segundos ")
                         + L.t("moviéndote (sin abrir menús). Buscaré lo que no cambia en pantalla."),
                 C_PRIMARY,
                 button(L.t("Empezar"), C_OK, v -> autoDetectCapture()),
