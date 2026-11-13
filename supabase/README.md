@@ -8,6 +8,8 @@ Base de datos, inicio de sesión e imágenes de la comunidad (web y app). El esq
 | `migrations/20261113000000_comunidad.sql` | Tablas, permisos, validación de perfiles, moderación |
 | `migrations/20261113020000_imagenes_de_juegos.sql` | Icono y captura de cada juego en Storage (cubo `juegos`) |
 | `migrations/20261113030000_reglas_de_imagenes.sql` | Reglas de las URL de imágenes sin depender de funciones internas (necesario para `importar-juego`) |
+| `migrations/20261113040000_limites_de_funciones.sql` | Límites de uso de `importar-juego` (por usuario y hora, y espera entre intentos por juego) |
+| `migrations/20261113050000_me_gusta_escalables.sql` | «Me gusta» sin bloqueos: contador recalculado cada minuto con `pg_cron`; limpieza programada de registros |
 | `functions/importar-juego/` | Edge Function: nombre e icono del juego desde su ficha pública de Google Play (solo admins) |
 
 ## Puesta en marcha (una sola vez)
@@ -44,13 +46,14 @@ Base de datos, inicio de sesión e imágenes de la comunidad (web y app). El esq
 | RLS + permisos por columna | Lectura pública solo de lo publicado y de columnas seguras (ni correos, ni reportes, ni roles). |
 | Sin `INSERT/UPDATE/DELETE` para el API | Toda escritura pasa por funciones RPC que validan, comprueban el dueño y registran la acción. |
 | Validación en la base de datos | Mismo formato `.conf` que la app (`private.validate_conf`), límites de tamaño, sin HTML (`<` `>`) ni caracteres de control. |
+| Rendimiento | Los «me gusta» no bloquean la fila del perfil: se anotan y `pg_cron` recalcula los contadores cada minuto (probado: 2000 clics de 1000 usuarios sobre el mismo perfil, ~1900/s, sin errores). |
 | Límites de uso | 10 perfiles/día y 100 en total por cuenta, 60 ediciones/día, 300 «me gusta»/día, 30 reportes/día. |
 | Moderación | Con 3 reportes el perfil se oculta solo; los administradores publican, ocultan, borran y bloquean. |
 | Esquema `private` | Funciones internas fuera del API. Todas las funciones con `search_path` vacío. |
 | Inicio de sesión | Solo GitHub con PKCE. Nombre y avatar salen de la identidad de GitHub (no editable por el usuario). Borrar la cuenta elimina todos sus datos al instante. |
 | Bloqueos | Por id de GitHub: borrar la cuenta y volver a entrar no los evita. Un admin no puede bloquear a otro. |
 | Paquetes sensibles | No se admiten perfiles para apps del sistema, tiendas, ajustes, permisos ni root (misma lista en la web y la app). |
-| Imágenes de juegos | Solo los admins suben iconos y capturas (Storage, máx. 1 MB, PNG/JPEG/WebP). La base de datos solo admite direcciones de ese Storage: ni la web ni la app cargan imágenes de otros sitios. |
+| Imágenes de juegos | Cubo `juegos` de Storage (`iconos/<paquete>` y `fondos/<paquete>`, máx. 1 MB, PNG/JPEG/WebP). Solo los admins suben o cambian imágenes; los usuarios solo pueden completar las vacías desde la ficha oficial de Google Play (máx. 3 capturas, límites por hora). La base de datos solo admite direcciones de ese Storage: ni la web ni la app cargan imágenes de otros sitios. |
 | Reportes | Solo los de cuentas con 3+ días cuentan para ocultar automáticamente (crear cuentas nuevas no sirve). |
 
 ## Probar el esquema en local (opcional)

@@ -24,6 +24,12 @@ export interface GameProfileSummary {
   readonly updatedAt: Date;
 }
 
+/** Resultado de dar o quitar «me gusta»: estado final y total exacto en ese momento. */
+export interface LikeResult {
+  readonly liked: boolean;
+  readonly likeCount: number;
+}
+
 /** Perfil completo, con el texto .conf que importa la app. */
 export interface GameProfile extends GameProfileSummary {
   readonly conf: string;
