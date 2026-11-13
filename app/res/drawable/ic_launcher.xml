@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Icono: mando sobre circulo indigo -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:fillColor="#3F51B5"
+        android:pathData="M54,4a50,50 0,1 1,0 100a50,50 0,1 1,0 -100z" />
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M30,40h48a14,14 0,0 1,14 14v6a14,14 0,0 1,-24 10l-4,-4h-20l-4,4a14,14 0,0 1,-24 -10v-6a14,14 0,0 1,14 -14z" />
+    <path android:fillColor="#3F51B5"
+        android:pathData="M33,50h4v-4h4v4h4v4h-4v4h-4v-4h-4z" />
+    <path android:fillColor="#3F51B5"
+        android:pathData="M70,48a3,3 0,1 1,0 6a3,3 0,1 1,0 -6zM78,54a3,3 0,1 1,0 6a3,3 0,1 1,0 -6z" />
+</vector>
