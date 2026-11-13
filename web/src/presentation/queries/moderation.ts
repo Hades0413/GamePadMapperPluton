@@ -67,3 +67,25 @@ export function useSetGameImage() {
     },
   });
 }
+
+export function usePlayScreenshots(packageName: string, enabled: boolean) {
+  const { listPlayScreenshots } = useUseCases();
+  return useQuery({
+    queryKey: ['moderation', 'play-screenshots', packageName],
+    queryFn: () => listPlayScreenshots.execute(packageName),
+    enabled,
+    staleTime: 10 * 60_000,
+  });
+}
+
+export function useBackgroundFromPlay() {
+  const { useBackgroundFromPlay: fromPlay } = useUseCases();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (i: { packageName: string; screenshotId: string }) => fromPlay.execute(i),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['games'] });
+      void client.invalidateQueries({ queryKey: ['game'] });
+    },
+  });
+}

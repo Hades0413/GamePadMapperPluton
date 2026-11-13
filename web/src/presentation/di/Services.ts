@@ -2,10 +2,12 @@ import type {
   DeleteAccount, GetCurrentAccount, ObserveSession, SignInWithGitHub, SignOut, TakeReturnPath,
 } from '@application/auth/AuthUseCases';
 import type { GetAuthor } from '@application/authors/GetAuthor';
+import type { FillGameImages } from '@application/games/FillGameImages';
 import type { GetGame } from '@application/games/GetGame';
 import type { ListGames } from '@application/games/ListGames';
 import type {
-  BanAuthor, ImportGameFromPlay, ListReportedProfiles, ModerateProfile, SetGameImage, UpdateGame,
+  BanAuthor, ImportGameFromPlay, ListPlayScreenshots, ListReportedProfiles, ModerateProfile, SetGameImage,
+  UpdateGame, UseBackgroundFromPlay,
 } from '@application/moderation/ModerationUseCases';
 import type { DeleteProfile } from '@application/profiles/DeleteProfile';
 import type { GetLikedProfiles } from '@application/profiles/GetLikedProfiles';
@@ -21,6 +23,7 @@ import type { UpdateProfile } from '@application/profiles/UpdateProfile';
 export interface UseCases {
   readonly listGames: ListGames;
   readonly getGame: GetGame;
+  readonly fillGameImages: FillGameImages;
   readonly listGameProfiles: ListGameProfiles;
   readonly listAuthorProfiles: ListAuthorProfiles;
   readonly getProfile: GetProfile;
@@ -43,6 +46,8 @@ export interface UseCases {
   readonly updateGame: UpdateGame;
   readonly importGameFromPlay: ImportGameFromPlay;
   readonly setGameImage: SetGameImage;
+  readonly listPlayScreenshots: ListPlayScreenshots;
+  readonly useBackgroundFromPlay: UseBackgroundFromPlay;
 }
 
 export interface SiteLinks {

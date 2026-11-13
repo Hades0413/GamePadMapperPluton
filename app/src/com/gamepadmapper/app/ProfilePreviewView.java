@@ -2,6 +2,7 @@ package com.gamepadmapper.app;
 
 import android.content.Context;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.DashPathEffect;
 import android.graphics.Paint;
 import android.graphics.RectF;
@@ -27,6 +28,8 @@ public class ProfilePreviewView extends View {
     /** Captura del juego (opcional) y si se dibuja. */
     private android.graphics.Bitmap gameBackground;
     private boolean showBackground = true;
+    /** Se esta dibujando sobre la captura: botones mas opacos y con borde blanco. */
+    private boolean onImage;
 
     public ProfilePreviewView(Context c, Profile p) {
         super(c);
@@ -70,7 +73,8 @@ public class ProfilePreviewView extends View {
         float r = unit * 0.05f;
         rect.set(0, 0, getWidth(), getHeight());
         float corner = Ui.dp(getContext(), 12);
-        if (gameBackground != null && showBackground) {
+        onImage = gameBackground != null && showBackground;
+        if (onImage) {
             // Recorte "cover": la captura llena la pantalla aunque su proporcion sea otra.
             int bw = gameBackground.getWidth(), bh = gameBackground.getHeight();
             float scale = Math.max(getWidth() / (float) bw, getHeight() / (float) bh);
@@ -127,9 +131,10 @@ public class ProfilePreviewView extends View {
     }
 
     private void circle(Canvas c, float x, float y, float r, int color, int alpha) {
-        fill.setColor((color & 0x00FFFFFF) | (alpha << 24));
+        int a = onImage ? Math.min(0xC0, alpha * 3) : alpha;
+        fill.setColor((color & 0x00FFFFFF) | (a << 24));
         c.drawCircle(x, y, r, fill);
-        stroke.setColor(color);
+        stroke.setColor(onImage ? Color.WHITE : color);
         c.drawCircle(x, y, r, stroke);
     }
 }

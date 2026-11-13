@@ -7,10 +7,12 @@ import {
   DeleteAccount, GetCurrentAccount, ObserveSession, SignInWithGitHub, SignOut, TakeReturnPath,
 } from '@application/auth/AuthUseCases';
 import { GetAuthor } from '@application/authors/GetAuthor';
+import { FillGameImages } from '@application/games/FillGameImages';
 import { GetGame } from '@application/games/GetGame';
 import { ListGames } from '@application/games/ListGames';
 import {
-  BanAuthor, ImportGameFromPlay, ListReportedProfiles, ModerateProfile, SetGameImage, UpdateGame,
+  BanAuthor, ImportGameFromPlay, ListPlayScreenshots, ListReportedProfiles, ModerateProfile, SetGameImage,
+  UpdateGame, UseBackgroundFromPlay,
 } from '@application/moderation/ModerationUseCases';
 import { DeleteProfile } from '@application/profiles/DeleteProfile';
 import { GetLikedProfiles } from '@application/profiles/GetLikedProfiles';
@@ -45,6 +47,7 @@ export function createServices(env: Env): Services {
     useCases: {
       listGames: new ListGames(games),
       getGame: new GetGame(games),
+      fillGameImages: new FillGameImages(games),
       listGameProfiles: new ListGameProfiles(profiles),
       listAuthorProfiles: new ListAuthorProfiles(profiles),
       getProfile: new GetProfile(profiles),
@@ -67,6 +70,8 @@ export function createServices(env: Env): Services {
       updateGame: new UpdateGame(moderation),
       importGameFromPlay: new ImportGameFromPlay(moderation),
       setGameImage: new SetGameImage(moderation),
+      listPlayScreenshots: new ListPlayScreenshots(moderation),
+      useBackgroundFromPlay: new UseBackgroundFromPlay(moderation),
     },
   };
 }

@@ -5,12 +5,13 @@ import { DESCRIPTION_MAX, TITLE_MAX } from '@domain/profile/GameProfile';
 import { isValidPackage } from '@domain/game/Game';
 import { useDeferredValue, useMemo, useState, type FormEvent } from 'react';
 import { readSmallTextFile } from '../../lib/files';
-import { useGame } from '../../queries/games';
+import { useFillGameImages, useGame } from '../../queries/games';
+import { GameIcon } from './GameIcon';
 import { errorMessage } from '../../lib/errorMessage';
 import { Alert } from '../ui/Alert';
 import { Button } from '../ui/Button';
 import { Field } from '../ui/Field';
-import { ProfilePreview } from './ProfilePreview';
+import { PreviewPanel } from './PreviewPanel';
 
 export interface ProfileFormValues {
   conf: string;
@@ -48,6 +49,7 @@ export function ProfileForm({
   const packageOk = isValidPackage(values.packageName.trim());
   const game = useGame(packageOk ? values.packageName.trim() : undefined);
   const existingGame = game.data ?? null;
+  const fill = useFillGameImages();
 
   const set = (patch: Partial<ProfileFormValues>) => {
     const next = { ...values, ...patch };
@@ -119,10 +121,26 @@ export function ProfileForm({
 
         {mode === 'create' && (
           existingGame ? (
-            <p className="text-sm text-muted">Juego: <strong className="text-ink">{existingGame.name}</strong></p>
+            <div className="card flex flex-wrap items-center gap-3 p-3">
+              <GameIcon name={existingGame.name} iconUrl={existingGame.iconUrl} size={44} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-medium">{existingGame.name}</p>
+                <p className="text-xs text-muted">
+                  {existingGame.iconUrl && existingGame.backgroundUrl ? 'Con icono y captura del juego'
+                    : 'Le falta ' + [!existingGame.iconUrl && 'el icono', !existingGame.backgroundUrl && 'la captura'].filter(Boolean).join(' y ')}
+                </p>
+              </div>
+              {(!existingGame.iconUrl || !existingGame.backgroundUrl) && (
+                <Button size="sm" variant="secondary" loading={fill.isPending}
+                  onClick={() => fill.mutate(existingGame.packageName)}>
+                  Traer imágenes de Google Play
+                </Button>
+              )}
+              {fill.error && <p className="w-full text-xs text-danger">{errorMessage(fill.error)}</p>}
+            </div>
           ) : (
             <Field label="Nombre del juego" error={show('gameName')}
-              hint={packageOk ? 'Es el primer perfil de este juego: escribe su nombre tal como aparece en Google Play.' : undefined}>
+              hint={packageOk ? 'Es el primer perfil de este juego: escribe su nombre tal como aparece en Google Play. Al publicarlo traeremos su icono y una captura de Google Play.' : undefined}>
               {(a) => (
                 <input {...a} className="input" value={values.gameName} maxLength={60} placeholder="Brawl Stars"
                   onChange={(e) => set({ gameName: e.target.value })} />
@@ -157,18 +175,20 @@ export function ProfileForm({
       </div>
 
       <aside className="space-y-3 lg:sticky lg:top-24 lg:self-start" aria-label="Vista previa">
-        <h2 className="font-semibold">Vista previa</h2>
         {parsed?.ok ? (
-          <>
-            <ProfilePreview config={parsed.config} />
-            <p className="text-xs text-muted">
-              {parsed.config.bindings.length} botones · pantalla {parsed.config.screen.width}×{parsed.config.screen.height}
-            </p>
-          </>
+          <PreviewPanel config={parsed.config} background={existingGame?.backgroundUrl ?? null}
+            footer={(
+              <p className="text-xs text-muted">
+                {parsed.config.bindings.length} botones · pantalla {parsed.config.screen.width}×{parsed.config.screen.height}
+              </p>
+            )} />
         ) : (
-          <div className="card flex aspect-video items-center justify-center p-6 text-center text-sm text-muted">
-            Aquí verás dónde toca cada botón cuando el perfil sea válido.
-          </div>
+          <>
+            <h2 className="font-semibold">Vista previa</h2>
+            <div className="card flex aspect-video items-center justify-center p-6 text-center text-sm text-muted">
+              Aquí verás dónde toca cada botón cuando el perfil sea válido.
+            </div>
+          </>
         )}
       </aside>
     </form>

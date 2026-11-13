@@ -18,6 +18,12 @@ export interface GameChanges {
   readonly hidden: boolean;
 }
 
+/** Captura de la ficha de Google Play (miniatura servida por Google; se copia al elegirla). */
+export interface PlayScreenshot {
+  readonly id: string;
+  readonly thumbUrl: string;
+}
+
 export interface ImportedGame {
   readonly name: string | null;
   readonly iconUrl: string;
@@ -34,4 +40,8 @@ export interface ModerationRepository {
   /** Sube una imagen del juego y la asigna. Devuelve su direccion publica. */
   uploadGameImage(packageName: string, kind: GameImageKind, file: GameImageFile): Promise<string>;
   removeGameImage(packageName: string, kind: GameImageKind): Promise<void>;
+  /** Capturas horizontales de la ficha de Google Play del juego. */
+  listPlayScreenshots(packageName: string): Promise<readonly PlayScreenshot[]>;
+  /** Copia una captura de Google Play al Storage y la pone como fondo. Devuelve su URL. */
+  useBackgroundFromPlay(packageName: string, screenshotId: string): Promise<string>;
 }

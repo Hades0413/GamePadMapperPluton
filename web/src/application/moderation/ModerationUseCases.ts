@@ -3,7 +3,9 @@ import { AppError } from '@domain/shared/AppError';
 import {
   GAME_IMAGE_MAX_BYTES, isGameImageType, type GameImageFile, type GameImageKind,
 } from '@domain/game/GameImage';
-import type { ImportedGame, ModerationRepository, ReportedProfile } from '../ports/ModerationRepository';
+import type {
+  ImportedGame, ModerationRepository, PlayScreenshot, ReportedProfile,
+} from '../ports/ModerationRepository';
 import { checkGameName, checkPackage } from '../profiles/profileInput';
 import { requireId } from '../shared/guards';
 
@@ -90,5 +92,32 @@ export class SetGameImage {
       throw new AppError('INVALID_INPUT', 'La imagen tiene que pesar menos de 1 MB.');
     }
     return this.#moderation.uploadGameImage(pkg, input.kind, input.file);
+  }
+}
+
+export class ListPlayScreenshots {
+  readonly #moderation: ModerationRepository;
+
+  constructor(moderation: ModerationRepository) {
+    this.#moderation = moderation;
+  }
+
+  execute(packageName: string): Promise<readonly PlayScreenshot[]> {
+    return this.#moderation.listPlayScreenshots(checkPackage(packageName));
+  }
+}
+
+export class UseBackgroundFromPlay {
+  readonly #moderation: ModerationRepository;
+
+  constructor(moderation: ModerationRepository) {
+    this.#moderation = moderation;
+  }
+
+  execute(input: { packageName: string; screenshotId: string }): Promise<string> {
+    if (!/^https:\/\/play-lh\.googleusercontent\.com\/[A-Za-z0-9_-]{20,300}$/.test(input.screenshotId)) {
+      throw new AppError('INVALID_INPUT', 'Captura no válida.');
+    }
+    return this.#moderation.useBackgroundFromPlay(checkPackage(input.packageName), input.screenshotId);
   }
 }
