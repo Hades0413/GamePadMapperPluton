@@ -21,6 +21,12 @@ public class ProfilePreviewView extends View {
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG), stroke = new Paint(Paint.ANTI_ALIAS_FLAG),
             text = new Paint(Paint.ANTI_ALIAS_FLAG), bg = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF rect = new RectF();
+    private final android.graphics.Path clip = new android.graphics.Path();
+    private final android.graphics.Rect src = new android.graphics.Rect();
+    private final Paint dim = new Paint();
+    /** Captura del juego (opcional) y si se dibuja. */
+    private android.graphics.Bitmap gameBackground;
+    private boolean showBackground = true;
 
     public ProfilePreviewView(Context c, Profile p) {
         super(c);
@@ -37,7 +43,19 @@ public class ProfilePreviewView extends View {
         text.setTextAlign(Paint.Align.CENTER);
         text.setFakeBoldText(true);
         bg.setColor(0xFF0B0710);
+        dim.setColor(0x47000000);
         setContentDescription(L.t("Vista previa del perfil"));
+    }
+
+    /** Dibuja los botones sobre una captura del juego (recortada para cubrir la pantalla). */
+    public void setGameBackground(android.graphics.Bitmap bitmap) {
+        gameBackground = bitmap;
+        invalidate();
+    }
+
+    public void setShowBackground(boolean show) {
+        showBackground = show;
+        invalidate();
     }
 
     @Override
@@ -51,7 +69,23 @@ public class ProfilePreviewView extends View {
         float k = getWidth() / screenW, unit = Math.min(getWidth(), getHeight());
         float r = unit * 0.05f;
         rect.set(0, 0, getWidth(), getHeight());
-        c.drawRoundRect(rect, Ui.dp(getContext(), 12), Ui.dp(getContext(), 12), bg);
+        float corner = Ui.dp(getContext(), 12);
+        if (gameBackground != null && showBackground) {
+            // Recorte "cover": la captura llena la pantalla aunque su proporcion sea otra.
+            int bw = gameBackground.getWidth(), bh = gameBackground.getHeight();
+            float scale = Math.max(getWidth() / (float) bw, getHeight() / (float) bh);
+            int sw = Math.round(getWidth() / scale), sh = Math.round(getHeight() / scale);
+            src.set((bw - sw) / 2, (bh - sh) / 2, (bw + sw) / 2, (bh + sh) / 2);
+            clip.reset();
+            clip.addRoundRect(rect, corner, corner, android.graphics.Path.Direction.CW);
+            c.save();
+            c.clipPath(clip);
+            c.drawBitmap(gameBackground, src, rect, null);
+            c.drawRect(rect, dim);
+            c.restore();
+        } else {
+            c.drawRoundRect(rect, corner, corner, bg);
+        }
         text.setTextSize(unit * 0.036f);
         stroke.setStrokeWidth(Math.max(1.5f, r * 0.09f));
 

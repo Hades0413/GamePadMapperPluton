@@ -11,6 +11,7 @@ export function Footer() {
         <div className="space-y-1">
           <p className="font-semibold text-ink">Gamepad Mapper Plutón</p>
           <p>Hecho por Hades0413. Uso gratuito y no comercial (PolyForm Noncommercial 1.0.0).</p>
+          <p className="text-xs">Los nombres e iconos de los juegos pertenecen a sus respectivos dueños y se muestran solo para identificarlos.</p>
         </div>
         <nav className="flex flex-wrap gap-x-5 gap-y-2" aria-label="Pie de página">
           <Link to={paths.rules} className="hover:text-ink">Normas</Link>

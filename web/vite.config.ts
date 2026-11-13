@@ -24,7 +24,7 @@ function securityAndSpa(supabaseUrl: string): Plugin {
     "default-src 'self'",
     "script-src 'self'",
     "style-src 'self'",
-    "img-src 'self' data: https:",
+    "img-src 'self' data: blob: https:",
     "font-src 'self'",
     `connect-src 'self' ${supabase} ${supabase.replace(/^http/, 'ws')}`,
     "frame-src 'none'",

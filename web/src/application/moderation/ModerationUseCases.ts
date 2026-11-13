@@ -1,7 +1,9 @@
 import type { ProfileStatus } from '@domain/profile/GameProfile';
-import { cleanLine } from '@domain/shared/text';
 import { AppError } from '@domain/shared/AppError';
-import type { ModerationRepository, ReportedProfile } from '../ports/ModerationRepository';
+import {
+  GAME_IMAGE_MAX_BYTES, isGameImageType, type GameImageFile, type GameImageKind,
+} from '@domain/game/GameImage';
+import type { ImportedGame, ModerationRepository, ReportedProfile } from '../ports/ModerationRepository';
 import { checkGameName, checkPackage } from '../profiles/profileInput';
 import { requireId } from '../shared/guards';
 
@@ -48,15 +50,45 @@ export class UpdateGame {
     this.#moderation = moderation;
   }
 
-  execute(input: { packageName: string; name: string; iconUrl: string; hidden: boolean }): Promise<void> {
-    const icon = cleanLine(input.iconUrl, 0, 500, 'icono');
-    if (icon !== '' && !/^https:\/\/[^\s"'<>]+$/.test(icon)) {
-      throw new AppError('INVALID_INPUT', 'El icono debe ser una dirección https://');
-    }
+  execute(input: { packageName: string; name: string; hidden: boolean }): Promise<void> {
     return this.#moderation.updateGame(checkPackage(input.packageName), {
       name: checkGameName(input.name),
-      iconUrl: icon === '' ? null : icon,
       hidden: input.hidden,
     });
+  }
+}
+
+export class ImportGameFromPlay {
+  readonly #moderation: ModerationRepository;
+
+  constructor(moderation: ModerationRepository) {
+    this.#moderation = moderation;
+  }
+
+  execute(input: { packageName: string; updateName: boolean }): Promise<ImportedGame> {
+    return this.#moderation.importGameFromPlay(checkPackage(input.packageName), input.updateName);
+  }
+}
+
+export class SetGameImage {
+  readonly #moderation: ModerationRepository;
+
+  constructor(moderation: ModerationRepository) {
+    this.#moderation = moderation;
+  }
+
+  /** file null = quitar la imagen. */
+  async execute(input: { packageName: string; kind: GameImageKind; file: GameImageFile | null }): Promise<string | null> {
+    const pkg = checkPackage(input.packageName);
+    if (input.kind !== 'icon' && input.kind !== 'background') throw new AppError('INVALID_INPUT', 'Tipo de imagen no válido.');
+    if (input.file === null) {
+      await this.#moderation.removeGameImage(pkg, input.kind);
+      return null;
+    }
+    if (!isGameImageType(input.file.type)) throw new AppError('INVALID_INPUT', 'La imagen tiene que ser PNG, JPEG o WebP.');
+    if (input.file.data.size === 0 || input.file.data.size > GAME_IMAGE_MAX_BYTES) {
+      throw new AppError('INVALID_INPUT', 'La imagen tiene que pesar menos de 1 MB.');
+    }
+    return this.#moderation.uploadGameImage(pkg, input.kind, input.file);
   }
 }

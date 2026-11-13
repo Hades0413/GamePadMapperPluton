@@ -14,6 +14,7 @@ export const gameRow = z.object({
   package: z.string(),
   name: z.string(),
   icon_url: z.string().nullable(),
+  background_url: z.string().nullable(),
   profile_count: z.number().int(),
   last_profile_at: z.string().nullable(),
 });
@@ -23,7 +24,7 @@ export const PROFILE_SUMMARY_COLUMNS =
   // Se nombra la relacion: perfiles y autores tambien se unen por los me gusta y los reportes.
   'author:authors!game_profiles_author_id_fkey(id,username,avatar_url),game:games(name)';
 export const PROFILE_COLUMNS = `${PROFILE_SUMMARY_COLUMNS},conf`;
-export const GAME_COLUMNS = 'package,name,icon_url,profile_count,last_profile_at';
+export const GAME_COLUMNS = 'package,name,icon_url,background_url,profile_count,last_profile_at';
 export const AUTHOR_COLUMNS = 'id,username,avatar_url';
 
 export const profileSummaryRow = z.object({

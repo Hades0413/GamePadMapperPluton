@@ -37,4 +37,14 @@ export function decodeBase64Url(value: string, maxBytes: number): string | null 
 
 export const canShare = () => typeof navigator !== 'undefined' && typeof navigator.share === 'function';
 
+/**
+ * Enlace para abrir un perfil en la app de Android (intent de Chrome). Si la app no esta
+ * instalada (o es una version sin el enlace), el navegador abre Google Play.
+ */
+export function appLink(profileId: string, playUrl: string): string {
+  const id = /^[0-9a-f-]{36}$/i.test(profileId) ? profileId : '';
+  return `intent://perfil/${id}#Intent;scheme=gpmapper;package=com.gamepadmapper.app;`
+    + `S.browser_fallback_url=${encodeURIComponent(playUrl)};end`;
+}
+
 export const isAndroid = () => typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent);

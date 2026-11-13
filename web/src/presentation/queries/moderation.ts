@@ -1,3 +1,4 @@
+import type { GameImageFile, GameImageKind } from '@domain/game/GameImage';
 import type { ProfileStatus } from '@domain/profile/GameProfile';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useUseCases } from '../di/ServicesContext';
@@ -40,7 +41,29 @@ export function useBanAuthor() {
 
 export function useUpdateGame() {
   const { updateGame } = useUseCases();
-  return useAdminMutation((i: { packageName: string; name: string; iconUrl: string; hidden: boolean }) =>
-    updateGame.execute(i),
-  );
+  return useAdminMutation((i: { packageName: string; name: string; hidden: boolean }) => updateGame.execute(i));
+}
+
+export function useImportGame() {
+  const { importGameFromPlay } = useUseCases();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (i: { packageName: string; updateName: boolean }) => importGameFromPlay.execute(i),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['games'] });
+      void client.invalidateQueries({ queryKey: ['game'] });
+    },
+  });
+}
+
+export function useSetGameImage() {
+  const { setGameImage } = useUseCases();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (i: { packageName: string; kind: GameImageKind; file: GameImageFile | null }) => setGameImage.execute(i),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['games'] });
+      void client.invalidateQueries({ queryKey: ['game'] });
+    },
+  });
 }

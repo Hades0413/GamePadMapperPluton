@@ -63,6 +63,13 @@ final class CommunityUi {
         ui.dialog.show();
     }
 
+    /** Abre directamente la ficha de un perfil (enlace desde la web). */
+    static void openProfile(Activity a, Host host, String id) {
+        CommunityUi ui = new CommunityUi(a, host);
+        ui.go(() -> ui.showProfile(id, L.t("Perfiles de la comunidad")));
+        ui.dialog.show();
+    }
+
     private CommunityUi(Activity a, Host host) {
         this.a = a;
         this.host = host;
@@ -244,6 +251,14 @@ final class CommunityUi {
                 icon.setColorFilter(Ui.TEXT_3);
                 icon.setPadding(dp(8), dp(8), dp(8), dp(8));
                 icon.setBackground(Ui.round(a, Ui.SURFACE_2, 10));
+                // Icono del juego desde la comunidad (si la moderacion lo ha puesto).
+                RemoteImage.load(a, g.iconUrl, dp(40), bmp -> {
+                    icon.clearColorFilter();
+                    icon.setPadding(0, 0, 0, 0);
+                    icon.setBackground(null);
+                    icon.setImageBitmap(bmp);
+                    Ui.clipRound(icon, dp(10));
+                });
             }
             r.addView(icon, new LinearLayout.LayoutParams(dp(40), dp(40)));
             r.addView(texts(g.name, g.profiles == 1 ? L.t("1 perfil") : g.profiles + L.t(" perfiles")),
@@ -324,6 +339,10 @@ final class CommunityUi {
 
     private void showPage(LinearLayout list, LinearLayout target, String pkg, boolean recent, int page,
                           List<Community.Item> items) {
+        // Juego no instalado: el titulo era el paquete; se usa el nombre de la comunidad.
+        if (!items.isEmpty() && pkg.contentEquals(title.getText()) && !items.get(0).gameName.isEmpty()) {
+            title.setText(items.get(0).gameName);
+        }
         if (items.isEmpty() && page == 0) {
             empty(L.t("Aún no hay perfiles para este juego."));
             webRow(Community.gameUrl(pkg));
@@ -377,10 +396,35 @@ final class CommunityUi {
             }
 
             ProfilePreviewView preview = new ProfilePreviewView(a, Profile.parse(it.conf));
+            if (it.gameBackground != null) {
+                // "Sobre el juego" (captura real) o "Esquema" (fondo liso).
+                LinearLayout tabs = new LinearLayout(a);
+                tabs.setPadding(0, 0, 0, dp(8));
+                final LinearLayout[] t = new LinearLayout[2];
+                Runnable[] select = new Runnable[1];
+                t[0] = Ui.button(a, 0, L.t("Sobre el juego"), Ui.PRIMARY_DARK, Color.WHITE, v -> select[0].run());
+                t[1] = Ui.button(a, 0, L.t("Esquema"), Ui.SURFACE_2, Ui.TEXT_2, null);
+                final boolean[] over = {true};
+                select[0] = () -> {
+                    over[0] = !over[0];
+                    preview.setShowBackground(over[0]);
+                    t[0].setBackground(Ui.ripple(a, over[0] ? Ui.PRIMARY_DARK : Ui.SURFACE_2, 14));
+                    t[1].setBackground(Ui.ripple(a, over[0] ? Ui.SURFACE_2 : Ui.PRIMARY_DARK, 14));
+                };
+                t[0].setOnClickListener(v -> { if (!over[0]) select[0].run(); });
+                t[1].setOnClickListener(v -> { if (over[0]) select[0].run(); });
+                tabs.addView(t[0], new LinearLayout.LayoutParams(0, dp(36), 1));
+                View g = new View(a);
+                tabs.addView(g, new LinearLayout.LayoutParams(dp(8), 1));
+                tabs.addView(t[1], new LinearLayout.LayoutParams(0, dp(36), 1));
+                body.addView(tabs);
+                RemoteImage.load(a, it.gameBackground, dp(420), preview::setGameBackground);
+            }
             body.addView(preview, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT));
             TextView legend = Ui.text(a, L.t("Vista previa en tu pantalla · morado: botones · amarillo: capas · ")
-                    + L.t("turquesa: joystick, cámara y deslizar"), 11, Ui.TEXT_3, false);
+                    + L.t("turquesa: joystick, cámara y deslizar")
+                    + (it.gameBackground != null ? L.t(" · la captura del juego es orientativa") : ""), 11, Ui.TEXT_3, false);
             legend.setPadding(dp(2), dp(6), dp(2), dp(14));
             body.addView(legend);
 
@@ -405,7 +449,8 @@ final class CommunityUi {
             actions.addView(Ui.button(a, R.drawable.ic_flag, L.t("Reportar"), Ui.SURFACE_2, Ui.DANGER,
                     v -> openWeb(Community.profileUrl(it.id))), new LinearLayout.LayoutParams(0, dp(44), 1));
             body.addView(actions);
-            TextView note = Ui.text(a, L.t("«Me gusta» y «Reportar» se abren en la web (con tu cuenta de GitHub)."),
+            TextView note = Ui.text(a, L.t("«Me gusta» y «Reportar» se abren en la web (con tu cuenta de GitHub).")
+                    + "\n" + L.t("Los nombres e iconos de los juegos pertenecen a sus dueños."),
                     12, Ui.TEXT_3, false);
             note.setPadding(dp(2), dp(8), dp(2), 0);
             body.addView(note);

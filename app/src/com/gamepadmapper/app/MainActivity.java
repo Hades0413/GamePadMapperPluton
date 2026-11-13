@@ -127,6 +127,7 @@ public class MainActivity extends Activity {
         render();
         startBubbleIfReady();
         handleShared(getIntent());
+        handleLink(getIntent());
         maybeShowWelcome();
         refresher.run();
         // Shizuku: redibujar cuando conecte o cambie el permiso (y relanzar el modo rapido si toca).
@@ -452,6 +453,28 @@ public class MainActivity extends Activity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
+        handleShared(intent);
+        handleLink(intent);
+    }
+
+    /**
+     * Enlace "Abrir en la app" de la web: gpmapper://perfil/<id> abre la ficha del perfil de la
+     * comunidad (instalar sigue pidiendo confirmacion) y gpmapper://juego/<paquete> sus perfiles.
+     */
+    private void handleLink(Intent intent) {
+        if (intent == null || !Intent.ACTION_VIEW.equals(intent.getAction())) return;
+        android.net.Uri u = intent.getData();
+        setIntent(new Intent(this, MainActivity.class));  // procesarlo solo una vez
+        if (u == null || !"gpmapper".equals(u.getScheme())) return;
+        List<String> seg = u.getPathSegments();
+        if (seg.size() != 1) return;
+        String arg = seg.get(0);
+        if ("perfil".equals(u.getHost())) {
+            CommunityUi.openProfile(this, this::installWithConfirm, arg);
+        } else if ("juego".equals(u.getHost()) && arg.matches("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)+")
+                && !Library.isSensitivePackage(arg)) {
+            openCommunity(arg);
+        }
     }
 
     private int dp(float v) {
@@ -838,11 +861,73 @@ public class MainActivity extends Activity {
             content.addView(sectionTitle(L.t("Jugar"), null));
             content.addView(quickPlayCard(byPkg));
         }
+        LinearLayout hint = new LinearLayout(this);
+        hint.setOrientation(LinearLayout.VERTICAL);
+        content.addView(hint);
+        loadCommunityHint(hint, byPkg.keySet());
         TextView tip = Ui.text(this, L.t("En partida: SELECT + R1 / L1 cambia de perfil · SELECT + START (1 s) pausa el mando."),
                 12, Ui.TEXT_3, false);
         tip.setPadding(dp(4), dp(2), dp(4), 0);
         content.addView(tip);
         content.addView(credit());
+    }
+
+    // ---------------------------------------------------------------- aviso de la comunidad en Inicio
+    private static final String KEY_HINT_DISMISSED = "community_hint_dismissed";
+
+    /**
+     * "Hay perfiles de la comunidad para tus juegos": juegos instalados sin perfil propio que
+     * tienen perfiles en la comunidad. Consulta como mucho cada 6 horas (usa la cache).
+     */
+    private void loadCommunityHint(LinearLayout box, java.util.Set<String> withProfile) {
+        final java.util.Set<String> mine = new java.util.HashSet<>(withProfile);
+        new Thread(() -> {
+            List<Community.Game> games;
+            try {
+                games = Community.gamesRecent(this, 6 * 3600_000L);
+            } catch (Exception e) {
+                return;   // sin conexion: no se muestra nada
+            }
+            List<Community.Game> found = new ArrayList<>();
+            for (Community.Game g : games) {
+                if (!mine.contains(g.pkg) && Games.installed(this, g.pkg)) found.add(g);
+            }
+            if (found.isEmpty()) return;
+            StringBuilder key = new StringBuilder();
+            for (Community.Game g : found) key.append(g.pkg).append(',');
+            String dismissed = getSharedPreferences(Games.PREFS, MODE_PRIVATE).getString(KEY_HINT_DISMISSED, "");
+            if (dismissed.equals(key.toString())) return;
+            runOnUiThread(() -> {
+                if (box.getParent() == null || tab != TAB_HOME) return;
+                box.addView(communityHintCard(box, found, key.toString()));
+            });
+        }).start();
+    }
+
+    private View communityHintCard(LinearLayout box, List<Community.Game> found, String key) {
+        LinearLayout c = card();
+        StringBuilder names = new StringBuilder();
+        for (int i = 0; i < found.size() && i < 3; i++) {
+            if (i > 0) names.append(", ");
+            names.append(found.get(i).name);
+        }
+        if (found.size() > 3) names.append(L.t(" y ")).append(found.size() - 3).append(L.t(" más"));
+        LinearLayout row = Ui.menuRow(this, R.drawable.ic_people, Ui.OK, L.t("Perfiles de la comunidad para tus juegos"),
+                names.toString(), v -> openCommunity(found.size() == 1 ? found.get(0).pkg : null));
+        LinearLayout close = Ui.button(this, R.drawable.ic_close, "", 0x00000000, Ui.TEXT_3, v -> {
+            getSharedPreferences(Games.PREFS, MODE_PRIVATE).edit().putString(KEY_HINT_DISMISSED, key).apply();
+            box.removeAllViews();
+        });
+        close.setContentDescription(L.t("Ocultar"));
+        close.setPadding(0, 0, 0, 0);
+        row.addView(close, new LinearLayout.LayoutParams(dp(40), dp(40)));
+        c.addView(row);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.topMargin = dp(12);
+        lp.bottomMargin = dp(10);
+        c.setLayoutParams(lp);
+        return c;
     }
 
     // ---------------------------------------------------------------- tutorial de bienvenida

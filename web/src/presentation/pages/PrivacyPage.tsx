@@ -26,7 +26,8 @@ export default function PrivacyPage() {
         </li>
         <li>Tus perfiles se guardan solo en tu teléfono, en la carpeta de la app.</li>
         <li>
-          La app se conecta a internet solo para <strong>descargar el catálogo de perfiles</strong> y para
+          La app se conecta a internet solo para <strong>descargar el catálogo de perfiles</strong> (con los
+          iconos y capturas de los juegos) y para
           <strong> comprobar si hay versiones nuevas</strong> en GitHub (esto último se puede desactivar en Ajustes).
           Esas peticiones no llevan datos tuyos.
         </li>
@@ -41,6 +42,10 @@ export default function PrivacyPage() {
           GitHub comparte al iniciar sesión. El correo no se muestra a nadie ni se usa para escribirte.
         </li>
         <li>Lo que publicas (perfiles, título y descripción) es <strong>público</strong> junto con tu nombre de usuario.</li>
+        <li>
+          Los iconos y capturas de los juegos los añade solo la moderación (el icono se toma de la ficha pública
+          del juego en Google Play) y se guardan en nuestros servidores: la web no carga imágenes de otros sitios.
+        </li>
         <li>Guardamos qué perfiles te gustan y los reportes que haces (estos solo los ve la moderación).</li>
         <li>
           La sesión se guarda en el almacenamiento local de tu navegador. No usamos cookies de seguimiento,
@@ -50,7 +55,7 @@ export default function PrivacyPage() {
 
       <h2>Servicios que usamos</h2>
       <ul>
-        <li><strong>Supabase</strong>: base de datos e inicio de sesión.</li>
+        <li><strong>Supabase</strong>: base de datos, inicio de sesión e imágenes de los juegos.</li>
         <li><strong>GitHub</strong>: inicio de sesión y alojamiento de esta web (GitHub Pages) y del código.</li>
         <li><strong>Google Play</strong>: distribución de la app.</li>
       </ul>

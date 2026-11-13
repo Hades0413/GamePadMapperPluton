@@ -16,6 +16,7 @@ import { canShare } from '../lib/files';
 import { formatDate } from '../lib/format';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { useAccount } from '../queries/account';
+import { useGame } from '../queries/games';
 import { useDeleteProfile, useProfile } from '../queries/profiles';
 import { paths } from '../routes/paths';
 import NotFoundPage from './NotFoundPage';
@@ -47,6 +48,9 @@ export default function ProfilePage() {
   const { data: profile, isPending, error, refetch } = useProfile(id);
   const { data: account } = useAccount();
   const parsed = useMemo(() => (profile ? validateConf(profile.conf) : null), [profile]);
+  const { data: game } = useGame(profile?.packageName);
+  const [overGame, setOverGame] = useState(true);
+  const background = overGame ? (game?.backgroundUrl ?? null) : null;
   useDocumentTitle(profile ? `${profile.title} — ${profile.gameName ?? profile.packageName}` : undefined,
     profile?.description || undefined);
 
@@ -92,7 +96,7 @@ export default function ProfilePage() {
         <ProfileActions profile={profile} />
         <p className="text-xs text-muted">
           {canShare()
-            ? <>«Enviar a la app» abre el menú Compartir: elige <strong>Gamepad Mapper Plutón</strong> y se importa. </>
+            ? <>«Abrir en la app» muestra el perfil en Gamepad Mapper Plutón para instalarlo; «Enviar a la app» lo comparte por el menú de Android. </>
             : <>Abre esta página en tu teléfono Android para enviarlo directamente a la app. </>}
           Las posiciones se adaptan solas a la resolución de tu pantalla.
         </p>
@@ -101,10 +105,24 @@ export default function ProfilePage() {
       {parsed?.ok ? (
         <div className="grid gap-6 lg:grid-cols-5">
           <section className="space-y-3 lg:col-span-3" aria-labelledby="preview">
-            <h2 id="preview" className="font-semibold">Vista previa</h2>
-            <ProfilePreview config={parsed.config} />
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 id="preview" className="font-semibold">Vista previa</h2>
+              {game?.backgroundUrl && (
+                <div role="tablist" aria-label="Fondo" className="inline-flex rounded-lg border border-line bg-surface p-0.5 text-xs">
+                  {([[true, 'Sobre el juego'], [false, 'Esquema']] as const).map(([value, label]) => (
+                    <button key={label} type="button" role="tab" aria-selected={overGame === value}
+                      onClick={() => setOverGame(value)}
+                      className={`rounded-md px-3 py-1 ${overGame === value ? 'bg-surface-2 text-ink' : 'text-muted hover:text-ink'}`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <ProfilePreview config={parsed.config} background={background} />
             <p className="text-xs text-muted">
               Morado: botones · Amarillo: capas (mantener otro botón) · Turquesa: joystick, cámara y deslizar.
+              {background && ' La captura del juego es orientativa: si tu pantalla tiene otra proporción, los botones pueden quedar algo desplazados.'}
             </p>
           </section>
           <section className="card space-y-3 p-4 lg:col-span-2" aria-labelledby="bindings">
