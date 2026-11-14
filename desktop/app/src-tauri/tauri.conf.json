@@ -1,0 +1,43 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Gamepad Mapper Pluton",
+  "mainBinaryName": "gamepad-mapper-pluton",
+  "version": "0.2.0",
+  "identifier": "io.github.hades0413.gamepadmapperpluton",
+  "build": {
+    "frontendDist": "../ui/dist",
+    "devUrl": "http://localhost:1420"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Gamepad Mapper Plutón",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 1024,
+        "minHeight": 680,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; connect-src ipc: http://ipc.localhost"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "category": "Game",
+    "publisher": "Hades0413",
+    "copyright": "Hades0413 — PolyForm Noncommercial 1.0.0",
+    "shortDescription": "Mapea cualquier mando en Linux y Windows",
+    "longDescription": "Gamepad Mapper Plutón para escritorio: lista los mandos conectados, muestra su entrada en vivo y asigna cada botón y eje a un mando estándar compatible con XInput (asistente paso a paso o automático con SDL GameControllerDB).",
+    "icon": ["icons/32x32.png", "icons/64x64.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.png", "icons/icon.ico"],
+    "linux": {
+      "deb": {
+        "files": {
+          "/usr/lib/udev/rules.d/99-gamepad-mapper.rules": "../../linux/99-gamepad-mapper.rules"
+        }
+      }
+    }
+  }
+}

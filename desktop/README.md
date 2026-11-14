@@ -1,5 +1,8 @@
 # gpm-escritorio: Gamepad Mapper Plutón en el PC (Linux y Windows)
 
+> ¿Buscas la **app con ventana** (lista de mandos, entrada en vivo, asignar botones y ejes)? Está
+> en [`desktop/app/`](app/README.md).
+
 Juega con mando a juegos **Android que se ven en el PC** (scrcpy, Waydroid, un emulador...) que
 solo tienen controles táctiles. `gpm-escritorio` convierte los botones y sticks del mando en
 toques dentro de la **ventana del juego**, con **los mismos perfiles** que la app de Android

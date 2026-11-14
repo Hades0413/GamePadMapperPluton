@@ -11,6 +11,7 @@ Base de datos, inicio de sesión e imágenes de la comunidad (web y app). El esq
 | `migrations/20261113040000_limites_de_funciones.sql` | Límites de uso de `importar-juego` (por usuario y hora, y espera entre intentos por juego) |
 | `migrations/20261113050000_me_gusta_escalables.sql` | «Me gusta» sin bloqueos: contador recalculado cada minuto con `pg_cron`; limpieza programada de registros |
 | `migrations/20261113060000_modelo_y_pantalla.sql` | Modelo del teléfono (opcional) y proporción de pantalla de cada perfil, para filtrar los que encajan |
+| `migrations/20261114030000_mandos_comunidad.sql` | Mandos de la comunidad (líneas SDL GameControllerDB): envío validado y normalizado, moderación (aprobar/rechazar) y lectura pública de los aprobados para la app de escritorio |
 | `tests/` | Pruebas: aplican todas las migraciones en un PostgreSQL desechable y comprueban seguridad, «me gusta», imágenes, etc. (`make db-test`, también en el CI) |
 | `functions/importar-juego/` | Edge Function: nombre e icono del juego desde su ficha pública de Google Play (solo admins) |
 

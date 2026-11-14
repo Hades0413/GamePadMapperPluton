@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { SDL_ERROR_MESSAGE, SDL_KEY_LABEL } from '@domain/controller/sdlMapping';
 import { BINDING_TYPE_LABEL, buttonLabel, REPORT_REASON_LABEL } from '../lib/labels';
 import { compactNumber, formatDate, timeAgo } from '../lib/format';
 import { EN } from './en';
@@ -50,7 +51,8 @@ describe('diccionario en.ts', () => {
       }
     }
     // Textos que viven en constantes y se pasan por t() al mostrarlos.
-    for (const es of [...Object.values(BINDING_TYPE_LABEL), ...Object.values(REPORT_REASON_LABEL)]) {
+    for (const es of [...Object.values(BINDING_TYPE_LABEL), ...Object.values(REPORT_REASON_LABEL),
+      ...Object.values(SDL_ERROR_MESSAGE), ...Object.values(SDL_KEY_LABEL)]) {
       if (!(es in EN)) missing.push(es);
     }
     expect(missing).toEqual([]);

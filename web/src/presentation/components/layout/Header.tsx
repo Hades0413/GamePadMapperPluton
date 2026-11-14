@@ -82,6 +82,7 @@ function NavLinks({ mobile }: { mobile?: boolean }) {
     <>
       <NavLink to={paths.games} className={cls}>{t('Juegos')}</NavLink>
       <NavLink to={paths.editor} className={cls}>{t('Editor visual')}</NavLink>
+      <NavLink to={paths.controllers} className={cls}>{t('Mandos')}</NavLink>
       <NavLink to={paths.upload()} className={cls}>
         <span className="flex items-center gap-1.5"><UploadIcon />{t('Subir perfil')}</span>
       </NavLink>
