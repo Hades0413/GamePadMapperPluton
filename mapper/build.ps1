@@ -30,7 +30,10 @@ if (Test-Path $bin) { Remove-Item $bin -Force }
 $prevEap = $ErrorActionPreference
 $ErrorActionPreference = 'Continue'
 # max-page-size=16384: segmentos alineados a 16 KB (telefonos con paginas de 16 KB), igual que build.sh
-$out = & $Zig cc -target aarch64-linux-musl -static -O2 -Wall -Wextra "-Wl,-z,max-page-size=16384" -o $bin @src -lm 2>&1
+# Version visible del motor = la de la app.
+$manifest = Get-Content (Join-Path $here '..\app\AndroidManifest.xml') -Raw
+$version = if ($manifest -match 'android:versionName="([^"]*)"') { $Matches[1] } else { 'dev' }
+$out = & $Zig cc -target aarch64-linux-musl -static -O2 -Wall -Wextra "-Wl,-z,max-page-size=16384" "-DGPM_VERSION=`"$version`"" -o $bin @src -lm 2>&1
 $ErrorActionPreference = $prevEap
 # Filtrar el aviso conocido de musl (crt/dlstart.c), que no es de nuestro codigo.
 $out | Where-Object { "$_" -match '(gpmapper|gpm_[a-z]+)\.[ch]' } | ForEach-Object { Write-Host $_ -ForegroundColor Yellow }
