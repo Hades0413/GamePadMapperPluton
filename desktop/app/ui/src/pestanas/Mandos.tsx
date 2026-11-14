@@ -43,9 +43,9 @@ export function PestanaMandos({ backend }: { backend: Backend }) {
       const r = await accion();
       if (ok) setAviso({ texto: ok(r), error: false });
     } catch (e) {
-      setAviso({ texto: mensajeDe(e), error: true });
+      setAviso({ texto: t(mensajeDe(e)), error: true });
     }
-  }, []);
+  }, [t]);
 
   /** Igual, para las acciones que devuelven el mapeo nuevo: lo muestra. */
   const conMapeo = (accion: () => Promise<EstadoMapeo>, ok?: string) =>

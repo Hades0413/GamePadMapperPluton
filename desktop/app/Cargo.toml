@@ -3,7 +3,7 @@
 #   src-tauri  -> la aplicacion (ventana, comandos, bandeja)
 [workspace]
 resolver = "2"
-members = ["nucleo"]
+members = ["nucleo", "src-tauri"]
 
 [workspace.package]
 version = "0.1.0"

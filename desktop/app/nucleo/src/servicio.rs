@@ -51,13 +51,13 @@ pub struct Instantanea {
 
 #[derive(Debug, thiserror::Error)]
 pub enum ErrorServicio {
-    #[error("el mando ya no esta conectado")]
+    #[error("El mando ya no está conectado.")]
     NoEncontrado,
-    #[error("no hay carpeta de configuracion donde guardar")]
+    #[error("No hay carpeta de configuración donde guardar.")]
     SinAlmacen,
-    #[error("el asistente no esta en marcha para este mando")]
+    #[error("El asistente no está en marcha para este mando.")]
     SinAsistente,
-    #[error("el asistente aun no ha terminado")]
+    #[error("El asistente aún no ha terminado.")]
     AsistenteSinTerminar,
     #[error(transparent)]
     Mandos(#[from] ErrorMandos),
@@ -65,8 +65,6 @@ pub enum ErrorServicio {
     Almacen(#[from] ErrorAlmacen),
     #[error(transparent)]
     Sdl(#[from] ErrorSdl),
-    #[error(transparent)]
-    Io(#[from] std::io::Error),
 }
 
 pub struct Servicio {
@@ -235,9 +233,9 @@ impl Servicio {
         self.poner(id, mapeo, OrigenMapeo::Manual)
     }
 
-    /// Anade a la base de datos un `gamecontrollerdb.txt` completo. Devuelve las entradas leidas.
-    pub fn cargar_base_datos(&mut self, ruta: &Path) -> Result<usize, ErrorServicio> {
-        Ok(self.base.cargar_archivo(ruta)?)
+    /// Anade a la base de datos el texto de un `gamecontrollerdb.txt`. Devuelve las entradas leidas.
+    pub fn anadir_base_datos(&mut self, texto: &str) -> usize {
+        self.base.anadir_texto(texto)
     }
 
     pub fn probar_vibracion(&mut self, id: IdMando) -> Result<(), ErrorServicio> {
@@ -369,6 +367,22 @@ mod pruebas {
     }
 
     #[test]
+    fn la_interfaz_traduce_los_mensajes_de_error() {
+        // ui/src/dominio/errores.ts debe tener los mismos textos para traducirlos.
+        let ts = include_str!("../../ui/src/dominio/errores.ts");
+        for e in [
+            ErrorServicio::NoEncontrado.to_string(),
+            ErrorServicio::SinAlmacen.to_string(),
+            ErrorServicio::SinAsistente.to_string(),
+            ErrorServicio::AsistenteSinTerminar.to_string(),
+            ErrorMandos::NoEncontrado.to_string(),
+            ErrorMandos::SinVibracion.to_string(),
+        ] {
+            assert!(ts.contains(&format!("'{e}'")), "falta «{e}» en errores.ts");
+        }
+    }
+
+    #[test]
     fn exportar_importar_y_vibrar() {
         let (mut s, c, dir) = preparar("sdl");
         let id = c.conectar(info_ejemplo("Pad"), &[]);
@@ -380,6 +394,9 @@ mod pruebas {
         s.probar_vibracion(id).unwrap();
         assert_eq!(c.vibraciones().len(), 1);
         assert!(s.importar_sdl(id, "no es una linea").is_err());
+        let antes = s.entradas_base_datos();
+        assert_eq!(s.anadir_base_datos("03000000aaaa0000bbbb000000000000,Otro,a:b0,platform:Linux,\n# fin"), 1);
+        assert_eq!(s.entradas_base_datos(), antes + 1);
         let _ = std::fs::remove_dir_all(dir);
     }
 }

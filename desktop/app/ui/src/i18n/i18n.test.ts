@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { GRUPOS, INSTRUCCION } from '../dominio/controles';
+import { ERROR } from '../dominio/errores';
 import { EN } from './en';
 import { detectarIdioma, traducir } from './traducir';
 
@@ -26,12 +27,12 @@ function textosDelCodigo(): string[] {
 
 describe('i18n', () => {
   it('todos los textos tienen traduccion al ingles', () => {
-    const faltan = [...textosDelCodigo(), ...Object.values(INSTRUCCION), ...GRUPOS.map((g) => g.titulo)].filter((es) => !(es in EN));
+    const faltan = [...textosDelCodigo(), ...Object.values(INSTRUCCION), ...Object.values(ERROR), ...GRUPOS.map((g) => g.titulo)].filter((es) => !(es in EN));
     expect(faltan).toEqual([]);
   });
 
   it('no sobran traducciones', () => {
-    const usados = new Set([...textosDelCodigo(), ...Object.values(INSTRUCCION), ...GRUPOS.map((g) => g.titulo)]);
+    const usados = new Set([...textosDelCodigo(), ...Object.values(INSTRUCCION), ...Object.values(ERROR), ...GRUPOS.map((g) => g.titulo)]);
     expect(Object.keys(EN).filter((k) => !usados.has(k))).toEqual([]);
   });
 

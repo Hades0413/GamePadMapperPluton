@@ -1,6 +1,8 @@
 import { PASOS_ASISTENTE } from '../../dominio/controles';
 import { leerFuente } from '../../dominio/fuentes';
+import { ERROR } from '../../dominio/errores';
 import { conAsignacion } from '../../dominio/mapeo';
+import { CONTROLES } from '../../dominio/tipos';
 import type {
   Control, EstadoCrudo, EstadoMapeo, IdMando, InfoMando, Instantanea, MapeoMando, VistaAsistente,
 } from '../../dominio/tipos';
@@ -63,12 +65,12 @@ export function crearBackendSimulado(): Backend {
 
   const buscar = (id: IdMando): InfoMando => {
     const info = MANDOS_SIMULADOS.find((m) => m.id === id);
-    if (!info) throw new Error('el mando ya no esta conectado');
+    if (!info) throw new Error(ERROR.noConectado);
     return info;
   };
   const estadoMapeo = (id: IdMando): EstadoMapeo => {
     const e = mapeos.get(id);
-    if (!e) throw new Error('el mando ya no esta conectado');
+    if (!e) throw new Error(ERROR.noConectado);
     return structuredClone(e);
   };
   const poner = (id: IdMando, mapeo: MapeoMando, origen: EstadoMapeo['origen'], sinGuardar = true) => {
@@ -104,7 +106,7 @@ export function crearBackendSimulado(): Backend {
   };
 
   return {
-    info: async () => ({ version: '0.1.0', carpeta_mapeos: '~/.config/gamepad-mapper-pluton/mandos', entradas_base_datos: entradasBase, simulado: true }),
+    info: async () => ({ version: '0.1.0', carpeta_mapeos: '~/.config/gamepad-mapper-pluton/mandos', entradas_base_datos: entradasBase }),
     listarMandos: async () => structuredClone([...MANDOS_SIMULADOS]),
     alCambiarMandos: () => () => undefined,
     suscribirEntrada(id, cb) {
@@ -147,8 +149,14 @@ export function crearBackendSimulado(): Backend {
       const pares = Object.entries(m.asignaciones).map(([c, f]) => `${NOMBRE_SDL[c as Control]}:${f}`).join(',');
       return `${m.guid},${m.nombre},${pares},platform:Linux,`;
     },
-    importarSdl: async () => {
-      throw new Error('importar SDL solo funciona en la app');
+    async importarSdl(id, linea) {
+      const asignaciones: MapeoMando['asignaciones'] = {};
+      for (const par of linea.split(',').slice(2)) {
+        const [salida, entrada] = par.split(':');
+        const control = CONTROLES.find((c) => NOMBRE_SDL[c] === salida);
+        if (control && entrada && leerFuente(entrada)) asignaciones[control] = entrada;
+      }
+      return poner(id, { ...estadoMapeo(id).mapeo, asignaciones }, 'manual');
     },
     async cargarBaseDatos(texto) {
       const n = texto.split('\n').filter((l) => /^[0-9a-f]{32},/i.test(l.trim())).length;
@@ -156,7 +164,7 @@ export function crearBackendSimulado(): Backend {
       return n;
     },
     probarVibracion: async (id) => {
-      if (!buscar(id).vibracion) throw new Error('este mando no tiene vibracion');
+      if (!buscar(id).vibracion) throw new Error(ERROR.sinVibracion);
     },
     async asistenteIniciar(id) {
       buscar(id);
@@ -167,14 +175,14 @@ export function crearBackendSimulado(): Backend {
     },
     async asistenteSaltar(id) {
       const a = asistentes.get(id);
-      if (!a) throw new Error('el asistente no esta en marcha');
+      if (!a) throw new Error(ERROR.sinAsistente);
       a.indice = Math.min(PASOS_ASISTENTE.length, a.indice + 1);
       a.pasoDesde = performance.now();
       return vistaAsistente(a, performance.now());
     },
     async asistenteAtras(id) {
       const a = asistentes.get(id);
-      if (!a) throw new Error('el asistente no esta en marcha');
+      if (!a) throw new Error(ERROR.sinAsistente);
       a.indice = Math.max(0, a.indice - 1);
       const paso = PASOS_ASISTENTE[a.indice];
       if (paso) a.asignaciones = conAsignacion(a.asignaciones, paso, null);
@@ -186,7 +194,7 @@ export function crearBackendSimulado(): Backend {
     },
     async asistenteAplicar(id) {
       const a = asistentes.get(id);
-      if (!a || a.indice < PASOS_ASISTENTE.length) throw new Error('el asistente aun no ha terminado');
+      if (!a || a.indice < PASOS_ASISTENTE.length) throw new Error(ERROR.asistenteSinTerminar);
       asistentes.delete(id);
       return poner(id, { ...estadoMapeo(id).mapeo, asignaciones: a.asignaciones }, 'asistente');
     },

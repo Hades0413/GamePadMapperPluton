@@ -98,5 +98,4 @@ export interface InfoApp {
   version: string;
   carpeta_mapeos: string | null;
   entradas_base_datos: number;
-  simulado: boolean;
 }

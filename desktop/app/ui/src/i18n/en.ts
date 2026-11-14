@@ -124,6 +124,13 @@ export const EN: Readonly<Record<string, string>> = {
   'Mueve el stick derecho a la derecha': 'Move the right stick to the right',
   'Mueve el stick derecho hacia abajo': 'Move the right stick down',
 
+  // Errores del nucleo (dominio/errores.ts)
+  'El mando ya no está conectado.': 'The controller is no longer connected.',
+  'Este mando no tiene vibración.': 'This controller has no rumble.',
+  'No hay carpeta de configuración donde guardar.': 'There is no configuration folder to save to.',
+  'El asistente no está en marcha para este mando.': 'The wizard is not running for this controller.',
+  'El asistente aún no ha terminado.': 'The wizard has not finished yet.',
+
   // Importar
   'Importar línea SDL': 'Import SDL line',
   'Pega una línea de gamecontrollerdb.txt (GUID,nombre,a:b0,...). Se usará con este mando aunque el GUID sea otro.':

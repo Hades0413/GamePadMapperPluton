@@ -10,11 +10,11 @@ use std::path::{Path, PathBuf};
 
 #[derive(Debug, thiserror::Error)]
 pub enum ErrorAlmacen {
-    #[error("GUID no valido: «{0}»")]
+    #[error("GUID no válido: «{0}»")]
     GuidNoValido(String),
-    #[error("mapeo de una version mas nueva ({0}); actualiza la app")]
+    #[error("El mapeo guardado es de una versión más nueva ({0}): actualiza la app.")]
     VersionNueva(u32),
-    #[error("archivo de mapeo no valido: {0}")]
+    #[error("Archivo de mapeo no válido: {0}")]
     Json(#[from] serde_json::Error),
     #[error(transparent)]
     Io(#[from] io::Error),

@@ -169,9 +169,9 @@ pub fn normalizar(valor: i32, minimo: i32, maximo: i32) -> f32 {
 
 #[derive(Debug, thiserror::Error)]
 pub enum ErrorMandos {
-    #[error("el mando ya no esta conectado")]
+    #[error("El mando ya no está conectado.")]
     NoEncontrado,
-    #[error("este mando no tiene vibracion")]
+    #[error("Este mando no tiene vibración.")]
     SinVibracion,
     #[error(transparent)]
     Io(#[from] std::io::Error),
