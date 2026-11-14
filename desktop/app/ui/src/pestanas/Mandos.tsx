@@ -136,7 +136,7 @@ export function PestanaMandos({ backend, ejecutar }: Props) {
                 {salida && salida.tipo !== 'ninguna' && (
                   <button type="button" onClick={() => setSub('salida')}
                     className={`cursor-pointer rounded-md px-2 py-0.5 text-xs font-medium ${salida.activa ? 'bg-success/15 text-success' : salida.error ? 'bg-danger/15 text-danger' : 'bg-surface-2 text-muted'}`}>
-                    → {NOMBRE_SALIDA[salida.tipo]} {salida.activa ? '✓' : salida.error ? '✗' : '⏸'}
+                    → {salida.tipo === 'toques' ? t('Toques') : NOMBRE_SALIDA[salida.tipo]} {salida.activa ? '✓' : salida.error ? '✗' : '⏸'}
                   </button>
                 )}
                 {vivo?.juego && (

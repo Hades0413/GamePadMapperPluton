@@ -535,6 +535,8 @@ pub fn abrir_enlace(app: tauri::AppHandle, cual: String) -> Resultado<()> {
         "versiones" => "https://github.com/Hades0413/GamePadMapperPluton/releases/tag/escritorio-latest",
         // El texto que rige el proyecto (la URL de PolyForm con barra final daba 404).
         "licencia" => "https://github.com/Hades0413/GamePadMapperPluton/blob/main/LICENSE",
+        // adb para detectar el juego Android (paquete oficial de Google).
+        "platform_tools" => "https://developer.android.com/tools/releases/platform-tools",
         _ => return Err(ErrorValidacion::Nombre.to_string()),
     };
     app.opener().open_url(url, None::<&str>).map_err(texto)

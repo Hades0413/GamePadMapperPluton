@@ -1,6 +1,7 @@
 import type {
-  Actualizacion, Disponibilidad, Enlace, EstadoMapeo, IdMando, InfoActualizacion, InfoApp, InfoMando, Instantanea,
-  Juego, JuegoActivo, MapeoMando, Opciones, OpcionesApp, PasoMacro, Ventana, VistaAsistente, VistaSalida,
+  Actualizacion, ConfigToques, Disponibilidad, DispositivoAdb, Enlace, EstadoMapeo, IdMando, InfoActualizacion, InfoApp,
+  InfoMando, Instantanea, Juego, JuegoActivo, MapeoMando, Opciones, OpcionesApp, PasoMacro, PerfilComunidad, PerfilLocal,
+  Ventana, VentanaAbierta, VistaAsistente, VistaPerfil, VistaSalida, VistaToques,
 } from '../dominio/tipos';
 
 /** Lo que la interfaz pide al backend: el real (Tauri + nucleo en Rust) o el simulado del navegador. */
@@ -57,6 +58,22 @@ export interface Backend {
   copiarAJuego(juego: string, id: IdMando): Promise<Juego[]>;
   quitarDeJuego(juego: string, guid: string): Promise<Juego[]>;
   ventanaActiva(): Promise<Ventana | null>;
+
+  /** Toques: ventanas abiertas (null si no se pueden listar, p. ej. en Wayland puro). */
+  listarVentanas(): Promise<VentanaAbierta[] | null>;
+  /** Estado de los toques (perfil, juego detectado, destino, foco). */
+  estadoToques(): Promise<VistaToques>;
+  pausarToques(pausa: boolean): Promise<VistaToques>;
+  configToques(): Promise<ConfigToques>;
+  guardarConfigToques(config: ConfigToques): Promise<ConfigToques>;
+  perfilesToques(): Promise<PerfilLocal[]>;
+  verPerfilToques(id: string): Promise<VistaPerfil>;
+  /** Guarda un perfil (.conf) de archivo o de la comunidad; el nucleo lo valida. */
+  importarPerfilToques(texto: string): Promise<PerfilLocal>;
+  borrarPerfilToques(id: string): Promise<PerfilLocal[]>;
+  /** Perfiles publicados en la comunidad para un juego (paquete). */
+  buscarComunidadToques(paquete: string): Promise<PerfilComunidad[]>;
+  dispositivosAdb(): Promise<DispositivoAdb[]>;
 
   obtenerOpciones(): Promise<OpcionesApp>;
   guardarOpciones(opciones: Opciones): Promise<OpcionesApp>;

@@ -1,6 +1,6 @@
 import type {
-  Accion, AjusteDireccion, AjusteEje, AjusteGatillo, AjusteStick, AjusteVibracion, Control, EstadoPad, MapeoMando,
-  SalidaPad, TipoSalida,
+  Accion, AjusteDireccion, AjusteEje, AjusteGatillo, AjusteStick, AjusteToques, AjusteVibracion, Control, EstadoPad,
+  MapeoMando, SalidaPad, TipoSalida,
 } from './tipos';
 import { SALIDAS } from './tipos';
 
@@ -13,6 +13,7 @@ export const GATILLO_DEFECTO: AjusteGatillo = { zona_muerta: 0, anti_zona_muerta
 export const VIBRACION_DEFECTO: AjusteVibracion = { activa: true, intercambiar: false, fuerza: 1, fuerte: 1, debil: 1 };
 export const DIRECCION_DEFECTO: AjusteDireccion = { intercambiar_sticks: false, cruceta_a_stick: null, stick_a_cruceta: null };
 export const TURBO_HZ_DEFECTO = 10;
+export const TOQUES_DEFECTO: AjusteToques = { destino: { tipo: 'pantalla_completa' }, solo_con_foco: true };
 
 /** Completa un mapeo con los campos que falten (mapeos de la version 1 o del simulador). */
 export function completarMapeo(m: Partial<MapeoMando> & Pick<MapeoMando, 'guid' | 'nombre'>): MapeoMando {
@@ -33,6 +34,7 @@ export function completarMapeo(m: Partial<MapeoMando> & Pick<MapeoMando, 'guid' 
     gatillo_derecho: { ...GATILLO_DEFECTO, ...m.gatillo_derecho },
     vibracion: { ...VIBRACION_DEFECTO, ...m.vibracion },
     direccion: { ...DIRECCION_DEFECTO, ...m.direccion },
+    toques: { ...TOQUES_DEFECTO, ...m.toques },
   };
 }
 
@@ -141,5 +143,13 @@ export function idDeNombre(nombre: string): string {
 
 /** Nombres de los mandos virtuales. */
 export const NOMBRE_SALIDA: Record<TipoSalida, string> = {
-  ninguna: '—', xbox360: 'Xbox 360', dualshock4: 'DualShock 4', switchpro: 'Switch Pro',
+  ninguna: '—', xbox360: 'Xbox 360', dualshock4: 'DualShock 4', switchpro: 'Switch Pro', toques: 'Toques',
 };
+
+/** Paquete de Android valido (como `paquete_valido` en toques/perfiles.rs). */
+export function paqueteValido(p: string): boolean {
+  return p.length >= 3 && p.length <= 160 && /^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$/.test(p);
+}
+
+/** Nombre visible de un perfil de toques. */
+export const nombrePerfil = (p: { nombre: string | null; paquete: string; id: string }): string => p.nombre ?? p.id;
