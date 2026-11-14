@@ -19,9 +19,27 @@ fn main() {
         println!("cargo:rerun-if-changed={}", nucleo_c.join(f).display());
     }
 
+    // Comprobacion desde otro sistema para Windows con MinGW: sin su compilador no se intenta
+    // (no hace falta para clippy/check, que no enlazan).
+    let objetivo = std::env::var("TARGET").unwrap_or_default();
+    let cruzado = std::env::var("HOST").unwrap_or_default() != objetivo;
+    if cruzado
+        && objetivo.ends_with("windows-gnu")
+        && std::env::var_os(format!("CC_{}", objetivo.replace('-', "_"))).is_none()
+    {
+        let gcc = "x86_64-w64-mingw32-gcc";
+        let hay = std::env::var_os("PATH").is_some_and(|p| std::env::split_paths(&p).any(|d| d.join(gcc).is_file()));
+        if !hay {
+            println!("cargo:warning=sin {gcc}: el nucleo de toques en C no se compila (basta para clippy/check)");
+            return;
+        }
+    }
+
     let mut b = cc::Build::new();
     b.files(fuentes.iter().map(|f| raiz.join(f))).warnings(false);
-    if std::env::var("CARGO_CFG_TARGET_ENV").as_deref() != Ok("msvc") {
+    if std::env::var("CARGO_CFG_TARGET_ENV").as_deref() == Ok("msvc") {
+        b.flag_if_supported("/std:c11");
+    } else {
         b.flag_if_supported("-std=gnu11");
     }
     if let Err(e) = b.try_compile("gpm_nucleo_c") {

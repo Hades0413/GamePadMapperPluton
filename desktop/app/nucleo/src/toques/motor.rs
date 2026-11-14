@@ -22,11 +22,23 @@ use std::time::Instant;
 /// Una operacion de toque que pide el nucleo (u, v: 0..1 del destino; slot: dedo 0..9).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum OpToque {
-    Abajo { slot: usize, u: f64, v: f64 },
-    Mover { slot: usize, u: f64, v: f64 },
-    Arriba { slot: usize },
+    Abajo {
+        slot: usize,
+        u: f64,
+        v: f64,
+    },
+    Mover {
+        slot: usize,
+        u: f64,
+        v: f64,
+    },
+    Arriba {
+        slot: usize,
+    },
     /// Fin de un grupo de cambios (`tocando`: queda algun dedo apoyado).
-    Sync { tocando: bool },
+    Sync {
+        tocando: bool,
+    },
     /// Vibracion corta del mando (0..1), si el perfil la pide (`rumble`).
     Vibrar(f64),
 }
@@ -206,7 +218,16 @@ impl Crudo {
         let stick = |v: f32| a_rango(v, -32768, 0, 32767);
         let gatillo = |v: f32| if v.is_finite() { (v.clamp(0.0, 1.0) * 255.0).round() as i32 } else { 0 };
         let (hx, hy) = pad.cruceta_xy();
-        c.ejes = [stick(pad.ls[0]), stick(pad.ls[1]), gatillo(pad.l2), stick(pad.rs[0]), stick(pad.rs[1]), gatillo(pad.r2), hx, hy];
+        c.ejes = [
+            stick(pad.ls[0]),
+            stick(pad.ls[1]),
+            gatillo(pad.l2),
+            stick(pad.rs[0]),
+            stick(pad.rs[1]),
+            gatillo(pad.r2),
+            hx,
+            hy,
+        ];
         c
     }
 }
@@ -450,7 +471,10 @@ mod pruebas {
         }
         // Sin cambios no hay eventos; al soltar, el dedo se levanta.
         assert!(m.mando(&pad, true).is_empty());
-        assert_eq!(m.mando(&EstadoPad::default(), true), vec![OpToque::Arriba { slot: 0 }, OpToque::Sync { tocando: false }]);
+        assert_eq!(
+            m.mando(&EstadoPad::default(), true),
+            vec![OpToque::Arriba { slot: 0 }, OpToque::Sync { tocando: false }]
+        );
         // Sin mapear no hay toques.
         assert!(m.mando(&pad, false).is_empty());
         drop(m);
