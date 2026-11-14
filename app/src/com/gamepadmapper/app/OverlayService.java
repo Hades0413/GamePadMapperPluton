@@ -252,6 +252,8 @@ public class OverlayService extends Service {
     private final java.util.Map<String, Integer> communityCount = new java.util.concurrent.ConcurrentHashMap<>();
     private volatile long communityAt;
     private volatile boolean communityLoading;
+    /** Perfil recomendado de la comunidad para cada juego sin perfil (con su texto .conf). */
+    private final java.util.Map<String, Community.Item> recommended = new java.util.concurrent.ConcurrentHashMap<>();
     private String pendingEditPkg;       // abrir el editor al llegar a este juego
     private final java.util.Map<String, Boolean> gameCache = new java.util.HashMap<>();
     private long gameCacheAt;
@@ -407,11 +409,59 @@ public class OverlayService extends Service {
     private void tellCommunity(String pkg) {
         Integer n = communityCount.get(pkg);
         if (n == null || n <= 0 || !Library.profilesOf(pkg).isEmpty()) return;
+        loadRecommended(pkg);
         android.content.SharedPreferences p = getSharedPreferences(Games.PREFS, MODE_PRIVATE);
         java.util.Set<String> told = new java.util.HashSet<>(p.getStringSet(KEY_COMMUNITY_TOLD, new java.util.HashSet<>()));
         if (!told.add(pkg)) return;
         p.edit().putStringSet(KEY_COMMUNITY_TOLD, told).apply();
         showHint(L.t("Hay perfiles de la comunidad para este juego: toca la burbuja para verlos."));
+    }
+
+    /** Busca en segundo plano el perfil recomendado para ese juego (una vez por juego). */
+    private void loadRecommended(String pkg) {
+        if (recommended.containsKey(pkg)) return;
+        final float ratio = Community.screenRatio(this);
+        new Thread(() -> {
+            try {
+                Community.Item it = Community.recommend(this, pkg, ratio);
+                if (it != null && it.conf != null && pkg.equals(Library.validate(it.conf))) recommended.put(pkg, it);
+            } catch (Exception ignored) {
+                // sin conexion o perfil no valido: no se recomienda nada
+            }
+        }).start();
+    }
+
+    /** Texto corto de por que se recomienda: «Encaja con tu pantalla · 92 % funciona». */
+    private String recommendReason(Community.Item it) {
+        String r = Community.fitsScreen(it, Community.screenRatio(this)) ? L.t("Encaja con tu pantalla") : L.t("Se adapta a tu pantalla");
+        int share = Community.worksShare(it);
+        if (share >= 0) r += " · " + share + L.t(" % funciona");
+        else if (it.likes > 0) r += " · ♥ " + it.likes;
+        return r;
+    }
+
+    /** Instala el perfil recomendado (el usuario lo ha pedido tocando «Instalar»). */
+    private void installRecommended(String pkg, Community.Item it) {
+        closeMenu();
+        try {
+            if (!pkg.equals(Library.validate(it.conf))) throw new java.io.IOException(L.t("El perfil no es del juego indicado"));
+            java.io.File f = Library.install(it.conf, Library.newFile(pkg));
+            Library.setActive(pkg, f.getName());
+            CommunityLinks.remember(this, f, it);
+            final String id = it.id, install = CommunityLinks.installId(this);
+            new Thread(() -> {
+                try {
+                    Community.registerInstall(id, install);
+                } catch (Exception ignored) {
+                    // el contador es orientativo
+                }
+            }).start();
+            recommended.remove(pkg);
+            gameCache.clear();
+            showHint(L.t("Instalado «") + it.title + L.t("». Pruébalo, y si algo no encaja, «Editar controles»."));
+        } catch (Exception e) {
+            toast(L.t("No se pudo instalar: ") + e.getMessage());
+        }
     }
 
     /** Abre en la app los perfiles de la comunidad de ese juego. */
@@ -903,7 +953,57 @@ public class OverlayService extends Service {
         stopLearn();
         clearGhosts();
         guided = null;
-        showHint(L.t("Listo. Revisa los círculos (puedes moverlos o cambiar el botón) y toca Guardar."));
+        // Ultimo paso del asistente: guardar y, si se puede, probar sin tocar el juego.
+        Button saveTest = PadService.canDryRun() ? button(L.t("Guardar y probar"), C_OK, v -> {
+            hideBanner();
+            if (!save()) return;
+            closeEditor();
+            if (PadService.setDryRun(true)) {
+                showHint(L.t("Modo prueba: pulsa botones y mueve los sticks; verás dónde tocaría. Termina desde la burbuja."));
+            }
+        }) : null;
+        Button saveOnly = button(L.t("Guardar"), saveTest == null ? C_OK : C_NEUTRAL, v -> {
+            hideBanner();
+            save();
+        });
+        Button keep = button(L.t("Seguir editando"), C_NEUTRAL, v -> hideBanner());
+        String text = L.t("Revisa los círculos (puedes moverlos o cambiar el botón).");
+        if (saveTest != null) showBanner(L.t("¡Listo!"), text, C_PRIMARY, saveTest, saveOnly, keep);
+        else showBanner(L.t("¡Listo!"), text, C_PRIMARY, saveOnly, keep);
+    }
+
+    /**
+     * Asistente del primer perfil: tres caminos al crear uno en blanco. El automatico encadena
+     * detectar botones -> asignar cada uno con el mando -> guardar y probar.
+     */
+    private void welcomeWizard() {
+        if (editor == null || profile == null) return;
+        final String pkg = profile.pkg;
+        final Community.Item rec = recommended.get(pkg);
+        Button auto = button(L.t("Asistente automático"), C_OK, v -> {
+            hideBanner();
+            autoDetectIntro();
+        });
+        Button hand = button(L.t("Colocar a mano"), C_NEUTRAL, v -> {
+            hideBanner();
+            showHint(L.t("«+ Botón» añade botones; arrástralos sobre el juego y toca Guardar."));
+        });
+        if (rec != null) {
+            Button use = button(L.t("Usar el recomendado"), C_PRIMARY, v -> {
+                hideBanner();
+                dirty = false;
+                java.io.File blank = profile.file;
+                closeEditor();
+                //noinspection ResultOfMethodCallIgnored
+                blank.delete();   // el perfil vacio recien creado ya no hace falta
+                installRecommended(pkg, rec);
+            });
+            showBanner(L.t("Nuevo perfil"), L.t("Hay un perfil de la comunidad que te puede servir: «") + rec.title + "» ("
+                    + recommendReason(rec) + L.t("). O crea el tuyo:"), C_PRIMARY, use, auto, hand);
+        } else {
+            showBanner(L.t("Nuevo perfil"), L.t("El asistente busca los botones del juego y te pide pulsar el del mando para cada uno."),
+                    C_PRIMARY, auto, hand);
+        }
     }
 
     /** Circulo discontinuo de un boton detectado. Tocar = usar / descartar. */
@@ -1330,6 +1430,11 @@ public class OverlayService extends Service {
 
         if (page == MENU_MAIN) {
             if (active == null) {
+                final Community.Item rec = recommended.get(pkg);
+                if (rec != null) {
+                    card.addView(Ui.menuRow(this, R.drawable.ic_download, Ui.OK, L.t("Instalar el recomendado: ") + rec.title,
+                            recommendReason(rec), v -> installRecommended(pkg, rec)));
+                }
                 Integer shared = communityCount.get(pkg);
                 if (shared != null && shared > 0) {
                     card.addView(Ui.menuRow(this, R.drawable.ic_people, Ui.OK, L.t("Perfiles de la comunidad"),
@@ -1501,11 +1606,12 @@ public class OverlayService extends Service {
             p.save();
             Library.setActive(pkg, p.file.getName());
             gameCache.clear();
-            toast(L.t("Creado \"") + p.name + L.t("\". Coloca los botones y pulsa Guardar."));
             profile = p;
             dirty = base == null;  // en blanco: hay que guardar la distribucion inicial
             closeMenu();
             openEditor();
+            if (base == null) handler.post(this::welcomeWizard);
+            else toast(L.t("Creado \"") + p.name + L.t("\". Coloca los botones y pulsa Guardar."));
         } catch (Exception e) {
             toast(L.t("No se pudo crear: ") + e.getMessage());
         }

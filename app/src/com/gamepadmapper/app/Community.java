@@ -179,6 +179,28 @@ public final class Community {
         return out;
     }
 
+    /**
+     * El perfil que mejor encaja para empezar: primero los hechos con tu proporcion de pantalla,
+     * luego los que mas dicen que funcionan, los mas instalados y los mas gustados. Se descartan
+     * los que la mayoria dice que no funcionan. Devuelve el perfil completo (con conf) o null.
+     * Llamar fuera del hilo principal.
+     */
+    public static Item recommend(Context c, String pkg, float ratio) throws IOException {
+        Item best = null;
+        double bestScore = -1;
+        for (Item it : profiles(c, pkg, false, 0, 0)) {
+            int share = worksShare(it);
+            if (share >= 0 && share < 40) continue;
+            double score = (fitsScreen(it, ratio) ? 1000 : 0) + (share >= 0 ? share : 60) * 4
+                    + Math.min(it.installs, 500) * 0.2 + Math.min(it.likes, 200);
+            if (score > bestScore) {
+                bestScore = score;
+                best = it;
+            }
+        }
+        return best == null ? null : profile(c, best.id);
+    }
+
     /** Porcentaje (0-100) que dice que le funciona, o -1 si aun hay pocos votos. */
     public static int worksShare(Item it) {
         int total = it.worksYes + it.worksNo;

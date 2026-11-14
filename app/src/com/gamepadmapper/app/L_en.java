@@ -739,5 +739,23 @@ final class L_en {
         m.put("mando ", "gamepad ");
         m.put(": perfil ", ": profile ");
         m.put("este teléfono no tiene giroscopio", "this phone has no gyroscope");
+        m.put("Encaja con tu pantalla", "Fits your screen");
+        m.put("Se adapta a tu pantalla", "Adapts to your screen");
+        m.put("Instalado «", "Installed «");
+        m.put("». Pruébalo, y si algo no encaja, «Editar controles».", "». Try it, and if something is off, «Edit controls».");
+        m.put("No se pudo instalar: ", "Could not install: ");
+        m.put("Instalar el recomendado: ", "Install the recommended one: ");
+        m.put("Guardar y probar", "Save and test");
+        m.put("Seguir editando", "Keep editing");
+        m.put("Revisa los círculos (puedes moverlos o cambiar el botón).", "Check the circles (you can move them or change the button).");
+        m.put("¡Listo!", "Done!");
+        m.put("Modo prueba: pulsa botones y mueve los sticks; verás dónde tocaría. Termina desde la burbuja.", "Test mode: press buttons and move the sticks; you'll see where it would touch. Finish from the bubble.");
+        m.put("Asistente automático", "Automatic wizard");
+        m.put("Colocar a mano", "Place by hand");
+        m.put("«+ Botón» añade botones; arrástralos sobre el juego y toca Guardar.", "«+ Button» adds buttons; drag them over the game and tap Save.");
+        m.put("Usar el recomendado", "Use the recommended one");
+        m.put("Hay un perfil de la comunidad que te puede servir: «", "There is a community profile that may work for you: «");
+        m.put("). O crea el tuyo:", "). Or make your own:");
+        m.put("El asistente busca los botones del juego y te pide pulsar el del mando para cada uno.", "The wizard finds the game's buttons and asks you to press the gamepad button for each one.");
     }
 }
