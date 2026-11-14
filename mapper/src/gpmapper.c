@@ -62,7 +62,7 @@ enum { B_NONE = 0, B_TAP, B_STICK, B_LOOK, B_MACRO, B_TURBO, B_TOGGLE, B_SWIPE }
 // avisar si el instalado esta desactualizado. Subirlo con cada cambio del formato de perfil.
 // 2 = toque rapido, rafaga, joystick + cruceta (v1.1).
 // 3 = carpeta de la app (Android/data/com.gamepadmapper.app/files) (v1.2).
-#define GPM_BUILD 5
+#define GPM_BUILD 6
 #define MAX_QUEUE 64          // toques de macro en curso a la vez
 
 typedef struct {
@@ -1495,7 +1495,7 @@ static void write_status(int enabled) {
     snprintf(tmp, sizeof tmp, "%s.tmp", status_file);
     FILE *f = fopen(tmp, "w");
     if (!f) return;
-    fprintf(f, "time=%lld\nuid=%d\nversion=gpmapper 1.5\nbuild=%d\ngamepad=%s\ntouch=%s\nprofile=%s\npackage=%s\nenabled=%d\nrotate=%d\nrotation=%d\n",
+    fprintf(f, "time=%lld\nuid=%d\nversion=gpmapper 1.6\nbuild=%d\ngamepad=%s\ntouch=%s\nprofile=%s\npackage=%s\nenabled=%d\nrotate=%d\nrotation=%d\n",
             (long long)time(NULL), (int)getuid(), GPM_BUILD, gfd >= 0 ? gname : "", tfd >= 0 ? tname : "",
             cur ? profile_label(cur) : "", cur ? cur->pkg : "", enabled, rot_mode, cur_rot);
     fclose(f);

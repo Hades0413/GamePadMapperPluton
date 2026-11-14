@@ -21,7 +21,7 @@ adb wait-for-device
 until [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ]; do sleep 2; done
 api="$(adb shell getprop ro.build.version.sdk | tr -d '\r')"
 out="$here/out/emulador-$api"
-rm -rf "$out"; mkdir -p "$out"
+mkdir -p "$out"   # las capturas se sobrescriben en cada ejecucion
 echo "== Android API $api ($serial) · $(basename "$apk")"
 
 fails=0

@@ -2,7 +2,7 @@
 
 Convierte cualquier mando en toques de pantalla en juegos de Android, **sin root ni PC**
 (servicio de accesibilidad), con un modo root opcional más rápido (módulo Magisk).
-Versión **1.5** · Creado por **Hades0413**.
+Versión **1.6** · Creado por **Hades0413**.
 
 **Descargar:** el APK y los módulos de Magisk están en
 [Releases](https://github.com/Hades0413/GamePadMapperPluton/releases/latest).
@@ -31,7 +31,7 @@ uno pulsando el botón que quieras o automáticamente (Android 11+).
    (adb) y el APK de [Releases](https://github.com/Hades0413/GamePadMapperPluton/releases/latest).
 3. Conecta el teléfono por cable, acepta *¿Permitir depuración USB?* y ejecuta en la carpeta de adb:
    ```
-   adb install --no-incremental -r GamepadMapperPluton-1.5.apk
+   adb install --no-incremental -r GamepadMapperPluton-1.6.apk
    ```
    Si el teléfono pregunta si quieres instalar, toca **Instalar** enseguida (el aviso se cierra solo).
    En Xiaomi, si rechazas o dejas cerrar ese aviso varias veces, se bloquea la instalación por
@@ -185,6 +185,21 @@ Es una app Android que gestiona los perfiles sin tocar archivos de texto.
   círculos (Grande/Mediano/Pequeño, se recuerda) para colocar con precisión
   botones que están muy juntos.
 - Los paneles se colocan solos donde menos tapan y se pueden arrastrar por su asa (⠿).
+
+**Novedades de la 1.6** (en el editor, botón **⚙ Ajustes del perfil**):
+- **Asistente del primer perfil:** al crear uno en blanco ofrece el perfil recomendado de la
+  comunidad, el asistente automático (detectar botones → asignar con el mando → guardar y
+  probar) o colocar a mano. La burbuja también propone instalar el recomendado.
+- **Apuntar y aceleración:** un botón (p. ej. L2) baja la velocidad de la cámara mientras se
+  mantiene; la cámara puede acelerar con el stick al tope.
+- **Perfil según el mando:** al conectar ese mando se activa su perfil.
+- **Vibración** corta del mando al pulsar (si el mando la admite; también con root).
+- Solo sin root: **giroscopio** como cámara (siempre o mientras mantienes un botón),
+  **teclado y ratón** (teclas `KB_*`, botones `MOUSE_*`, ratón como cámara) y
+  **dos jugadores** con dos mandos (`players = 2`, botones `P2_*`).
+- **Probar perfil** (menú de la burbuja): círculos donde tocaría, sin tocar el juego.
+- Aviso cuando **el juego se actualiza** (por si movió sus controles) y **Enviar diagnóstico**
+  (en Ajustes › Diagnóstico) si algo falla.
 
 **Varios perfiles por juego** (para distintos modos de juego): en la pantalla principal
 los perfiles se agrupan por juego.
