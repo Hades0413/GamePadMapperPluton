@@ -281,29 +281,45 @@ pub async fn actualizar_base(estado: tauri::State<'_, Arc<Compartido>>) -> Resul
 /// ya los valida y normaliza al enviarlos; aqui `fusionar` los vuelve a filtrar igualmente.
 fn descargar_comunidad() -> Resultado<String> {
     use std::io::Read;
-    let plataforma = if cfg!(windows) { "Windows" } else { "Linux" };
-    let respuesta = ureq::get(URL_COMUNIDAD)
-        .query("select", "mapping")
-        .query("status", "eq.approved")
-        .query("platform", &format!("eq.{plataforma}"))
-        .query("limit", "20000")
-        .set("apikey", CLAVE_PUBLICA)
-        .timeout(std::time::Duration::from_secs(15))
-        .call()
-        .map_err(|e| format!("No se pudieron consultar los mandos de la comunidad: {e}"))?;
-    let mut json = String::new();
-    respuesta
-        .into_reader()
-        .take(MAX_BYTES_COMUNIDAD)
-        .read_to_string(&mut json)
-        .map_err(|e| format!("No se pudieron leer los mandos de la comunidad: {e}"))?;
     #[derive(serde::Deserialize)]
     struct Fila {
         mapping: String,
     }
-    let filas: Vec<Fila> =
-        serde_json::from_str(&json).map_err(|e| format!("Respuesta no válida de la comunidad: {e}"))?;
-    Ok(filas.into_iter().map(|f| f.mapping).collect::<Vec<_>>().join("\n"))
+    // Supabase devuelve como mucho 100 filas por peticion: se pide por paginas (orden fijo por
+    // id) hasta que una venga incompleta, con un tope de paginas y de bytes en total.
+    const POR_PAGINA: usize = 100;
+    const MAX_PAGINAS: usize = 200;
+    let plataforma = if cfg!(windows) { "Windows" } else { "Linux" };
+    let mut lineas = Vec::new();
+    let mut leidos: u64 = 0;
+    for pagina in 0..MAX_PAGINAS {
+        let respuesta = ureq::get(URL_COMUNIDAD)
+            .query("select", "mapping")
+            .query("status", "eq.approved")
+            .query("platform", &format!("eq.{plataforma}"))
+            .query("order", "id")
+            .query("limit", &POR_PAGINA.to_string())
+            .query("offset", &(pagina * POR_PAGINA).to_string())
+            .set("apikey", CLAVE_PUBLICA)
+            .timeout(std::time::Duration::from_secs(15))
+            .call()
+            .map_err(|e| format!("No se pudieron consultar los mandos de la comunidad: {e}"))?;
+        let mut json = String::new();
+        respuesta
+            .into_reader()
+            .take(MAX_BYTES_COMUNIDAD.saturating_sub(leidos))
+            .read_to_string(&mut json)
+            .map_err(|e| format!("No se pudieron leer los mandos de la comunidad: {e}"))?;
+        leidos += json.len() as u64;
+        let filas: Vec<Fila> =
+            serde_json::from_str(&json).map_err(|e| format!("Respuesta no válida de la comunidad: {e}"))?;
+        let completa = filas.len() == POR_PAGINA;
+        lineas.extend(filas.into_iter().map(|f| f.mapping));
+        if !completa || leidos >= MAX_BYTES_COMUNIDAD {
+            break;
+        }
+    }
+    Ok(lineas.join("\n"))
 }
 
 fn descargar_base() -> Resultado<String> {
