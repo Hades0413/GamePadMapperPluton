@@ -22,7 +22,7 @@ case "${1:-}" in
         libs=(-lm) ;;
     windows)
         bin="$root/dist/gpm-escritorio-windows-x86_64.exe"
-        args=(-target x86_64-windows-gnu "$here/windows/gpm_escritorio_windows.c")
+        args=(-target x86_64-windows-gnu "$here/windows/gpm_escritorio_windows.c" "$here/windows/gpm-escritorio.rc")
         libs=(-luser32 -lwinmm) ;;
     *) echo "uso: $0 linux|windows" >&2; exit 2 ;;
 esac

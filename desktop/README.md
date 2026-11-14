@@ -80,6 +80,10 @@ Lee los mandos **XInput** (hasta 4; `--mando N` elige uno) y genera **toques rea
 L1, R1, L2, R2 (gatillos), L3, R3, SELECT (Back/View), START (Menu), DPAD_*; los sticks son `LS` y
 `RS`, y los gatillos también valen como `AXIS_2+` / `AXIS_5+` (como un mando Xbox en Linux/Android).
 
+En Windows 10 (1903) y posteriores el programa trabaja en **UTF-8**: rutas y títulos de ventana con
+tildes o «ñ» funcionan tal cual (`--ventana "Pokémon"`). También es consciente del **escalado por
+monitor**, así que los toques caen en su sitio aunque cada pantalla tenga una escala distinta.
+
 ## Opciones
 
 | Opción | Qué hace |

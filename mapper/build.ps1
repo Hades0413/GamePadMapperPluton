@@ -29,7 +29,8 @@ if (Test-Path $bin) { Remove-Item $bin -Force }
 # Zig escribe avisos en stderr; en PowerShell 5.1 eso no debe cortar el script.
 $prevEap = $ErrorActionPreference
 $ErrorActionPreference = 'Continue'
-$out = & $Zig cc -target aarch64-linux-musl -static -O2 -Wall -Wextra -o $bin @src -lm 2>&1
+# max-page-size=16384: segmentos alineados a 16 KB (telefonos con paginas de 16 KB), igual que build.sh
+$out = & $Zig cc -target aarch64-linux-musl -static -O2 -Wall -Wextra "-Wl,-z,max-page-size=16384" -o $bin @src -lm 2>&1
 $ErrorActionPreference = $prevEap
 # Filtrar el aviso conocido de musl (crt/dlstart.c), que no es de nuestro codigo.
 $out | Where-Object { "$_" -match '(gpmapper|gpm_[a-z]+)\.[ch]' } | ForEach-Object { Write-Host $_ -ForegroundColor Yellow }

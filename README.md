@@ -2,7 +2,7 @@
 
 Convierte cualquier mando en toques de pantalla en juegos de Android, **sin root ni PC**
 (servicio de accesibilidad), con un modo root opcional más rápido (módulo Magisk).
-Versión **1.6.1** · Creado por **Hades0413**.
+Versión **1.6** · Creado por **Hades0413**.
 
 **Descargar:** el APK y los módulos de Magisk están en
 [Releases](https://github.com/Hades0413/GamePadMapperPluton/releases/latest).
@@ -35,7 +35,7 @@ juegos Android que se ven en el ordenador (scrcpy, Waydroid, un emulador). Ver
    (adb) y el APK de [Releases](https://github.com/Hades0413/GamePadMapperPluton/releases/latest).
 3. Conecta el teléfono por cable, acepta *¿Permitir depuración USB?* y ejecuta en la carpeta de adb:
    ```
-   adb install --no-incremental -r GamepadMapperPluton-1.6.1.apk
+   adb install --no-incremental -r GamepadMapperPluton-1.6.apk
    ```
    Si el teléfono pregunta si quieres instalar, toca **Instalar** enseguida (el aviso se cierra solo).
    En Xiaomi, si rechazas o dejas cerrar ese aviso varias veces, se bloquea la instalación por

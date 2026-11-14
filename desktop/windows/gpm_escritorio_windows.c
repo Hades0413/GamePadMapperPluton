@@ -350,9 +350,22 @@ const char *escr_plat_ayuda(void) {
            "  emulador tambien lee el mando, desactiva alli el mando. --comunidad usa curl.exe (Windows 10+).\n";
 }
 
+/*
+ * El manifiesto (gpm-escritorio.manifest) declara UTF-8 como pagina de codigos (Windows 10 1903+):
+ * argumentos, rutas de fopen y titulos son UTF-8 sin conversiones, y el DPI por monitor.
+ * Aqui solo se refuerza el DPI en sistemas que no leen esa parte del manifiesto.
+ */
+static void activar_dpi(void) {
+    typedef BOOL(WINAPI * fn_t)(HANDLE);
+    HMODULE u = GetModuleHandleW(L"user32.dll");
+    fn_t f = u ? (fn_t)(void *)GetProcAddress(u, "SetProcessDpiAwarenessContext") : NULL;
+    if (!f || !f((HANDLE)-4 /* DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 */)) SetProcessDPIAware();
+}
+
 int main(int argc, char **argv) {
-    SetProcessDPIAware();   // coordenadas en pixeles reales (las de InjectTouchInput)
+    activar_dpi();
     timeBeginPeriod(1);     // Sleep de 1 ms para leer el mando a ~250 Hz
+    SetConsoleOutputCP(CP_UTF8);
     int r = escr_main(argc, argv);
     timeEndPeriod(1);
     return r;
