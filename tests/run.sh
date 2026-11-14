@@ -2,6 +2,8 @@
 # Pruebas del formato de perfil, sin telefono:
 #  1. ProfileTest (Java, la app): leer/guardar/leer, estabilidad y compatibilidad.
 #  2. gpmapper -c (C, motor root) sobre el mismo perfil: debe entenderlo igual que la app.
+#  3. gpmapper -F: adaptar a otras pantallas igual que la app.
+#  4. gpmapper -r: guiones de eventos del mando (tests/engine) -> toques, comparados con lo esperado.
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 root="$(dirname "$here")"
@@ -31,7 +33,9 @@ echo "== Java (app)"
 "$jdk/bin/java" -cp "$out/cls$sep$jar" ProfileTest "$here/fixture.conf" > "$out/java.txt"
 
 echo "== C (gpmapper)"
-"$zig" cc -target x86_64-linux-musl -static -O1 -w -o "$out/gpmapper" "$root/mapper/src/gpmapper.c" -lm
+src="$root/mapper/src"
+"$zig" cc -target x86_64-linux-musl -static -O1 -w -o "$out/gpmapper" "$src/gpmapper.c" "$src/core/gpm_core.c" \
+    "$src/core/gpm_repeticion.c" "$src/linux/gpm_evdev.c" -lm
 "$out/gpmapper" -c "$here/fixture.conf" 2>/dev/null > "$out/c.raw"
 { sed -n '1,2p' "$out/c.raw"; sed -n '3,$p' "$out/c.raw" | LC_ALL=C sort; } > "$out/c.txt"
 { sed -n '1,2p' "$out/java.txt"; sed -n '3,$p' "$out/java.txt" | LC_ALL=C sort; } > "$out/j.txt"
@@ -72,7 +76,25 @@ expect="1932.00 960.00 1.0000
 960.00 540.00 1.0000"
 if [ "$(sed -n '1,8p' "$out/fit-java.txt")" = "$expect" ]; then
     echo "anclaje a los bordes: correcto"
-    echo "TODO CORRECTO"
 else
     echo "El anclaje no da lo esperado:" >&2; cat "$out/fit-java.txt" >&2; exit 1
 fi
+
+echo "== Motor (gpmapper -r: guiones de eventos -> toques, con reloj virtual)"
+# Cada tests/engine/NOMBRE.txt se repite con NOMBRE.conf (o perfil.conf) y se compara con
+# NOMBRE.esperado. Si un cambio del motor es intencionado: ACTUALIZAR=1 make test
+fallos=0
+for guion in "$here"/engine/*.txt; do
+    nombre="$(basename "$guion" .txt)"
+    conf="$here/engine/$nombre.conf"; [ -f "$conf" ] || conf="$here/engine/perfil.conf"
+    esperado="$here/engine/$nombre.esperado"
+    "$out/gpmapper" -r "$conf" "$guion" 2>/dev/null > "$out/$nombre.txt" || { echo "  $nombre: fallo al repetir" >&2; fallos=1; continue; }
+    if [ "${ACTUALIZAR:-0}" = 1 ]; then cp "$out/$nombre.txt" "$esperado"; echo "  $nombre: actualizado"; continue; fi
+    if diff -u "$esperado" "$out/$nombre.txt" > "$out/$nombre.diff"; then
+        echo "  $nombre: igual"
+    else
+        echo "  $nombre: DIFERENTE (- esperado, + ahora)" >&2; head -n 40 "$out/$nombre.diff" >&2; fallos=1
+    fi
+done
+[ "$fallos" = 0 ] || exit 1
+echo "TODO CORRECTO"

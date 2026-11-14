@@ -1,0 +1,22 @@
+# SELECT+START 1 s pausa el mapeo (A no toca); otra vez lo reanuda. SELECT+L1 pide cambiar de perfil.
+pulsa SELECT
+pulsa START
+espera 1100
+suelta START
+suelta SELECT
+pulsa A
+espera 20
+suelta A
+pulsa SELECT
+pulsa START
+espera 1100
+suelta START
+suelta SELECT
+pulsa A
+espera 20
+suelta A
+pulsa SELECT
+pulsa L1
+suelta L1
+suelta SELECT
+espera 20

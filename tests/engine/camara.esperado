@@ -1,0 +1,254 @@
+     0.000 perfil com.prueba.motor 2400x1080 -> destino 2400x1080
+     0.000 abajo s=0 x=1500.00 y=500.00
+     0.000 sync tocando=1
+    10.000 mover s=0 x=1504.74 y=500.00
+    10.000 sync tocando=1
+    20.000 mover s=0 x=1509.48 y=500.00
+    20.000 sync tocando=1
+    30.000 mover s=0 x=1514.22 y=500.00
+    30.000 sync tocando=1
+    40.000 mover s=0 x=1518.96 y=500.00
+    40.000 sync tocando=1
+    50.000 mover s=0 x=1523.70 y=500.00
+    50.000 sync tocando=1
+    60.000 mover s=0 x=1528.43 y=500.00
+    60.000 sync tocando=1
+    70.000 mover s=0 x=1533.17 y=500.00
+    70.000 sync tocando=1
+    80.000 mover s=0 x=1537.91 y=500.00
+    80.000 sync tocando=1
+    90.000 mover s=0 x=1542.65 y=500.00
+    90.000 sync tocando=1
+   100.000 arriba s=0
+   100.000 sync tocando=0
+   130.000 abajo s=0 x=1500.00 y=500.00
+   130.000 sync tocando=1
+   140.000 mover s=0 x=1500.00 y=493.00
+   140.000 sync tocando=1
+   150.000 mover s=0 x=1500.00 y=485.88
+   150.000 sync tocando=1
+   160.000 mover s=0 x=1500.00 y=478.65
+   160.000 sync tocando=1
+   170.000 mover s=0 x=1500.00 y=471.30
+   170.000 sync tocando=1
+   180.000 mover s=0 x=1500.00 y=463.83
+   180.000 sync tocando=1
+   190.000 mover s=0 x=1500.00 y=456.25
+   190.000 sync tocando=1
+   200.000 mover s=0 x=1500.00 y=448.55
+   200.000 sync tocando=1
+   210.000 mover s=0 x=1500.00 y=440.74
+   210.000 sync tocando=1
+   220.000 mover s=0 x=1500.00 y=432.80
+   220.000 sync tocando=1
+   230.000 mover s=0 x=1500.00 y=424.75
+   230.000 sync tocando=1
+   240.000 mover s=0 x=1500.00 y=416.59
+   240.000 sync tocando=1
+   250.000 mover s=0 x=1500.00 y=408.30
+   250.000 sync tocando=1
+   260.000 mover s=0 x=1500.00 y=399.90
+   260.000 sync tocando=1
+   270.000 mover s=0 x=1500.00 y=391.39
+   270.000 sync tocando=1
+   280.000 mover s=0 x=1500.00 y=382.75
+   280.000 sync tocando=1
+   290.000 mover s=0 x=1500.00 y=374.00
+   290.000 sync tocando=1
+   300.000 mover s=0 x=1500.00 y=365.14
+   300.000 sync tocando=1
+   310.000 mover s=0 x=1500.00 y=356.16
+   310.000 sync tocando=1
+   320.000 mover s=0 x=1500.00 y=347.06
+   320.000 sync tocando=1
+   330.000 mover s=0 x=1500.00 y=337.84
+   330.000 sync tocando=1
+   340.000 mover s=0 x=1500.00 y=328.51
+   340.000 sync tocando=1
+   350.000 mover s=0 x=1500.00 y=319.06
+   350.000 sync tocando=1
+   360.000 mover s=0 x=1500.00 y=309.49
+   360.000 sync tocando=1
+   370.000 mover s=0 x=1500.00 y=299.81
+   370.000 sync tocando=1
+   380.000 mover s=0 x=1500.00 y=290.01
+   380.000 sync tocando=1
+   390.000 mover s=0 x=1500.00 y=280.09
+   390.000 sync tocando=1
+   400.000 mover s=0 x=1500.00 y=270.06
+   400.000 sync tocando=1
+   410.000 mover s=0 x=1500.00 y=259.91
+   410.000 sync tocando=1
+   420.000 mover s=0 x=1500.00 y=249.64
+   420.000 sync tocando=1
+   430.000 mover s=0 x=1500.00 y=239.26
+   430.000 sync tocando=1
+   440.000 mover s=0 x=1500.01 y=228.76
+   440.000 sync tocando=1
+   450.000 mover s=0 x=1500.01 y=218.14
+   450.000 sync tocando=1
+   460.000 mover s=0 x=1500.01 y=207.41
+   460.000 sync tocando=1
+   470.000 arriba s=0
+   470.000 sync tocando=0
+   470.000 abajo s=0 x=1500.00 y=500.00
+   470.000 sync tocando=1
+   480.000 mover s=0 x=1500.00 y=489.03
+   480.000 sync tocando=1
+   490.000 mover s=0 x=1500.00 y=477.95
+   490.000 sync tocando=1
+   500.000 mover s=0 x=1500.00 y=466.75
+   500.000 sync tocando=1
+   510.000 mover s=0 x=1500.00 y=455.43
+   510.000 sync tocando=1
+   520.000 mover s=0 x=1500.00 y=444.00
+   520.000 sync tocando=1
+   530.000 mover s=0 x=1500.00 y=432.45
+   530.000 sync tocando=1
+   540.000 mover s=0 x=1500.00 y=420.79
+   540.000 sync tocando=1
+   550.000 mover s=0 x=1500.00 y=409.00
+   550.000 sync tocando=1
+   560.000 mover s=0 x=1500.00 y=397.10
+   560.000 sync tocando=1
+   570.000 mover s=0 x=1500.00 y=385.09
+   570.000 sync tocando=1
+   580.000 mover s=0 x=1500.00 y=372.95
+   580.000 sync tocando=1
+   590.000 mover s=0 x=1500.00 y=360.71
+   590.000 sync tocando=1
+   600.000 mover s=0 x=1500.00 y=348.34
+   600.000 sync tocando=1
+   610.000 mover s=0 x=1500.00 y=335.86
+   610.000 sync tocando=1
+   620.000 mover s=0 x=1500.00 y=323.26
+   620.000 sync tocando=1
+   630.000 mover s=0 x=1500.00 y=310.54
+   630.000 sync tocando=1
+   640.000 mover s=0 x=1500.00 y=297.71
+   640.000 sync tocando=1
+   650.000 mover s=0 x=1500.00 y=284.76
+   650.000 sync tocando=1
+   660.000 mover s=0 x=1500.00 y=271.69
+   660.000 sync tocando=1
+   670.000 mover s=0 x=1500.00 y=258.51
+   670.000 sync tocando=1
+   680.000 mover s=0 x=1500.00 y=245.21
+   680.000 sync tocando=1
+   690.000 mover s=0 x=1500.01 y=231.79
+   690.000 sync tocando=1
+   700.000 mover s=0 x=1500.01 y=218.26
+   700.000 sync tocando=1
+   710.000 mover s=0 x=1500.01 y=204.61
+   710.000 sync tocando=1
+   720.000 arriba s=0
+   720.000 sync tocando=0
+   720.000 abajo s=0 x=1500.00 y=500.00
+   720.000 sync tocando=1
+   730.000 mover s=0 x=1500.00 y=486.12
+   730.000 sync tocando=1
+   740.000 mover s=0 x=1500.00 y=472.12
+   740.000 sync tocando=1
+   750.000 mover s=0 x=1500.00 y=458.12
+   750.000 sync tocando=1
+   760.000 mover s=0 x=1500.00 y=444.12
+   760.000 sync tocando=1
+   770.000 mover s=0 x=1500.00 y=430.12
+   770.000 sync tocando=1
+   780.000 mover s=0 x=1500.00 y=416.12
+   780.000 sync tocando=1
+   790.000 mover s=0 x=1500.00 y=402.12
+   790.000 sync tocando=1
+   800.000 mover s=0 x=1500.00 y=388.12
+   800.000 sync tocando=1
+   810.000 mover s=0 x=1500.00 y=374.12
+   810.000 sync tocando=1
+   820.000 mover s=0 x=1500.00 y=360.12
+   820.000 sync tocando=1
+   830.000 mover s=0 x=1500.00 y=346.12
+   830.000 sync tocando=1
+   840.000 mover s=0 x=1500.00 y=332.12
+   840.000 sync tocando=1
+   850.000 mover s=0 x=1500.00 y=318.12
+   850.000 sync tocando=1
+   860.000 mover s=0 x=1500.00 y=304.12
+   860.000 sync tocando=1
+   870.000 mover s=0 x=1500.00 y=290.12
+   870.000 sync tocando=1
+   880.000 mover s=0 x=1500.00 y=276.12
+   880.000 sync tocando=1
+   890.000 mover s=0 x=1500.00 y=262.13
+   890.000 sync tocando=1
+   900.000 mover s=0 x=1500.00 y=248.13
+   900.000 sync tocando=1
+   910.000 mover s=0 x=1500.01 y=234.13
+   910.000 sync tocando=1
+   920.000 mover s=0 x=1500.01 y=220.13
+   920.000 sync tocando=1
+   930.000 mover s=0 x=1500.01 y=206.13
+   930.000 sync tocando=1
+   940.000 arriba s=0
+   940.000 sync tocando=0
+   940.000 abajo s=0 x=1500.00 y=500.00
+   940.000 sync tocando=1
+   950.000 mover s=0 x=1500.00 y=486.00
+   950.000 sync tocando=1
+   960.000 mover s=0 x=1500.00 y=472.00
+   960.000 sync tocando=1
+   970.000 mover s=0 x=1500.00 y=458.00
+   970.000 sync tocando=1
+   980.000 mover s=0 x=1500.00 y=444.00
+   980.000 sync tocando=1
+   990.000 mover s=0 x=1500.00 y=430.00
+   990.000 sync tocando=1
+  1000.000 mover s=0 x=1500.00 y=416.00
+  1000.000 sync tocando=1
+  1010.000 mover s=0 x=1500.00 y=402.00
+  1010.000 sync tocando=1
+  1020.000 mover s=0 x=1500.00 y=388.00
+  1020.000 sync tocando=1
+  1030.000 arriba s=0
+  1030.000 sync tocando=0
+  1080.000 abajo s=0 x=1500.00 y=500.00
+  1080.000 sync tocando=1
+  1090.000 mover s=0 x=1508.75 y=500.00
+  1090.000 sync tocando=1
+  1100.000 mover s=0 x=1517.50 y=500.00
+  1100.000 sync tocando=1
+  1110.000 mover s=0 x=1526.25 y=500.00
+  1110.000 sync tocando=1
+  1120.000 mover s=0 x=1535.00 y=500.00
+  1120.000 sync tocando=1
+  1130.000 mover s=0 x=1543.75 y=500.00
+  1130.000 sync tocando=1
+  1140.000 mover s=0 x=1552.50 y=500.00
+  1140.000 sync tocando=1
+  1150.000 mover s=0 x=1561.25 y=500.00
+  1150.000 sync tocando=1
+  1160.000 mover s=0 x=1570.00 y=500.00
+  1160.000 sync tocando=1
+  1170.000 mover s=0 x=1578.75 y=500.00
+  1170.000 sync tocando=1
+  1180.000 mover s=0 x=1587.50 y=500.00
+  1180.000 sync tocando=1
+  1190.000 mover s=0 x=1596.25 y=500.00
+  1190.000 sync tocando=1
+  1200.000 mover s=0 x=1605.00 y=500.00
+  1200.000 sync tocando=1
+  1210.000 mover s=0 x=1613.75 y=500.00
+  1210.000 sync tocando=1
+  1220.000 mover s=0 x=1622.50 y=500.00
+  1220.000 sync tocando=1
+  1230.000 mover s=0 x=1631.25 y=500.00
+  1230.000 sync tocando=1
+  1240.000 mover s=0 x=1640.00 y=500.00
+  1240.000 sync tocando=1
+  1250.000 mover s=0 x=1648.75 y=500.00
+  1250.000 sync tocando=1
+  1260.000 mover s=0 x=1657.50 y=500.00
+  1260.000 sync tocando=1
+  1270.000 mover s=0 x=1666.25 y=500.00
+  1270.000 sync tocando=1
+  1280.000 arriba s=0
+  1280.000 sync tocando=0
+  1310.000 fin

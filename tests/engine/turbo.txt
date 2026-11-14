@@ -1,0 +1,5 @@
+# Turbo a 10 toques/s mientras se mantiene X
+pulsa X
+espera 320
+suelta X
+espera 100

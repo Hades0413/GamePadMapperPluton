@@ -1,5 +1,6 @@
 # Compila y prueba en cada push con los mismos comandos que en local (Makefile).
-# Al crear un tag v* firma el APK y lo sube al Release; el AAB (Google Play) queda como
+# Al crear un tag v* firma el APK y lo sube al Release (con los modulos y gpm-escritorio para
+# Linux y Windows); el AAB (Google Play) queda como
 # artefacto descargable de la ejecucion.
 # Secretos necesarios SOLO para firmar (Settings > Secrets and variables > Actions):
 #   KEYSTORE_BASE64    contenido de keystore/gamepad-mapper.jks en base64
@@ -40,6 +41,22 @@ jobs:
 
       - name: Modulos (gpmapper ARM64 y Touch Fix)
         run: make module touchfix
+
+      - name: Escritorio (gpm-escritorio para Linux y Windows)
+        run: |
+          make escritorio-linux escritorio-windows
+          # Prueba sin mando ni permisos: el mismo guion que tests/engine, en un rectangulo del escritorio
+          dist/gpm-escritorio-linux-x86_64 --help > /dev/null
+          dist/gpm-escritorio-linux-x86_64 --probar --perfil tests/engine/perfil.conf \
+            --rect 100,50,1920,1080 --repetir tests/engine/macro.txt
+
+      - name: Guardar gpm-escritorio (descargable desde la ejecucion)
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: gpm-escritorio
+          path: |
+            dist/gpm-escritorio-linux-x86_64
+            dist/gpm-escritorio-windows-x86_64.exe
 
       - name: Clave de firma
         if: startsWith(github.ref, 'refs/tags/v')
@@ -90,6 +107,10 @@ jobs:
         with:
           name: app-firmada
           path: dist
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: gpm-escritorio
+          path: dist
       - name: Publicar en el Release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -101,4 +122,5 @@ jobs:
           cp "$apk" dist/GamepadMapperPluton-"$ver".apk
           gh release view "$tag" --repo "$REPO" > /dev/null 2>&1 || \
             gh release create "$tag" --repo "$REPO" --title "Gamepad Mapper Plutón $ver" --notes "Ver README."
-          gh release upload "$tag" --repo "$REPO" --clobber dist/GamepadMapperPluton-"$ver".apk dist/gamepad_mapper-v*.zip dist/gamepadplus_touchfix-v*.zip
+          gh release upload "$tag" --repo "$REPO" --clobber dist/GamepadMapperPluton-"$ver".apk dist/gamepad_mapper-v*.zip dist/gamepadplus_touchfix-v*.zip \
+            dist/gpm-escritorio-linux-x86_64 dist/gpm-escritorio-windows-x86_64.exe

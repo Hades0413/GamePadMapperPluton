@@ -21,7 +21,7 @@ ADB := $(firstword $(wildcard tools/android-sdk/platform-tools/adb tools/android
 # Primer telefono conectado y autorizado (vacio si no hay)
 DEVICE = $(shell $(ADB) devices 2>/dev/null | awk 'NR>1 && $$2=="device"{print $$1; exit}')
 
-.PHONY: help setup doctor test module touchfix apk aab build install run uninstall \
+.PHONY: help setup doctor test module touchfix escritorio escritorio-linux escritorio-windows apk aab build install run uninstall \
         logs logs-off devices version bump release clean distclean web-install web-dev web-check web-build db-test
 
 # =============================================================================
@@ -52,6 +52,14 @@ module: ## Motor root (gpmapper ARM64) + modulo Magisk -> dist/gamepad_mapper-vN
 
 touchfix: ## Modulo "Touch Fix" del GamepadPlus V3 -> dist/gamepadplus_touchfix-vN.zip
 	@./build.sh
+
+escritorio-linux: ## Version de escritorio para Linux -> dist/gpm-escritorio-linux-x86_64
+	@./desktop/build.sh linux
+
+escritorio-windows: ## Version de escritorio para Windows -> dist/gpm-escritorio-windows-x86_64.exe
+	@./desktop/build.sh windows
+
+escritorio: escritorio-linux escritorio-windows ## Las dos versiones de escritorio
 
 apk: module ## APK firmado para instalar por USB -> dist/GamepadMapper-<version>.apk
 	@./app/build.sh apk

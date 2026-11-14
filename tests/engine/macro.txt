@@ -1,0 +1,12 @@
+# Macro de 3 pasos (R3), toque rapido (B) y rafaga de 4 toques (L3)
+pulsa R3
+espera 10
+suelta R3
+espera 200
+pulsa B
+suelta B
+espera 100
+pulsa L3
+espera 30
+suelta L3
+espera 400
