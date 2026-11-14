@@ -163,6 +163,7 @@ public class MainActivity extends Activity {
             handler.removeCallbacks(this);
             try {
                 fillServiceCard(false);
+                checkPadMap();
                 if (tab == TAB_PAD) {   // mando conectado / desconectado: redibujar la lista
                     StringBuilder s = new StringBuilder();
                     for (Mapper.Pad p : Mapper.pads()) s.append(p.name).append(p.gamepad).append('|');
@@ -694,6 +695,8 @@ public class MainActivity extends Activity {
             c.addView(n);
         }
         content.addView(c);
+        View community = padMapCard();
+        if (community != null) content.addView(community);
 
         content.addView(sectionTitle(L.t("Probar botones"), sel != null && sel.gamepad ? null : L.t("vista de ejemplo")));
         LinearLayout t = card();
@@ -712,6 +715,70 @@ public class MainActivity extends Activity {
                 + L.t("botón» en el editor."), 12, Ui.TEXT_3, false);
         tip.setPadding(dp(4), dp(2), dp(4), 0);
         content.addView(tip);
+    }
+
+    // ------------------------------------------------------------------ mandos de la comunidad (modo root)
+    private String padMapSig = "";
+    private volatile ControllerMappings.Result padMap;
+    private volatile boolean padMapBusy;
+
+    /**
+     * Modo root / Shizuku: si gpmapper vio un mando nuevo (mando_info), buscarlo en los mandos de la
+     * comunidad y en SDL GameControllerDB y escribir su tabla (mando.map). En segundo plano.
+     */
+    private void checkPadMap() {
+        if (padMapBusy || !Mapper.status().running) return;
+        final String sig = ControllerMappings.signature(this);
+        if (sig.equals(padMapSig)) return;
+        padMapSig = sig;
+        padMapBusy = true;
+        final android.content.Context app = getApplicationContext();
+        new Thread(() -> {
+            ControllerMappings.Result r = null;
+            try {
+                r = ControllerMappings.update(app);
+            } catch (Exception ignored) {
+            }
+            final ControllerMappings.Result fr = r;
+            runOnUiThread(() -> {
+                padMap = fr;
+                padMapBusy = false;
+                if (tab == TAB_PAD) handler.postDelayed(this::render, 2500);   // gpmapper la aplica en ~1 s
+            });
+        }).start();
+    }
+
+    /** Tarjeta del modo root: «Mando reconocido por la comunidad» y el interruptor para no usarlo. */
+    private View padMapCard() {
+        Mapper.Status st = Mapper.status();
+        if (!st.running || st.gamepad.isEmpty()) return null;
+        LinearLayout c = card();
+        ControllerMappings.Result r = padMap;
+        if (!st.map.isEmpty()) {
+            c.addView(Ui.menuRow(this, R.drawable.ic_people, Ui.OK, L.t("Mando reconocido por la comunidad"),
+                    L.t("Sus botones se traducen con «") + st.map + L.t("» antes de aplicar el perfil")
+                            + (r != null && !r.source.isEmpty() ? " (" + r.source + ")" : ""), null));
+        } else if (r != null && r.standard) {
+            c.addView(Ui.menuRow(this, R.drawable.ic_check, Ui.TEXT_3, L.t("Mando estándar"),
+                    L.t("Envía los botones con sus nombres normales: no hace falta traducirlo"), null));
+        } else {
+            c.addView(Ui.menuRow(this, R.drawable.ic_people, Ui.TEXT_3, L.t("Mando sin mapeo de la comunidad"),
+                    L.t("Si algún botón sale con un nombre raro, usa «Detectar botón» en el editor"), null));
+        }
+        c.addView(Ui.divider(this));
+        LinearLayout row = Ui.menuRow(this, R.drawable.ic_download, Ui.PRIMARY, L.t("Usar mapeos de la comunidad"),
+                L.t("Modo root: corrige los botones de mandos genéricos (SDL GameControllerDB y la web)"), null);
+        row.setClickable(false);
+        final Switch sw = new Switch(this);
+        sw.setChecked(ControllerMappings.enabled(this));
+        sw.setOnCheckedChangeListener((b, on) -> {
+            ControllerMappings.setEnabled(this, on);
+            padMapSig = "";
+            checkPadMap();
+        });
+        row.addView(sw);
+        c.addView(row);
+        return c;
     }
 
     /** Chips con lo que tiene el mando: botones, sticks, gatillos, bateria, vibracion, sensores. */

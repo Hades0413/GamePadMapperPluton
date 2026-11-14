@@ -62,6 +62,8 @@ New-Item -ItemType Directory -Force "$build\assets\presets" | Out-Null
 Get-ChildItem (Join-Path $root 'presets') -File | Where-Object { $_.Extension -in '.json', '.conf' } |
     ForEach-Object { Copy-Item $_.FullName "$build\assets\presets\" }
 Write-Host "   catalogo incluido: $((Get-ChildItem "$build\assets\presets").Count) archivos"
+# Subconjunto de SDL GameControllerDB (licencia zlib, con su licencia) para reconocer mandos en modo root
+Copy-Item (Join-Path $here 'datos\mandos-sdl.txt'), (Join-Path $here 'datos\LICENCIA-SDL_GameControllerDB.txt') "$build\assets\"
 
 Write-Host "1/6 Recursos (aapt2)..."
 Run "$bt\aapt2.exe" @('compile', '--dir', (Join-Path $here 'res'), '-o', "$build\res.zip")

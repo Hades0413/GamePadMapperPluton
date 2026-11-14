@@ -778,5 +778,16 @@ final class L_en {
         m.put("Activar dos jugadores", "Turn on two players");
         m.put("Botones del jugador 2: «+ Botón» › «Detectar» y pulsa en su mando. Sus sticks:", "Player 2 buttons: «+ Button» › «Detect» and press on their gamepad. Their sticks:");
         m.put("Añadir ", "Add ");
+        // Mandos de la comunidad (modo root)
+        m.put("mandos de la comunidad", "community gamepads");
+        m.put("Mando reconocido por la comunidad", "Gamepad recognised by the community");
+        m.put("Sus botones se traducen con «", "Its buttons are translated with «");
+        m.put("» antes de aplicar el perfil", "» before applying the profile");
+        m.put("Mando estándar", "Standard gamepad");
+        m.put("Envía los botones con sus nombres normales: no hace falta traducirlo", "It sends its buttons with their usual names: no translation needed");
+        m.put("Mando sin mapeo de la comunidad", "No community mapping for this gamepad");
+        m.put("Si algún botón sale con un nombre raro, usa «Detectar botón» en el editor", "If a button shows up with an odd name, use «Detect button» in the editor");
+        m.put("Usar mapeos de la comunidad", "Use community mappings");
+        m.put("Modo root: corrige los botones de mandos genéricos (SDL GameControllerDB y la web)", "Root mode: fixes the buttons of generic gamepads (SDL GameControllerDB and the website)");
     }
 }

@@ -33,7 +33,7 @@ import java.util.regex.Pattern;
 public final class Community {
     /** Proyecto de Supabase y clave PUBLICA (la misma que lleva la web; los permisos estan en la base de datos). */
     static final String API = "https://gshyhrthaksriamjqdtf.supabase.co/rest/v1/";
-    private static final String KEY = "sb_publishable_QTPm_6jVyWGcvWILpDqJoA_skWLqjeD";
+    static final String KEY = "sb_publishable_QTPm_6jVyWGcvWILpDqJoA_skWLqjeD";
     /** Web de la comunidad. */
     public static final String SITE = "https://hades0413.github.io/GamePadMapperPluton";
 

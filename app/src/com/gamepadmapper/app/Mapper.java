@@ -34,6 +34,8 @@ public final class Mapper {
     public static final class Status {
         public boolean running, root, rotate;
         public String gamepad = "", touch = "", profile = "", version = "";
+        /** Tabla de traduccion del mando aplicada por gpmapper (mando.map; "" = ninguna). */
+        public String map = "";
         /** Numero de compilacion del motor (los modulos anteriores a 1.1 no lo escriben: 1). */
         public int build = 1;
     }
@@ -61,6 +63,7 @@ public final class Mapper {
         s.profile = nz(m.get("profile"));
         s.build = (int) Math.max(1, parseLong(m.get("build")));
         s.version = nz(m.get("version"));
+        s.map = nz(m.get("map"));
         return s;
     }
 
