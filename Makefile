@@ -168,13 +168,21 @@ bump: ## Sube la version: make bump V=1.2  (versionCode +1 automatico)
 release: test ## Publica: tag v<version> sobre main (ya fusionado) y GitHub compila, firma y sube el Release
 	@[ -z "$$(git status --porcelain)" ] || { echo "❌ Hay cambios sin commit. Haz commit primero."; exit 1; }
 	@if git rev-parse "v$(VERSION)" >/dev/null 2>&1; then echo "❌ El tag v$(VERSION) ya existe. Sube la version: make bump V=x.y"; exit 1; fi
+	@[ -s "play/novedades/$(VERSION)/es-ES.txt" ] && [ -s "play/novedades/$(VERSION)/en-US.txt" ] || { \
+		echo "❌ Faltan las notas de Play: play/novedades/$(VERSION)/es-ES.txt y en-US.txt"; exit 1; }
 	@git fetch -q origin main
 	@[ "$$(git rev-parse HEAD)" = "$$(git rev-parse origin/main)" ] || { echo "❌ HEAD no es origin/main. main esta protegida: fusiona el PR develop -> main, luego git checkout main && git pull"; exit 1; }
 	@git tag "v$(VERSION)"
 	@git push origin "v$(VERSION)"
 	@echo "✅ Tag v$(VERSION) subido: GitHub Actions publicara el Release en unos minutos."
 	@echo "   Google Play: el AAB se sube solo a la prueba interna (si existe el secreto PLAY_SERVICE_ACCOUNT_JSON)."
-	@echo "   Antes: notas de la version en play/novedades/es-ES.txt y en-US.txt."
+	@echo "   Notas de la version: play/novedades/$(VERSION)/."
+
+play-comprobar: ## Comprueba el acceso a Google Play (solo lee): PLAY_SERVICE_ACCOUNT_JSON_FILE=ruta/clave.json
+	@python3 -I scripts/play-subir.py --comprobar
+
+play-promover: ## Pasa la version de la prueba interna a la prueba cerrada: make play-promover [PISTA=beta]
+	@python3 -I scripts/play-subir.py --promover "$(or $(PISTA),alpha)"
 
 play-subir: ## Sube el AAB a Google Play (prueba interna): PLAY_SERVICE_ACCOUNT_JSON_FILE=ruta/clave.json make play-subir
 	@[ -f "$(AAB)" ] || { echo "❌ No existe $(AAB): make aab primero"; exit 1; }

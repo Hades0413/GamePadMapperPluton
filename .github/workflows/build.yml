@@ -129,7 +129,7 @@ jobs:
 
   # Sube el AAB firmado a Google Play (pista «Prueba interna») en los tags v*. La clave de la
   # cuenta de servicio es un secreto del entorno «google-play», que solo pueden usar los tags v*.
-  # Sin el secreto (forks) no hace nada. Notas de la version: play/novedades/<idioma>.txt.
+  # Sin el secreto (forks) no hace nada. Notas de la version: play/novedades/<version>/<idioma>.txt.
   play:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: build
