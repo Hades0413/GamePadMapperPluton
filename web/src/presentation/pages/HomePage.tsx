@@ -78,6 +78,7 @@ export default function HomePage() {
             {t('Descargar en Google Play')}
           </ExternalLink>
           <ButtonLink to={paths.games} variant="secondary" size="lg">{t('Ver perfiles de juegos')}</ButtonLink>
+          <ButtonLink to={paths.editor} variant="secondary" size="lg">{t('Crear un perfil en el editor visual')}</ButtonLink>
         </div>
       </section>
 

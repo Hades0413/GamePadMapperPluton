@@ -10,7 +10,7 @@ export type ConfResult =
   | { readonly ok: false; readonly error: string };
 
 const NUM = /^-?[0-9]{1,6}(\.[0-9]{1,4})?$/;
-const KEY = /^([A-Z0-9_]{1,20}\+)?[A-Z0-9_]{1,20}[+-]?$/;
+export const CONF_KEY = /^([A-Z0-9_]{1,20}\+)?[A-Z0-9_]{1,20}[+-]?$/;
 // eslint-disable-next-line no-control-regex -- a proposito: rechaza caracteres de control
 const CONTROL = /[\u0001-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
 const SETTINGS = new Set([
@@ -161,7 +161,7 @@ function parse(text: string, expectedPackage: string | undefined): ConfResult {
       return;
     }
     const key = rawKey.replace(/ /g, '').toUpperCase();
-    if (!KEY.test(key)) fail(`Línea ${n}: «${key}» no es un botón válido.`);
+    if (!CONF_KEY.test(key)) fail(`Línea ${n}: «${key}» no es un botón válido.`);
     if (keys.has(key)) fail(`Línea ${n}: el botón ${key} está repetido.`);
     keys.add(key);
     const binding = parseBinding(key, value);

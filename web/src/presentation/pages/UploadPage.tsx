@@ -6,14 +6,14 @@ import { ProfileForm, type ProfileFormValues } from '../components/profile/Profi
 import { guessDeviceModel } from '../lib/device';
 import { cameFromApp, readAppLink, setFromApp, type PublishedState } from '../lib/appLink';
 import { PageSpinner } from '../components/ui/Spinner';
-import { loadDraft, saveDraft } from '../lib/sessionDraft';
+import { loadDraft, saveDraft, UPLOAD_DRAFT_KEY } from '../lib/sessionDraft';
 import { useT } from '../i18n/I18nContext';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { useFillGameImages } from '../queries/games';
 import { usePublishProfile } from '../queries/profiles';
 import { paths } from '../routes/paths';
 
-const DRAFT_KEY = 'gpm.uploadDraft';
+const DRAFT_KEY = UPLOAD_DRAFT_KEY;
 const EMPTY: ProfileFormValues = { conf: '', packageName: '', gameName: '', title: '', description: '', deviceModel: '' };
 
 /** Valores iniciales: borrador guardado + perfil que llega desde la app en el enlace. */

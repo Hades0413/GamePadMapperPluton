@@ -83,6 +83,9 @@ export function Header() {
         <Logo />
         <nav className="flex items-center gap-1" aria-label={t('Principal')}>
           <NavLink to={paths.games} className={navClass}>{t('Juegos')}</NavLink>
+          <NavLink to={paths.editor} className={navClass}>
+            <span className="hidden sm:inline">{t('Editor visual')}</span><span className="sm:hidden">{t('Editor')}</span>
+          </NavLink>
           <NavLink to={paths.upload()} className={navClass}>
             <span className="flex items-center gap-1.5"><UploadIcon /><span className="hidden sm:inline">{t('Subir perfil')}</span><span className="sm:hidden">{t('Subir')}</span></span>
           </NavLink>
