@@ -1,0 +1,5 @@
+# Gamepad Mapper Pluton (gpm-escritorio): permiso para crear la pantalla tactil virtual.
+# /dev/uinput para el grupo 'input' y para el usuario con sesion abierta (uaccess).
+# Instalar: sudo install -m 644 99-gamepad-mapper.rules /etc/udev/rules.d/
+#           sudo udevadm control --reload-rules && sudo udevadm trigger --subsystem-match=misc
+KERNEL=="uinput", SUBSYSTEM=="misc", GROUP="input", MODE="0660", TAG+="uaccess", OPTIONS+="static_node=uinput"
