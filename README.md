@@ -339,6 +339,7 @@ crear en *Settings › Secrets and variables › Actions* los secretos `KEYSTORE
 module/                  Módulo Magisk "Touch Fix" (Home + A)
 mapper/                  Mapeador propio: src/gpmapper.c (Android), src/core/ (núcleo común), module/
 desktop/                 gpm-escritorio: el mismo núcleo para Linux y Windows
+desktop/app/             App de escritorio (Tauri): mandos, entrada en vivo y mapeo (ver su README)
 tests/                   Pruebas de perfiles y del motor (tests/engine/)
 app/                     App Android (editor visual): src/, res/, AndroidManifest.xml, build.ps1
 keystore/                Clave de firma de la app (SECRETA, NO subir a GitHub)

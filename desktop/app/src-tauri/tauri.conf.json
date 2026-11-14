@@ -25,7 +25,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["deb", "appimage", "nsis"],
+    "targets": "all",
     "category": "Game",
     "publisher": "Hades0413",
     "copyright": "Hades0413 — PolyForm Noncommercial 1.0.0",

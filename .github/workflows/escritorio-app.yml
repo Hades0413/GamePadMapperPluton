@@ -1,0 +1,141 @@
+# App de escritorio (desktop/app/, Tauri v2): pruebas del nucleo en Rust, interfaz y paquetes para
+# Linux (.deb y AppImage) y Windows (instalador NSIS), descargables como artefactos de la ejecucion.
+name: escritorio-app
+
+on:
+  push:
+    branches: [main, develop]
+    paths: ['desktop/app/**', 'desktop/linux/99-gamepad-mapper.rules', '.github/workflows/escritorio-app.yml']
+  pull_request:
+    paths: ['desktop/app/**', 'desktop/linux/99-gamepad-mapper.rules', '.github/workflows/escritorio-app.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: escritorio-app-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  nucleo:
+    name: Nucleo (Rust)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: desktop/app
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Rust estable
+        run: |
+          rustup toolchain install stable --profile minimal --component clippy,rustfmt
+          rustup target add x86_64-pc-windows-gnu
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            desktop/app/target
+          key: nucleo-${{ runner.os }}-${{ hashFiles('desktop/app/Cargo.lock') }}
+      - name: Formato
+        run: cargo fmt --all -- --check
+      - name: Clippy y pruebas
+        run: |
+          cargo clippy -p gpm-nucleo --all-targets -- -D warnings
+          cargo test -p gpm-nucleo
+      - name: Compila para Windows (XInput)
+        run: cargo clippy -p gpm-nucleo --all-targets --target x86_64-pc-windows-gnu -- -D warnings
+      # Mando virtual: necesita /dev/uinput y leer /dev/input (como root en el runner). Si el
+      # kernel del runner no trae uinput, no bloquea el resto.
+      - name: Prueba con mando virtual (uinput)
+        continue-on-error: true
+        run: |
+          sudo modprobe uinput
+          sudo env "PATH=$PATH" CARGO_HOME="$HOME/.cargo" RUSTUP_HOME="$HOME/.rustup" \
+            cargo test -p gpm-nucleo --test uinput -- --ignored --nocapture
+
+  ui:
+    name: Interfaz (React)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: desktop/app/ui
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+        with:
+          package_json_file: desktop/app/ui/package.json
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: desktop/app/ui/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Tipos, lint y pruebas
+        run: pnpm check
+      - name: Compilar
+        run: pnpm build
+
+  app:
+    name: App (${{ matrix.nombre }})
+    needs: [nucleo, ui]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - nombre: Linux
+            os: ubuntu-24.04
+            paquetes: deb,appimage
+            ruta: |
+              desktop/app/target/release/bundle/deb/*.deb
+              desktop/app/target/release/bundle/appimage/*.AppImage
+          - nombre: Windows
+            os: windows-latest
+            paquetes: nsis
+            ruta: desktop/app/target/release/bundle/nsis/*.exe
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Bibliotecas de sistema de Tauri
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libwebkit2gtk-4.1-dev libssl-dev \
+            libayatana-appindicator3-dev librsvg2-dev libxdo-dev
+      - name: Rust estable
+        run: rustup toolchain install stable --profile minimal
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            desktop/app/target
+          key: app-${{ runner.os }}-${{ hashFiles('desktop/app/Cargo.lock') }}
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+        with:
+          package_json_file: desktop/app/ui/package.json
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: desktop/app/ui/pnpm-lock.yaml
+      - name: Interfaz
+        working-directory: desktop/app/ui
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+      - name: Paquetes (${{ matrix.paquetes }})
+        working-directory: desktop/app
+        run: ui/node_modules/.bin/tauri build --bundles ${{ matrix.paquetes }}
+      - name: Guardar paquetes (descargables desde la ejecucion)
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: gamepad-mapper-pluton-escritorio-${{ matrix.nombre }}
+          path: ${{ matrix.ruta }}
+          if-no-files-found: error

@@ -9,6 +9,8 @@ SHELL := bash
 .DEFAULT_GOAL := help
 .ONESHELL:
 
+comma := ,
+
 # Version de la app (de app/AndroidManifest.xml)
 VERSION := $(shell sed -n 's/.*android:versionName="\([^"]*\)".*/\1/p' app/AndroidManifest.xml)
 CODE    := $(shell sed -n 's/.*android:versionCode="\([^"]*\)".*/\1/p' app/AndroidManifest.xml)
@@ -60,6 +62,24 @@ escritorio-windows: ## Version de escritorio para Windows -> dist/gpm-escritorio
 	@./desktop/build.sh windows
 
 escritorio: escritorio-linux escritorio-windows ## Las dos versiones de escritorio
+
+# =============================================================================
+# APP DE ESCRITORIO (desktop/app/: Tauri v2, Rust + React; necesita Rust, Node 22+ y pnpm)
+# =============================================================================
+
+app-escritorio-ui: ## App de escritorio: interfaz (tipos, lint, pruebas) -> desktop/app/ui/dist
+	@cd desktop/app/ui && pnpm install --frozen-lockfile && pnpm check && pnpm build
+
+app-escritorio-dev: ## App de escritorio: interfaz en el navegador con un mando simulado (http://localhost:1420)
+	@cd desktop/app/ui && pnpm install --frozen-lockfile && pnpm dev
+
+app-escritorio-test: ## App de escritorio: pruebas del nucleo (y con un mando virtual uinput si hay permiso)
+	@cd desktop/app && cargo test -p gpm-nucleo
+	@if [ -w /dev/uinput ]; then cd desktop/app && cargo test -p gpm-nucleo --test uinput -- --ignored; \
+		else echo "⚠️  sin permiso en /dev/uinput: se salta la prueba con mando virtual"; fi
+
+app-escritorio: app-escritorio-ui ## App de escritorio (Tauri) -> desktop/app/target/release/bundle/
+	@cd desktop/app && ui/node_modules/.bin/tauri build $(if $(filter Windows_NT,$(OS)),--bundles nsis,--bundles deb$(comma)appimage)
 
 apk: module ## APK firmado para instalar por USB -> dist/GamepadMapper-<version>.apk
 	@./app/build.sh apk
