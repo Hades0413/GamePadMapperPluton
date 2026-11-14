@@ -549,10 +549,10 @@ mod pruebas {
         s.poner_deteccion(Some(Ok(Deteccion { dispositivo, paquete: Some(paquete.into()) })));
     }
 
-    /// Espera turno: otras pruebas pueden estar usando el nucleo de toques (es global).
+    /// Espera turno: el nucleo de toques es global y lo usan tambien las pruebas del motor (mismo
+    /// turno compartido, ver `toques::motor::turno_pruebas`).
     fn con_nucleo<T>(f: impl FnOnce() -> T) -> T {
-        static TURNO: std::sync::Mutex<()> = std::sync::Mutex::new(());
-        let _g = TURNO.lock().unwrap_or_else(|e| e.into_inner());
+        let _g = crate::toques::motor::turno_pruebas();
         f()
     }
 

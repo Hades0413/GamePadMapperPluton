@@ -432,6 +432,14 @@ pub fn repetir(perfil: &Path, guion: &Path, salida: &Path) -> Result<String, Err
     std::fs::read_to_string(salida).map_err(|_| ErrorToques::Perfil)
 }
 
+/// Turno para las pruebas de la biblioteca que usan el nucleo en C (tiene estado global y solo se
+/// puede reservar una vez): todas esperan aqui, asi ninguna encuentra el nucleo ocupado por otra.
+#[cfg(test)]
+pub(crate) fn turno_pruebas() -> std::sync::MutexGuard<'static, ()> {
+    static TURNO: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    TURNO.lock().unwrap_or_else(|e| e.into_inner())
+}
+
 #[cfg(test)]
 mod pruebas {
     use super::*;
@@ -448,15 +456,9 @@ mod pruebas {
 
     #[test]
     fn toque_por_ffi_y_reserva() {
+        let _turno = super::turno_pruebas();
         let ruta = perfil_prueba("ffi");
-        // Puede haber otra prueba usando el nucleo: se espera turno.
-        let mut m = loop {
-            match MotorToques::nuevo(&ruta) {
-                Ok(m) => break m,
-                Err(ErrorToques::Ocupado) => std::thread::sleep(std::time::Duration::from_millis(5)),
-                Err(e) => panic!("{e}"),
-            }
-        };
+        let mut m = MotorToques::nuevo(&ruta).expect("nucleo libre con el turno");
         assert!(matches!(MotorToques::nuevo(&ruta), Err(ErrorToques::Ocupado)));
         assert_eq!(m.paquete(), "com.prueba.motor");
         assert_eq!(m.nombre(), "Motor");
@@ -486,8 +488,9 @@ mod pruebas {
 
     #[test]
     fn perfil_que_no_existe() {
+        let _turno = super::turno_pruebas();
         let r = MotorToques::nuevo(Path::new("/no/existe.conf"));
-        assert!(matches!(r, Err(ErrorToques::Perfil) | Err(ErrorToques::Ocupado)));
+        assert!(matches!(r, Err(ErrorToques::Perfil)));
     }
 
     #[test]
