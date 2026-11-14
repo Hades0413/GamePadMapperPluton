@@ -1,6 +1,8 @@
+import { worksShare, type GameProfileSummary } from '@domain/profile/GameProfile';
 import { validateConf } from '@domain/profile/conf/validateConf';
 import { useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router';
+import { Link, useLocation, useNavigate, useParams } from 'react-router';
+import { appPublishedLink, type PublishedState } from '../lib/appLink';
 import { BindingTable } from '../components/profile/BindingTable';
 import { LikeButton } from '../components/profile/LikeButton';
 import { ProfileActions } from '../components/profile/ProfileActions';
@@ -49,6 +51,7 @@ export default function ProfilePage() {
   const { data: account } = useAccount();
   const parsed = useMemo(() => (profile ? validateConf(profile.conf) : null), [profile]);
   const { data: game } = useGame(profile?.packageName);
+  const justPublished = (useLocation().state ?? null) as PublishedState | null;
   useDocumentTitle(profile ? `${profile.title} — ${profile.gameName ?? profile.packageName}` : undefined,
     profile?.description || undefined);
 
@@ -65,6 +68,16 @@ export default function ProfilePage() {
         <Link to={paths.games} className="hover:text-ink">Juegos</Link> /{' '}
         <Link to={paths.game(profile.packageName)} className="hover:text-ink">{profile.gameName ?? profile.packageName}</Link>
       </nav>
+
+      {justPublished?.published && (
+        <Alert tone="success" action={justPublished.fromApp ? (
+          // Devuelve a la app el id del perfil: asi luego puede actualizarlo con un toque.
+          <a href={appPublishedLink(profile.id)} className="font-semibold underline">Volver a la app</a>
+        ) : undefined}>
+          {justPublished.published === 'created' ? '¡Perfil publicado!' : 'Cambios publicados.'}
+          {justPublished.fromApp && ' Vuelve a la app para que recuerde este perfil y puedas actualizarlo desde allí.'}
+        </Alert>
+      )}
 
       {profile.status === 'hidden' && (
         <Alert tone="warning">Este perfil está oculto: solo lo ves tú. Puede deberse a reportes de otros usuarios.</Alert>
@@ -85,6 +98,7 @@ export default function ProfilePage() {
             {' · '}pantalla {profile.screen.width}×{profile.screen.height}
             {profile.deviceModel && ` · ${profile.deviceModel}`}
           </p>
+          <ProfileStats profile={profile} />
         </div>
         <LikeButton id={profile.id} count={profile.likeCount} />
       </header>
@@ -132,5 +146,22 @@ export default function ProfilePage() {
         )}
       </footer>
     </article>
+  );
+}
+
+/** Instalaciones desde la app y «¿te funcionó?» (orientativos). */
+function ProfileStats({ profile }: { profile: GameProfileSummary }) {
+  const share = worksShare(profile);
+  const votes = profile.worksYes + profile.worksNo;
+  if (profile.installCount === 0 && votes === 0) return null;
+  return (
+    <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted">
+      {profile.installCount > 0 && (
+        <span>{profile.installCount === 1 ? '1 instalación' : `${profile.installCount.toLocaleString('es')} instalaciones`} desde la app</span>
+      )}
+      {share !== null ? (
+        <span><strong className="text-ink">{share} %</strong> dice que le funciona ({votes} votos)</span>
+      ) : votes > 0 && <span>{votes === 1 ? '1 voto' : `${votes} votos`} sobre si funciona (pocos aún)</span>}
+    </p>
   );
 }

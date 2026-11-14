@@ -1,17 +1,27 @@
 import type { NewProfile, ProfileChanges } from '@application/ports/ProfileRepository';
-import type { GameProfile, ProfileSort } from '@domain/profile/GameProfile';
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { GameProfile, ProfileFilters, ProfileSort } from '@domain/profile/GameProfile';
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useUseCases } from '../di/ServicesContext';
 import { useAccount } from './account';
 import { keys } from './keys';
 
-export function useGameProfiles(packageName: string, sort: ProfileSort, ratio: number | null = null) {
+export function useGameProfiles(packageName: string, sort: ProfileSort, filters: ProfileFilters) {
   const { listGameProfiles } = useUseCases();
   return useInfiniteQuery({
-    queryKey: [...keys.gameProfiles(packageName, sort), ratio ? ratio.toFixed(3) : 'todas'],
-    queryFn: ({ pageParam }) => listGameProfiles.execute({ packageName, sort, ratio, page: pageParam }),
+    queryKey: [...keys.gameProfiles(packageName, sort), filters.search, filters.brand, filters.model, filters.ratio?.toFixed(3) ?? ''],
+    queryFn: ({ pageParam }) => listGameProfiles.execute({ packageName, sort, ...filters, page: pageParam }),
     initialPageParam: 0,
     getNextPageParam: (last, pages) => (last.hasMore ? pages.length : undefined),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useDeviceModels(packageName: string) {
+  const { listDeviceModels } = useUseCases();
+  return useQuery({
+    queryKey: ['profiles', 'devices', packageName],
+    queryFn: () => listDeviceModels.execute(packageName),
+    staleTime: 10 * 60_000,
   });
 }
 

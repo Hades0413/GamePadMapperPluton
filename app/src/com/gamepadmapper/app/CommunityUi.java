@@ -39,7 +39,8 @@ final class CommunityUi {
     /** Lo que la pantalla necesita de MainActivity. */
     interface Host {
         /** Instala un perfil pasando por la confirmacion habitual. */
-        void install(String conf, String sourceName);
+        /** 'from': perfil de la comunidad del que viene (para estadisticas y actualizaciones). */
+        void install(String conf, String sourceName, Community.Item from);
     }
 
     private final Activity a;
@@ -368,7 +369,7 @@ final class CommunityUi {
             LinearLayout r = row(() -> go(() -> showProfile(it.id, it.title)));
             String sub = (it.author.isEmpty() ? "" : "@" + it.author + " · ")
                     + (it.deviceModel.isEmpty() ? "" : it.deviceModel + " · ") + it.buttons + L.t(" botones")
-                    + " · ♥ " + it.likes;
+                    + " · ♥ " + it.likes + stats(it);
             r.addView(texts(it.title, sub), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
             if (Community.fitsScreen(it, myRatio)) r.addView(Ui.chip(a, L.t("Encaja"), Ui.OK));
             card.addView(r);
@@ -402,6 +403,7 @@ final class CommunityUi {
             body.addView(game);
             String meta = (it.author.isEmpty() ? "" : L.t("por @") + it.author + " · ") + "♥ " + it.likes + " · "
                     + it.buttons + L.t(" botones");
+            meta += stats(it);
             if (it.createdAt > 0) meta += " · " + java.text.DateFormat.getDateInstance().format(new java.util.Date(it.createdAt));
             TextView m = Ui.text(a, meta, 13, Ui.TEXT_3, false);
             m.setPadding(0, dp(2), 0, dp(10));
@@ -453,7 +455,7 @@ final class CommunityUi {
                     Toast.makeText(a, e.getMessage(), Toast.LENGTH_LONG).show();
                     return;
                 }
-                host.install(it.conf, L.t("Comunidad: ") + it.title + (it.author.isEmpty() ? "" : " (@" + it.author + ")"));
+                host.install(it.conf, L.t("Comunidad: ") + it.title + (it.author.isEmpty() ? "" : " (@" + it.author + ")"), it);
             });
             body.addView(install, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(48)));
 
@@ -553,5 +555,14 @@ final class CommunityUi {
 
     private int dp(float v) {
         return Ui.dp(a, v);
+    }
+
+    /** « · 120 instalaciones · 85 % funciona» (solo lo que haya). */
+    private static String stats(Community.Item it) {
+        String out = "";
+        if (it.installs > 0) out += " · " + it.installs + (it.installs == 1 ? L.t(" instalación") : L.t(" instalaciones"));
+        int share = Community.worksShare(it);
+        if (share >= 0) out += " · " + share + L.t(" % funciona");
+        return out;
     }
 }

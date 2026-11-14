@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="pad_service_label">Gamepad Mapper Plutón</string>
+    <string name="tile_label">Gamepad</string>
     <string name="pad_service_desc">Turns your gamepad buttons and sticks into screen touches in games that have a profile. It only reads the gamepad (not what you type or the content of apps) and touches the screen at the points you set. In other apps the gamepad works normally.</string>
 </resources>

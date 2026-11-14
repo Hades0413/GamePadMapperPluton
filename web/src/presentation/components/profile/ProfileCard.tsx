@@ -1,15 +1,16 @@
-import type { GameProfileSummary } from '@domain/profile/GameProfile';
+import { worksShare, type GameProfileSummary } from '@domain/profile/GameProfile';
 import { Link } from 'react-router';
 import { sameRatio, type Screen } from '@domain/profile/conf/fit';
 import { ratioLabel } from '../../lib/device';
 import { compactNumber, timeAgo } from '../../lib/format';
 import { paths } from '../../routes/paths';
 import { Avatar } from '../ui/Avatar';
-import { HeartIcon } from '../ui/icons';
+import { DownloadIcon, HeartIcon } from '../ui/icons';
 
 export function ProfileCard({
   profile, liked = false, showGame = false, myScreen = null,
 }: { profile: GameProfileSummary; liked?: boolean; showGame?: boolean; myScreen?: Screen | null }) {
+  const share = worksShare(profile);
   const fits = myScreen !== null && sameRatio(profile.screen, myScreen);
   return (
     <article className="card relative flex flex-col gap-3 p-4 transition-colors hover:border-primary/60">
@@ -34,6 +35,18 @@ export function ProfileCard({
           {profile.deviceModel ? `${profile.deviceModel} · ` : ''}{ratioLabel(profile.screen)}
         </span>
         {fits && <span className="rounded-md bg-success/15 px-2 py-0.5 font-medium text-success">Encaja con tu pantalla</span>}
+        {profile.installCount > 0 && (
+          <span className="inline-flex items-center gap-1 rounded-md bg-surface-2 px-2 py-0.5 text-muted"
+            title={`${profile.installCount} instalaciones desde la app`}>
+            <DownloadIcon className="size-3" />{compactNumber(profile.installCount)}
+          </span>
+        )}
+        {share !== null && (
+          <span className={`rounded-md px-2 py-0.5 font-medium ${share >= 70 ? 'bg-success/15 text-success' : share >= 40 ? 'bg-warning/15 text-warning' : 'bg-danger/15 text-danger'}`}
+            title={`${profile.worksYes} sí · ${profile.worksNo} no`}>
+            {share} % dice que funciona
+          </span>
+        )}
       </div>
       <div className="mt-auto flex items-center justify-between gap-2 text-xs text-muted">
         {profile.author ? (

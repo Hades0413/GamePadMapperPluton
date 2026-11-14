@@ -68,7 +68,9 @@ public final class Community {
         /** Icono y captura del juego (o null). */
         public String gameIcon, gameBackground;
         public int likes, buttons, screenW, screenH;
-        public long createdAt;
+        /** Instalaciones desde la app y respuestas «¿te funcionó?» (orientativos). */
+        public int installs, worksYes, worksNo;
+        public long createdAt, updatedAt;
         /** Texto .conf (solo al pedir un perfil concreto). */
         public String conf;
     }
@@ -117,7 +119,6 @@ public final class Community {
         return games(c);
     }
 
-    /** Una pagina de perfiles de un juego (page desde 0). */
     /**
      * Una pagina de perfiles de un juego (page desde 0). ratio > 0: solo los hechos en pantallas de
      * esa proporcion (lado largo / corto, con un 2 % de margen).
@@ -157,7 +158,54 @@ public final class Community {
     }
 
     private static final String SUMMARY = "id,package,title,description,screen_w,screen_h,device_model,binding_count,"
-            + "like_count,created_at,author:authors!game_profiles_author_id_fkey(username),game:games(name,icon_url,background_url)";
+            + "like_count,install_count,works_yes,works_no,created_at,updated_at,author:authors!game_profiles_author_id_fkey(username),game:games(name,icon_url,background_url)";
+
+    /**
+     * Fecha de la ultima modificacion (titulo, descripcion o perfil) de los perfiles indicados que
+     * siguen publicados. Los que ya no existen o se ocultaron no aparecen.
+     */
+    public static java.util.Map<String, Item> updates(java.util.Collection<String> ids) throws IOException {
+        java.util.Map<String, Item> out = new java.util.HashMap<>();
+        StringBuilder list = new StringBuilder();
+        for (String id : ids) {
+            if (!UUID.matcher(id).matches()) continue;
+            if (list.length() > 0) list.append(',');
+            list.append(id);
+        }
+        if (list.length() == 0) return out;
+        String json = get("game_profiles?select=" + SUMMARY + "&status=eq.published&id=in.(" + list + ")",
+                0, SERVER_MAX_ROWS - 1);
+        for (Item it : parseItems(json, false)) out.put(it.id, it);
+        return out;
+    }
+
+    /** Porcentaje (0-100) que dice que le funciona, o -1 si aun hay pocos votos. */
+    public static int worksShare(Item it) {
+        int total = it.worksYes + it.worksNo;
+        return total < 3 ? -1 : Math.round(it.worksYes * 100f / total);
+    }
+
+    // ---------------------------------------------------------------- estadisticas (sin cuenta)
+
+    /** Avisa de que esta instalacion ha instalado el perfil (cuenta una vez por instalacion). */
+    public static void registerInstall(String id, String installId) throws IOException {
+        if (!UUID.matcher(id).matches() || !UUID.matcher(installId).matches()) return;
+        try {
+            rpc("register_install", new JSONObject().put("p_id", id).put("p_install", installId));
+        } catch (JSONException e) {
+            throw new IOException(e.getMessage());
+        }
+    }
+
+    /** «¿Te funcionó?» Solo cuenta si esta instalacion lo instalo desde la comunidad. */
+    public static void rateProfile(String id, String installId, boolean works) throws IOException {
+        if (!UUID.matcher(id).matches() || !UUID.matcher(installId).matches()) return;
+        try {
+            rpc("rate_profile", new JSONObject().put("p_id", id).put("p_install", installId).put("p_works", works));
+        } catch (JSONException e) {
+            throw new IOException(e.getMessage());
+        }
+    }
 
     // ---------------------------------------------------------------- enlaces a la web
 
@@ -171,16 +219,30 @@ public final class Community {
 
     /** Abre /subir con el perfil ya cargado. Va en el "#": nunca se envia a ningun servidor. */
     public static String uploadUrl(String conf) {
+        return SITE + "/subir" + confFragment(conf);
+    }
+
+    /** Abre la edicion del perfil publicado 'id' con la version de este telefono. */
+    public static String editUrl(String id, String conf) {
+        if (!UUID.matcher(id).matches()) throw new IllegalArgumentException("id");
+        return SITE + "/perfil/" + id + "/editar" + confFragment(conf);
+    }
+
+    private static String confFragment(String conf) {
         byte[] b = conf.replace("\r\n", "\n").getBytes(StandardCharsets.UTF_8);
         String model = deviceModel();
-        String url = SITE + "/subir#conf=" + android.util.Base64.encodeToString(b,
+        String frag = "#conf=" + android.util.Base64.encodeToString(b,
                 android.util.Base64.URL_SAFE | android.util.Base64.NO_WRAP | android.util.Base64.NO_PADDING);
         try {
-            if (!model.isEmpty()) url += "&modelo=" + URLEncoder.encode(model, "UTF-8").replace("+", "%20");
+            if (!model.isEmpty()) frag += "&modelo=" + URLEncoder.encode(model, "UTF-8").replace("+", "%20");
         } catch (java.io.UnsupportedEncodingException ignored) {
             // UTF-8 siempre existe
         }
-        return url;
+        return frag;
+    }
+
+    static boolean isId(String s) {
+        return s != null && UUID.matcher(s).matches();
     }
 
     /** Modelo del telefono para mostrar ("Redmi Note 9"), solo con los caracteres que admite la web. */
@@ -233,6 +295,31 @@ public final class Community {
         }
     }
 
+    /** Llama a una funcion publica de la base de datos (solo las pensadas para la app sin cuenta). */
+    private static void rpc(String fn, JSONObject body) throws IOException {
+        HttpURLConnection h = (HttpURLConnection) new URL(API + "rpc/" + fn).openConnection();
+        try {
+            h.setConnectTimeout(10000);
+            h.setReadTimeout(15000);
+            h.setInstanceFollowRedirects(false);
+            h.setRequestMethod("POST");
+            h.setDoOutput(true);
+            h.setRequestProperty("apikey", KEY);
+            h.setRequestProperty("Content-Type", "application/json");
+            h.setRequestProperty("Accept", "application/json");
+            h.setRequestProperty("User-Agent", "GamepadMapperPluton");
+            byte[] b = body.toString().getBytes(StandardCharsets.UTF_8);
+            h.setFixedLengthStreamingMode(b.length);
+            try (java.io.OutputStream out = h.getOutputStream()) {
+                out.write(b);
+            }
+            int code = h.getResponseCode();
+            if (code < 200 || code >= 300) throw new IOException(L.t("El servidor respondió ") + code);
+        } finally {
+            h.disconnect();
+        }
+    }
+
     private static String enc(String s) throws IOException {
         return URLEncoder.encode(s, "UTF-8");
     }
@@ -274,7 +361,11 @@ public final class Community {
                 it.buttons = Math.max(0, o.optInt("binding_count", 0));
                 it.likes = Math.max(0, o.optInt("like_count", 0));
                 it.deviceModel = o.isNull("device_model") ? "" : clean(o.optString("device_model", ""), 60);
+                it.installs = Math.max(0, o.optInt("install_count", 0));
+                it.worksYes = Math.max(0, o.optInt("works_yes", 0));
+                it.worksNo = Math.max(0, o.optInt("works_no", 0));
                 it.createdAt = parseDate(o.optString("created_at", ""));
+                it.updatedAt = parseDate(o.optString("updated_at", ""));
                 JSONObject au = o.optJSONObject("author");
                 it.author = au != null ? clean(au.optString("username", ""), 39) : "";
                 JSONObject ga = o.optJSONObject("game");

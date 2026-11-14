@@ -126,6 +126,8 @@ static int verbose = 0;
 #define APP_PROFILES "/sdcard/Android/data/com.gamepadmapper.app/files/profiles"
 static char prof_dir[256] = APP_PROFILES;
 static char debug_flag[300], learn_flag[300], learn_result[300], active_file[300];
+/* <base>/paused: lo crea/borra el boton de Ajustes rapidos de la app (pausar el mando). */
+static char paused_flag[300];
 
 static long long now_ms(void) {
     struct timespec ts;
@@ -1476,6 +1478,7 @@ int main(int argc, char **argv) {
     snprintf(debug_flag, sizeof debug_flag, "%s/../debug", prof_dir);
     snprintf(learn_flag, sizeof learn_flag, "%s/../learn", prof_dir);
     snprintf(learn_result, sizeof learn_result, "%s/../learn_result", prof_dir);
+    snprintf(paused_flag, sizeof paused_flag, "%s/../paused", prof_dir);
     snprintf(active_file, sizeof active_file, "%s/../active.txt", prof_dir);
     snprintf(rotation_file, sizeof rotation_file, "%s/../rotation", prof_dir);
     snprintf(display_file, sizeof display_file, "%s/../display", prof_dir);
@@ -1511,7 +1514,7 @@ int main(int argc, char **argv) {
     read_display();
     if (create_vdev() < 0) return 1;
 
-    int enabled = 1, active = -1;
+    int enabled = 1, active = -1, paused_seen = 0;
     long long last_poll = 0, last_scan = 0, last_learn = 0, last_tick = now_ms(), combo_since = 0;
     long long last_rot = 0, last_status = 0, last_tscan = 0;
     long long macro_due = -1;
@@ -1540,6 +1543,17 @@ int main(int argc, char **argv) {
             last_poll = n;
             if (reload_profiles_if_changed()) { release_all(); cur = NULL; active = -1; }
             int fg = foreground_profile();
+            // Pausa desde Ajustes rapidos: solo cuenta el cambio (aparece -> pausa, desaparece -> sigue),
+            // asi SELECT+START sigue funcionando aunque el archivo exista.
+            int pz = access(paused_flag, F_OK) == 0;
+            if (pz != paused_seen) {
+                paused_seen = pz;
+                if (enabled == pz) {
+                    enabled = !pz;
+                    release_all();
+                    logf_(enabled ? "mapeo REANUDADO (ajustes rapidos)" : "mapeo PAUSADO (ajustes rapidos)");
+                }
+            }
             if (fg != active) {
                 release_all();
                 active = fg;
@@ -1619,6 +1633,7 @@ int main(int argc, char **argv) {
             else if (!combo_fired && now_ms() - combo_since >= 1000) {
                 combo_fired = 1;
                 enabled = !enabled;
+                if (enabled && paused_seen) { unlink(paused_flag); paused_seen = 0; }  // el boton tambien se reanuda
                 release_all();
                 set_grab(enabled && cur != NULL);
                 logf_(enabled ? "mapeo REANUDADO (SELECT+START)" : "mapeo PAUSADO (SELECT+START)");

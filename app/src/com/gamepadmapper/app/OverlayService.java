@@ -247,6 +247,10 @@ public class OverlayService extends Service {
     // Siempre activo: cada segundo mira que app esta en primer plano y muestra la
     // burbuja solo en juegos. Desde la burbuja se gestionan los perfiles del juego.
     private String currentGame;          // juego en primer plano con burbuja
+    /** Perfiles de la comunidad por juego (de la cache de juegos; se consulta como mucho cada 6 h). */
+    private final java.util.Map<String, Integer> communityCount = new java.util.concurrent.ConcurrentHashMap<>();
+    private volatile long communityAt;
+    private volatile boolean communityLoading;
     private String pendingEditPkg;       // abrir el editor al llegar a este juego
     private final java.util.Map<String, Boolean> gameCache = new java.util.HashMap<>();
     private long gameCacheAt;
@@ -351,7 +355,10 @@ public class OverlayService extends Service {
         boolean show = fg != null && !fg.isEmpty() && Games.bubbleEnabled(this) && isGameCached(fg)
                 && !Games.isHidden(this, fg);
         if (show) {
-            if (!fg.equals(currentGame)) closeMenu();
+            if (!fg.equals(currentGame)) {
+                closeMenu();
+                checkCommunity(fg);
+            }
             currentGame = fg;
             showBubbleView();
         } else {
@@ -360,6 +367,61 @@ public class OverlayService extends Service {
             if (bubble != null) bubble.setVisibility(View.GONE);
         }
         updateHints(show ? fg : null);   // L.t("Mostrar controles"): solo en el juego con burbuja
+    }
+
+    // ------------------------------------------------------------------ comunidad
+
+    private static final String KEY_COMMUNITY_TOLD = "bubble_community_told";
+
+    /**
+     * Al abrir un juego sin perfil: si la comunidad tiene perfiles para el, se avisa una vez (por
+     * juego) y el menu de la burbuja ofrece verlos. Sin conexion no pasa nada.
+     */
+    private void checkCommunity(String pkg) {
+        if (!Library.profilesOf(pkg).isEmpty()) return;
+        if (SystemClock.uptimeMillis() - communityAt < 6 * 3600_000L && communityAt != 0) {
+            tellCommunity(pkg);
+            return;
+        }
+        if (communityLoading) return;
+        communityLoading = true;
+        new Thread(() -> {
+            try {
+                java.util.Map<String, Integer> m = new java.util.HashMap<>();
+                for (Community.Game g : Community.gamesRecent(this, 6 * 3600_000L)) m.put(g.pkg, g.profiles);
+                communityCount.clear();
+                communityCount.putAll(m);
+                communityAt = SystemClock.uptimeMillis();
+                handler.post(() -> {
+                    if (pkg.equals(currentGame)) tellCommunity(pkg);
+                });
+            } catch (Exception ignored) {
+                // sin conexion
+            } finally {
+                communityLoading = false;
+            }
+        }).start();
+    }
+
+    private void tellCommunity(String pkg) {
+        Integer n = communityCount.get(pkg);
+        if (n == null || n <= 0 || !Library.profilesOf(pkg).isEmpty()) return;
+        android.content.SharedPreferences p = getSharedPreferences(Games.PREFS, MODE_PRIVATE);
+        java.util.Set<String> told = new java.util.HashSet<>(p.getStringSet(KEY_COMMUNITY_TOLD, new java.util.HashSet<>()));
+        if (!told.add(pkg)) return;
+        p.edit().putStringSet(KEY_COMMUNITY_TOLD, told).apply();
+        showHint(L.t("Hay perfiles de la comunidad para este juego: toca la burbuja para verlos."));
+    }
+
+    /** Abre en la app los perfiles de la comunidad de ese juego. */
+    private void openCommunity(String pkg) {
+        closeMenu();
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, android.net.Uri.parse("gpmapper://juego/" + pkg), this, MainActivity.class)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        } catch (Exception e) {
+            toast(e.getMessage());
+        }
     }
 
     // ------------------------------------------------------------------ notificacion
@@ -1267,6 +1329,12 @@ public class OverlayService extends Service {
 
         if (page == MENU_MAIN) {
             if (active == null) {
+                Integer shared = communityCount.get(pkg);
+                if (shared != null && shared > 0) {
+                    card.addView(Ui.menuRow(this, R.drawable.ic_people, Ui.OK, L.t("Perfiles de la comunidad"),
+                            shared + (shared == 1 ? L.t(" perfil listo para instalar") : L.t(" perfiles listos para instalar")),
+                            v -> openCommunity(pkg)));
+                }
                 card.addView(Ui.menuRow(this, R.drawable.ic_add, Ui.OK, L.t("Crear perfil"),
                         L.t("Coloca los botones del mando sobre el juego"), v -> createProfile(pkg, null)));
             } else {
@@ -1281,6 +1349,19 @@ public class OverlayService extends Service {
                         }));
                 card.addView(Ui.menuRow(this, R.drawable.ic_edit, Ui.PRIMARY, L.t("Editar controles"),
                         active.displayName(), v -> editProfile(active)));
+                if (PadService.canDryRun()) {
+                    final boolean testing = PadService.dryRun;
+                    card.addView(Ui.menuRow(this, R.drawable.ic_play, testing ? Ui.WARN : Ui.PRIMARY,
+                            testing ? L.t("Dejar de probar") : L.t("Probar perfil"),
+                            testing ? L.t("El mando vuelve a tocar la pantalla")
+                                    : L.t("El mando no toca: verás círculos donde tocaría"), v -> {
+                                closeMenu();
+                                if (PadService.setDryRun(!testing)) {
+                                    showHint(testing ? L.t("Prueba terminada: el mando vuelve a tocar la pantalla")
+                                            : L.t("Modo prueba: pulsa botones y mueve los sticks; nada toca el juego. Vuelve a la burbuja para terminar."));
+                                }
+                            }));
+                }
                 if (list.size() > 1) {
                     card.addView(Ui.menuRow(this, R.drawable.ic_swap, Ui.PRIMARY, L.t("Cambiar perfil"),
                             list.size() + L.t(" perfiles para este juego"), v -> showMenu(MENU_SWITCH)));

@@ -13,7 +13,7 @@ import type { DeleteProfile } from '@application/profiles/DeleteProfile';
 import type { GetLikedProfiles } from '@application/profiles/GetLikedProfiles';
 import type { GetProfile } from '@application/profiles/GetProfile';
 import type { ListAuthorProfiles } from '@application/profiles/ListAuthorProfiles';
-import type { ListGameProfiles } from '@application/profiles/ListGameProfiles';
+import type { ListDeviceModels, ListGameProfiles } from '@application/profiles/ListGameProfiles';
 import type { PublishProfile } from '@application/profiles/PublishProfile';
 import type { ReportProfile } from '@application/profiles/ReportProfile';
 import type { ToggleLike } from '@application/profiles/ToggleLike';
@@ -25,6 +25,7 @@ export interface UseCases {
   readonly getGame: GetGame;
   readonly fillGameImages: FillGameImages;
   readonly listGameProfiles: ListGameProfiles;
+  readonly listDeviceModels: ListDeviceModels;
   readonly listAuthorProfiles: ListAuthorProfiles;
   readonly getProfile: GetProfile;
   readonly publishProfile: PublishProfile;

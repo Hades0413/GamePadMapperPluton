@@ -61,6 +61,9 @@ public class PadService extends AccessibilityService {
     // ------------------------------------------------------------------ ciclo de vida
     /** Instancia conectada (para que el editor pida capturas). null si no esta activo. */
     static volatile PadService instance;
+    /** «Probar perfil»: el mando no toca la pantalla; se dibujan circulos donde tocaria. */
+    static volatile boolean dryRun = false;
+    private GhostView ghost;
 
     public interface FramesCallback {
         void done(List<android.graphics.Bitmap> frames, String error);
@@ -165,6 +168,7 @@ public class PadService extends AccessibilityService {
     @Override
     public void onDestroy() {
         setPadWindow(false);
+        applyDryRun(false);
         android.hardware.input.InputManager im = (android.hardware.input.InputManager) getSystemService(INPUT_SERVICE);
         if (im != null) im.unregisterInputDeviceListener(deviceListener);
         running = false;
@@ -176,6 +180,7 @@ public class PadService extends AccessibilityService {
     @Override
     public boolean onUnbind(android.content.Intent intent) {
         setPadWindow(false);
+        applyDryRun(false);
         running = false;
         instance = null;
         return super.onUnbind(intent);
@@ -269,9 +274,13 @@ public class PadService extends AccessibilityService {
 
     // ------------------------------------------------------------------ perfiles
     private Profile cur;
+    /** Desde cuando se esta usando 'cur' (para preguntar «¿Te funcionó?» despues de jugar). */
+    private long curSince;
     private long profSig = 0;
     private boolean daemonRunning = false;
-    private boolean enabled = true;   // SELECT + START (1 s) pausa
+    private boolean enabled = true;   // SELECT + START (1 s) o el boton de Ajustes rapidos pausa
+    /** Ultimo estado visto de <base>/paused (solo cuentan los cambios). */
+    private boolean pausedSeen = false;
 
     private final Runnable poll = new Runnable() {
         @Override
@@ -306,6 +315,7 @@ public class PadService extends AccessibilityService {
                 // Solo pruebas: <base>/debug_capture -> capturar, analizar y escribir en pad.log.
                 File dc = new File(Profile.baseDir(), "debug_capture");
                 if (debuggable && dc.exists() && dc.delete()) debugCapture();
+                checkPausedFlag();
                 long sig = dirSignature();
                 if (sig != profSig) loadProfile();
                 boolean d = Mapper.status().running;
@@ -345,6 +355,11 @@ public class PadService extends AccessibilityService {
         boolean changed = (p == null) != (cur == null) || (p != null && !p.file.equals(cur.file));
         if (changed || p != null) {
             releaseAll();
+            if (changed) {
+                if (dryRun) applyDryRun(false);
+                if (cur != null) CommunityLinks.onPlayed(this, cur.file, SystemClock.uptimeMillis() - curSince);
+                curSince = SystemClock.uptimeMillis();
+            }
             cur = p;
             indexProfile();
             lastProfile = p == null ? "" : p.displayName();
@@ -455,6 +470,103 @@ public class PadService extends AccessibilityService {
             }
             padWin = null;
             padWinFocused = false;
+        }
+    }
+
+    // ------------------------------------------------------------------ «Probar perfil»
+
+    /** ¿Se puede usar «Probar perfil»? (accesibilidad activa y sin el motor root en marcha). */
+    static boolean canDryRun() {
+        PadService s = instance;
+        return s != null && !s.daemonRunning;
+    }
+
+    /** Activa o quita el modo prueba (solo con la accesibilidad; con root no aplica). */
+    static boolean setDryRun(boolean on) {
+        PadService s = instance;
+        if (s == null || s.daemonRunning) return false;
+        s.handler.post(() -> s.applyDryRun(on));
+        return true;
+    }
+
+    private void applyDryRun(boolean on) {
+        if (dryRun == on && (ghost != null) == on) return;
+        releaseAll();
+        dryRun = on;
+        if (on && ghost == null && wm != null) {
+            WindowManager.LayoutParams lp = new WindowManager.LayoutParams(
+                    WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT,
+                    WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE | WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                            | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                    android.graphics.PixelFormat.TRANSLUCENT);
+            lp.gravity = android.view.Gravity.TOP | android.view.Gravity.START;
+            if (Build.VERSION.SDK_INT >= 28) {
+                lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+            }
+            lp.setTitle("GamepadMapperGhost");
+            GhostView g = new GhostView();
+            try {
+                wm.addView(g, lp);
+                ghost = g;
+            } catch (Exception e) {
+                dryRun = false;
+                dbg(L.t("modo prueba no disponible: ") + e);
+            }
+        } else if (!on && ghost != null) {
+            try {
+                wm.removeView(ghost);
+            } catch (Exception ignored) {
+            }
+            ghost = null;
+        }
+    }
+
+    /** Circulos donde tocaria el mando (modo prueba). No recibe toques. */
+    private final class GhostView extends android.view.View {
+        private final android.graphics.Paint fill = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        private final android.graphics.Paint ring = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        private final List<float[]> held = new ArrayList<>();      // x, y, ax, ay, stick
+        private final List<float[]> flashes = new ArrayList<>();   // x, y, hasta (uptime ms)
+        private final int[] loc = new int[2];
+
+        GhostView() {
+            super(PadService.this);
+            ring.setStyle(android.graphics.Paint.Style.STROKE);
+            ring.setStrokeWidth(getResources().getDisplayMetrics().density * 3);
+        }
+
+        void show(List<float[]> nowHeld, List<float[]> taps) {
+            held.clear();
+            held.addAll(nowHeld);
+            long until = SystemClock.uptimeMillis() + 250;
+            for (float[] t : taps) flashes.add(new float[]{t[0], t[1], until});
+            invalidate();
+        }
+
+        @Override
+        protected void onDraw(android.graphics.Canvas c) {
+            float d = getResources().getDisplayMetrics().density;
+            getLocationOnScreen(loc);   // los toques van en coordenadas de pantalla
+            c.translate(-loc[0], -loc[1]);
+            for (float[] h : held) {
+                if (h[4] > 0) {   // joystick: centro y dedo
+                    ring.setColor(0x6638E0C8);
+                    c.drawCircle(h[2], h[3], 34 * d, ring);
+                    c.drawLine(h[2], h[3], h[0], h[1], ring);
+                }
+                fill.setColor(h[4] > 0 ? 0x9938E0C8 : 0x998B7CFF);
+                c.drawCircle(h[0], h[1], 22 * d, fill);
+                ring.setColor(0xFFFFFFFF);
+                c.drawCircle(h[0], h[1], 22 * d, ring);
+            }
+            long n = SystemClock.uptimeMillis();
+            flashes.removeIf(f -> f[2] < n);
+            for (float[] f : flashes) {
+                fill.setColor(0x99FFC94D);
+                c.drawCircle(f[0], f[1], 18 * d, fill);
+            }
+            if (!flashes.isEmpty()) postInvalidateDelayed(50);
         }
     }
 
@@ -751,11 +863,25 @@ public class PadService extends AccessibilityService {
             if (comboSince == 0 || comboFired || !(pressed("SELECT") && pressed("START"))) return;
             comboFired = true;
             enabled = !enabled;
+            pausedSeen = !enabled;
+            PauseTile.setPaused(PadService.this, !enabled);   // el boton de Ajustes rapidos lo refleja
             releaseAll();
             updateSources();   // en pausa se quita la ventana del stick (p. ej. para escribir en el chat)
             toast(enabled ? L.t("Mapeo reanudado") : L.t("Mapeo en pausa (SELECT + START para reanudar)"));
         }
     };
+
+    /** Pausa / reanuda desde el boton de Ajustes rapidos (archivo compartido con gpmapper). */
+    private void checkPausedFlag() {
+        boolean p = PauseTile.isPaused();
+        if (p == pausedSeen) return;
+        pausedSeen = p;
+        if (enabled != p) return;
+        enabled = !p;
+        releaseAll();
+        updateSources();
+        dbg(enabled ? L.t("mapeo reanudado (ajustes rápidos)") : L.t("mapeo en pausa (ajustes rápidos)"));
+    }
 
     private void switchProfile(int dir) {
         List<Profile> list = Library.profilesOf(cur.pkg);
@@ -1276,6 +1402,7 @@ public class PadService extends AccessibilityService {
             boolean down = true;
             boolean stick;   // dedo de joystick: al reapoyar va primero
             boolean quick;   // toque rapido: si Android lo cancela antes de acabar, se repite
+            boolean shown;   // modo prueba: ya se dibujo apoyado
             int retries;
             GestureDescription.StrokeDescription last;   // null = hay que (re)apoyarlo
         }
@@ -1386,6 +1513,10 @@ public class PadService extends AccessibilityService {
             if (inFlight || !dirty) return;
             dirty = false;
             screen();
+            if (dryRun) {
+                dryFlush();
+                return;
+            }
             GestureDescription.Builder gb = new GestureDescription.Builder();
             List<Ptr> sent = new ArrayList<>();
             List<GestureDescription.StrokeDescription> strokes = new ArrayList<>();
@@ -1468,6 +1599,23 @@ public class PadService extends AccessibilityService {
                 p.last = strokes.get(i);
                 if (!p.down) ptrs.remove(p);
             }
+        }
+
+        /** Modo prueba: en vez de tocar, se dibuja donde tocaria cada dedo. */
+        private void dryFlush() {
+            List<float[]> held = new ArrayList<>(), taps = new ArrayList<>();
+            for (Ptr p : ptrs) {
+                if (p.down) {
+                    held.add(new float[]{cx(p.x), cy(p.y), cx(p.ax), cy(p.ay), p.stick ? 1 : 0});
+                    p.shown = true;
+                } else if (!p.shown) {
+                    taps.add(new float[]{cx(p.x), cy(p.y)});
+                }
+                p.last = null;
+            }
+            ptrs.removeIf(p -> !p.down);
+            GhostView g = ghost;
+            if (g != null) g.show(held, taps);
         }
 
         private final float[] endTmp = new float[2];

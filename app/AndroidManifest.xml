@@ -55,13 +55,14 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/plain" />
             </intent-filter>
-            <!-- "Abrir en la app" desde la web: gpmapper://perfil/<id> y gpmapper://juego/<paquete> -->
+            <!-- "Abrir en la app" desde la web: gpmapper://perfil/<id>, gpmapper://juego/<paquete> y gpmapper://subido/<id> (tras publicar) -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="gpmapper" android:host="perfil" />
                 <data android:scheme="gpmapper" android:host="juego" />
+                <data android:scheme="gpmapper" android:host="subido" />
             </intent-filter>
         </activity>
 
@@ -99,6 +100,18 @@
             android:name="moe.shizuku.client.V3_SUPPORT"
             android:value="true" />
 
+        <!-- Boton de Ajustes rapidos: pausar / reanudar el mando -->
+        <service
+            android:name=".PauseTile"
+            android:exported="true"
+            android:icon="@drawable/ic_gamepad"
+            android:label="@string/tile_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data android:name="android.service.quicksettings.TOGGLEABLE_TILE" android:value="true" />
+        </service>
         <service
             android:name=".OverlayService"
             android:exported="false"

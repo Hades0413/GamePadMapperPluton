@@ -1,11 +1,10 @@
-import { CONF_MAX_BYTES } from '@domain/profile/conf/ProfileConfig';
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { RequireAccount } from '../components/auth/RequireAccount';
 import { Alert } from '../components/ui/Alert';
 import { ProfileForm, type ProfileFormValues } from '../components/profile/ProfileForm';
 import { guessDeviceModel } from '../lib/device';
-import { decodeBase64Url } from '../lib/files';
+import { cameFromApp, readAppLink, setFromApp, type PublishedState } from '../lib/appLink';
 import { PageSpinner } from '../components/ui/Spinner';
 import { loadDraft, saveDraft } from '../lib/sessionDraft';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
@@ -16,31 +15,18 @@ import { paths } from '../routes/paths';
 const DRAFT_KEY = 'gpm.uploadDraft';
 const EMPTY: ProfileFormValues = { conf: '', packageName: '', gameName: '', title: '', description: '', deviceModel: '' };
 
-/**
- * Valores iniciales: borrador guardado + perfil que llega desde la app en el enlace
- * (/subir#conf=<base64url>). Va en el "#" para que nunca se envie a ningun servidor.
- */
+/** Valores iniciales: borrador guardado + perfil que llega desde la app en el enlace. */
 function initialValues(packageParam: string | null): { values: ProfileFormValues; fromLink: boolean } {
   const values = loadDraft(DRAFT_KEY, EMPTY);
-  const match = /(?:^#|&)conf=([^&]+)/.exec(window.location.hash);
-  const fromApp = match?.[1] ? decodeBase64Url(match[1], CONF_MAX_BYTES) : null;
-  // La app tambien envia el modelo del telefono: #conf=...&modelo=Redmi%20Note%209
-  const model = /(?:^#|&)modelo=([^&]{1,180})/.exec(window.location.hash)?.[1];
-  if (match) history.replaceState(null, '', window.location.pathname + window.location.search);
-  if (model) {
-    try {
-      values.deviceModel = decodeURIComponent(model).slice(0, 60);
-    } catch {
-      // modelo mal codificado: se ignora
-    }
-  }
-  if (fromApp) {
-    values.conf = fromApp;
-    values.packageName = /^\s*package\s*=\s*(\S+)/m.exec(fromApp)?.[1] ?? values.packageName;
+  const link = readAppLink();
+  if (link.model) values.deviceModel = link.model;
+  if (link.conf) {
+    values.conf = link.conf;
+    values.packageName = /^\s*package\s*=\s*(\S+)/m.exec(link.conf)?.[1] ?? values.packageName;
     saveDraft(DRAFT_KEY, values);
   }
   if (!values.packageName && packageParam) values.packageName = packageParam;
-  return { values, fromLink: !!fromApp };
+  return { values, fromLink: !!link.conf };
 }
 
 export default function UploadPage() {
@@ -80,7 +66,9 @@ export default function UploadPage() {
                 saveDraft(DRAFT_KEY, null);
                 // Icono y captura del juego desde Google Play si aun no los tiene (en segundo plano).
                 fill.mutate(v.packageName.trim());
-                void navigate(paths.profile(id), { replace: true });
+                const state: PublishedState = { published: 'created', fromApp: cameFromApp() };
+                setFromApp(false);
+                void navigate(paths.profile(id), { replace: true, state });
               },
             })} />
         )}

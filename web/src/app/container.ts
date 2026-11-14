@@ -18,7 +18,7 @@ import { DeleteProfile } from '@application/profiles/DeleteProfile';
 import { GetLikedProfiles } from '@application/profiles/GetLikedProfiles';
 import { GetProfile } from '@application/profiles/GetProfile';
 import { ListAuthorProfiles } from '@application/profiles/ListAuthorProfiles';
-import { ListGameProfiles } from '@application/profiles/ListGameProfiles';
+import { ListDeviceModels, ListGameProfiles } from '@application/profiles/ListGameProfiles';
 import { PublishProfile } from '@application/profiles/PublishProfile';
 import { ReportProfile } from '@application/profiles/ReportProfile';
 import { ToggleLike } from '@application/profiles/ToggleLike';
@@ -49,6 +49,7 @@ export function createServices(env: Env): Services {
       getGame: new GetGame(games),
       fillGameImages: new FillGameImages(games),
       listGameProfiles: new ListGameProfiles(profiles),
+      listDeviceModels: new ListDeviceModels(profiles),
       listAuthorProfiles: new ListAuthorProfiles(profiles),
       getProfile: new GetProfile(profiles),
       publishProfile: new PublishProfile(profiles),

@@ -1,4 +1,6 @@
-import type { GameProfile, GameProfileSummary, LikeResult, ProfileSort } from '@domain/profile/GameProfile';
+import type {
+  GameProfile, GameProfileSummary, LikeResult, ProfileFilters, ProfileSort,
+} from '@domain/profile/GameProfile';
 import type { ReportReason } from '@domain/report/ReportReason';
 import type { Page, PageRequest } from '@domain/shared/Page';
 
@@ -23,7 +25,9 @@ export interface ProfileChanges {
 export type ScreenRatio = number;
 
 export interface ProfileRepository {
-  listByGame(packageName: string, sort: ProfileSort, page: PageRequest, ratio?: ScreenRatio | null): Promise<Page<GameProfileSummary>>;
+  listByGame(packageName: string, sort: ProfileSort, page: PageRequest, filters: ProfileFilters): Promise<Page<GameProfileSummary>>;
+  /** Modelos de telefono con perfiles de este juego (para los filtros de marca y modelo). */
+  listDeviceModels(packageName: string): Promise<readonly string[]>;
   listByAuthor(authorId: string, page: PageRequest): Promise<Page<GameProfileSummary>>;
   findById(id: string): Promise<GameProfile | null>;
   publish(profile: NewProfile): Promise<string>;

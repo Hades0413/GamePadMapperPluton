@@ -13,6 +13,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.os.Environment;
 import android.provider.Settings;
 import android.view.Gravity;
@@ -469,7 +470,9 @@ public class MainActivity extends Activity {
         List<String> seg = u.getPathSegments();
         if (seg.size() != 1) return;
         String arg = seg.get(0);
-        if ("perfil".equals(u.getHost())) {
+        if ("subido".equals(u.getHost())) {
+            linkPublished(arg);
+        } else if ("perfil".equals(u.getHost())) {
             CommunityUi.openProfile(this, this::installWithConfirm, arg);
         } else if ("juego".equals(u.getHost()) && arg.matches("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)+")
                 && !Library.isSensitivePackage(arg)) {
@@ -861,6 +864,11 @@ public class MainActivity extends Activity {
             content.addView(sectionTitle(L.t("Jugar"), null));
             content.addView(quickPlayCard(byPkg));
         }
+        LinearLayout notices = new LinearLayout(this);
+        notices.setOrientation(LinearLayout.VERTICAL);
+        content.addView(notices);
+        addFeedbackCard(notices);
+        loadCommunityUpdates(notices);
         LinearLayout hint = new LinearLayout(this);
         hint.setOrientation(LinearLayout.VERTICAL);
         content.addView(hint);
@@ -874,6 +882,167 @@ public class MainActivity extends Activity {
 
     // ---------------------------------------------------------------- aviso de la comunidad en Inicio
     private static final String KEY_HINT_DISMISSED = "community_hint_dismissed";
+
+    // ---------------------------------------------------------------- comunidad: «¿Te funcionó?»
+
+    /** Tras jugar un rato con un perfil de la comunidad, pregunta si funciono (una vez). */
+    private void addFeedbackCard(LinearLayout box) {
+        final CommunityLinks.Link l = CommunityLinks.pendingFeedback(this);
+        if (l == null) return;
+        LinearLayout c = card();
+        c.addView(Ui.text(this, L.t("¿Te funcionó el perfil «") + l.title + L.t("»?"), 16, Ui.TEXT, true));
+        TextView sub = Ui.text(this, L.t("Lo instalaste desde la comunidad. Tu respuesta es anónima y ayuda a otros a elegir."),
+                13, Ui.TEXT_2, false);
+        sub.setPadding(0, dp(4), 0, dp(10));
+        c.addView(sub);
+        LinearLayout row = new LinearLayout(this);
+        View.OnClickListener answer = v -> {
+            Object tag = v.getTag();
+            CommunityLinks.feedbackDone(this, l);
+            box.removeView(c);
+            if (tag == null) return;   // "Ahora no": no se vuelve a preguntar
+            final boolean works = (Boolean) tag;
+            final String install = CommunityLinks.installId(this);
+            new Thread(() -> {
+                try {
+                    Community.rateProfile(l.id, install, works);
+                } catch (Exception ignored) {
+                    // sin conexion: el voto es orientativo
+                }
+            }).start();
+            Toast.makeText(this, L.t("¡Gracias!") + (works ? "" : " " + L.t("Puedes probar otro perfil del mismo juego en Comunidad.")),
+                    Toast.LENGTH_LONG).show();
+        };
+        LinearLayout yes = Ui.button(this, R.drawable.ic_check, L.t("Sí"), Ui.PRIMARY_DARK, Color.WHITE, answer);
+        yes.setTag(Boolean.TRUE);
+        LinearLayout no = Ui.button(this, R.drawable.ic_close, L.t("No"), Ui.SURFACE_2, Ui.TEXT, answer);
+        no.setTag(Boolean.FALSE);
+        LinearLayout later = Ui.button(this, 0, L.t("Ahora no"), 0x00000000, Ui.TEXT_3, answer);
+        row.addView(yes, new LinearLayout.LayoutParams(0, dp(44), 1));
+        row.addView(new View(this), new LinearLayout.LayoutParams(dp(8), 1));
+        row.addView(no, new LinearLayout.LayoutParams(0, dp(44), 1));
+        row.addView(new View(this), new LinearLayout.LayoutParams(dp(8), 1));
+        row.addView(later, new LinearLayout.LayoutParams(0, dp(44), 1));
+        c.addView(row);
+        box.addView(c, noticeParams());
+    }
+
+    private LinearLayout.LayoutParams noticeParams() {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.topMargin = dp(12);
+        return lp;
+    }
+
+    // ---------------------------------------------------------------- comunidad: actualizaciones
+
+    /** Ultima consulta de actualizaciones (en memoria: como mucho una por hora mientras viva la app). */
+    private static java.util.Map<String, Community.Item> updatesCache;
+    private static long updatesAt;
+
+    /** Avisa si algun perfil instalado desde la comunidad tiene una version nueva publicada. */
+    private void loadCommunityUpdates(LinearLayout box) {
+        final List<CommunityLinks.Link> links = CommunityLinks.all(this);
+        if (links.isEmpty()) return;
+        new Thread(() -> {
+            java.util.Map<String, Community.Item> remote;
+            synchronized (MainActivity.class) {
+                if (updatesCache == null || SystemClock.elapsedRealtime() - updatesAt > 3600_000L) {
+                    java.util.Set<String> ids = new java.util.HashSet<>();
+                    for (CommunityLinks.Link l : links) ids.add(l.id);
+                    try {
+                        updatesCache = Community.updates(ids);
+                        updatesAt = SystemClock.elapsedRealtime();
+                    } catch (Exception e) {
+                        return;   // sin conexion: no se avisa
+                    }
+                }
+                remote = updatesCache;
+            }
+            final List<CommunityLinks.Link> found = new ArrayList<>();
+            final List<Community.Item> items = new ArrayList<>();
+            for (CommunityLinks.Link l : links) {
+                Community.Item it = remote.get(l.id);
+                // Margen de 1 s: la fecha guardada y la publicada pueden diferir en milisegundos.
+                if (it != null && it.updatedAt > l.updatedAt + 1000) {
+                    found.add(l);
+                    items.add(it);
+                }
+            }
+            if (found.isEmpty()) return;
+            runOnUiThread(() -> {
+                if (box.getParent() == null || tab != TAB_HOME) return;
+                for (int i = 0; i < found.size() && i < 3; i++) box.addView(updateCard(box, found.get(i), items.get(i)), noticeParams());
+            });
+        }).start();
+    }
+
+    private View updateCard(LinearLayout box, CommunityLinks.Link l, Community.Item it) {
+        LinearLayout c = card();
+        final View[] self = {c};
+        LinearLayout row = Ui.menuRow(this, R.drawable.ic_download, Ui.OK, L.t("Perfil actualizado en la comunidad"),
+                it.title + (it.author.isEmpty() ? "" : " · @" + it.author), v -> askUpdate(l, it, () -> box.removeView(self[0])));
+        LinearLayout close = Ui.button(this, R.drawable.ic_close, "", 0x00000000, Ui.TEXT_3, v -> {
+            CommunityLinks.skipVersion(this, l, it.updatedAt);
+            box.removeView(c);
+        });
+        close.setContentDescription(L.t("Omitir esta versión"));
+        close.setPadding(0, 0, 0, 0);
+        row.addView(close, new LinearLayout.LayoutParams(dp(40), dp(40)));
+        c.addView(row);
+        return c;
+    }
+
+    /** Pregunta antes de actualizar; si el perfil se cambio en el telefono, avisa de que se pierden los cambios. */
+    private void askUpdate(CommunityLinks.Link l, Community.Item summary, Runnable done) {
+        final boolean edited = CommunityLinks.editedLocally(l);
+        AlertDialog.Builder b = new AlertDialog.Builder(this).setTitle(L.t("Actualizar «") + summary.title + "»")
+                .setMessage(edited
+                        ? L.t("Hay una versión nueva en la comunidad, pero has cambiado este perfil en tu teléfono. ")
+                                + L.t("Si lo actualizas, perderás tus cambios. También puedes guardar la versión nueva como otro perfil.")
+                        : L.t("Hay una versión nueva en la comunidad. ¿Actualizar tu copia?"))
+                .setPositiveButton(L.t("Actualizar"), (d, w) -> applyUpdate(l, summary.id, false, done))
+                .setNegativeButton(L.t("Omitir esta versión"), (d, w) -> {
+                    CommunityLinks.skipVersion(this, l, summary.updatedAt);
+                    done.run();
+                });
+        if (edited) b.setNeutralButton(L.t("Guardar como otro"), (d, w) -> applyUpdate(l, summary.id, true, done));
+        b.show();
+    }
+
+    private void applyUpdate(CommunityLinks.Link l, String id, boolean asNew, Runnable done) {
+        new Thread(() -> {
+            String error = null;
+            try {
+                Community.Item it = Community.profile(this, id);
+                if (it == null || it.conf == null) throw new java.io.IOException(L.t("Ese perfil ya no está publicado"));
+                // Sin conexion profile() puede devolver la copia guardada (antigua): no se instala.
+                if (it.updatedAt <= l.updatedAt) throw new java.io.IOException(L.t("Sin conexión"));
+                java.io.File file = new java.io.File(Profile.profilesDir(), l.file);
+                String pkg = Library.validate(it.conf);
+                // La version nueva tiene que ser del mismo juego que la que tienes.
+                if (!pkg.equals(it.pkg) || !pkg.equals(Profile.load(file).pkg)) {
+                    throw new java.io.IOException(L.t("El perfil no es del juego indicado"));
+                }
+                java.io.File dst = asNew ? Library.newFile(pkg) : file;
+                Library.install(it.conf, dst);
+                if (asNew) CommunityLinks.skipVersion(this, l, it.updatedAt);
+                CommunityLinks.remember(this, dst, it);
+            } catch (Exception e) {
+                error = e.getMessage();
+            }
+            final String err = error;
+            runOnUiThread(() -> {
+                if (err != null) {
+                    Toast.makeText(this, L.t("No se pudo actualizar: ") + err, Toast.LENGTH_LONG).show();
+                    return;
+                }
+                Toast.makeText(this, asNew ? L.t("Guardado como otro perfil") : L.t("Perfil actualizado"), Toast.LENGTH_SHORT).show();
+                done.run();
+                render();
+            });
+        }).start();
+    }
 
     /**
      * "Hay perfiles de la comunidad para tus juegos": juegos instalados sin perfil propio que
@@ -1708,8 +1877,12 @@ public class MainActivity extends Activity {
                     openCommunity(pkg);
                 }));
         if (!list.isEmpty() && !Library.isSensitivePackage(pkg)) {
-            sheet.addView(Ui.menuRow(this, R.drawable.ic_upload, Ui.PRIMARY, L.t("Subir a la comunidad"),
-                    L.t("Se abre la web con tu perfil listo para publicar"), v -> {
+            CommunityLinks.Link own = list.size() == 1 ? CommunityLinks.get(this, list.get(0).file.getName()) : null;
+            boolean update = own != null && own.mine;
+            sheet.addView(Ui.menuRow(this, R.drawable.ic_upload, Ui.PRIMARY,
+                    update ? L.t("Actualizar en la comunidad") : L.t("Subir a la comunidad"),
+                    update ? L.t("Se abre la web con tus cambios listos para publicar")
+                            : L.t("Se abre la web con tu perfil listo para publicar"), v -> {
                         d.dismiss();
                         uploadToCommunity(list);
                     }));
@@ -1850,7 +2023,10 @@ public class MainActivity extends Activity {
             return;
         }
         String[] names = new String[list.size()];
-        for (int i = 0; i < names.length; i++) names[i] = list.get(i).displayName();
+        for (int i = 0; i < names.length; i++) {
+            CommunityLinks.Link own = CommunityLinks.get(this, list.get(i).file.getName());
+            names[i] = list.get(i).displayName() + (own != null && own.mine ? " " + L.t("(actualizar)") : "");
+        }
         new AlertDialog.Builder(this).setTitle(L.t("¿Qué perfil quieres subir?"))
                 .setItems(names, (d, which) -> uploadToCommunity(list.get(which)))
                 .setNegativeButton(L.t("Cancelar"), null).show();
@@ -1864,7 +2040,12 @@ public class MainActivity extends Activity {
                 Toast.makeText(this, L.t("El perfil es demasiado grande para la web (máximo 16 KB)"), Toast.LENGTH_LONG).show();
                 return;
             }
-            startActivity(new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(Community.uploadUrl(conf))));
+            // Si ya lo publico el usuario, se abre su edicion; si no, «Subir». La web devuelve el id
+            // con gpmapper://subido/<id> para enlazar este archivo con el perfil publicado.
+            CommunityLinks.Link own = CommunityLinks.get(this, p.file.getName());
+            String url = own != null && own.mine ? Community.editUrl(own.id, conf) : Community.uploadUrl(conf);
+            CommunityLinks.setPendingUpload(this, p.file);
+            startActivity(new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)));
         } catch (android.content.ActivityNotFoundException e) {
             Toast.makeText(this, L.t("No hay navegador disponible"), Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
@@ -1994,6 +2175,10 @@ public class MainActivity extends Activity {
 
     /** Instala un perfil (texto); si el juego ya tiene, pregunta si reemplazar o anadir como otro. */
     private void installWithConfirm(final String conf, String name) {
+        installWithConfirm(conf, name, null);
+    }
+
+    private void installWithConfirm(final String conf, String name, Community.Item from) {
         final String pkg;
         try {
             pkg = Library.validate(conf);
@@ -2008,7 +2193,7 @@ public class MainActivity extends Activity {
                 + (label == null ? "\n" + L.t("(esa app no está instalada en este teléfono)") : "");
         Runnable doInstall = () -> {
             try {
-                Library.install(conf);
+                afterInstall(Library.install(conf), from);
                 Toast.makeText(this, L.t("Perfil instalado: ") + name, Toast.LENGTH_SHORT).show();
                 render();
             } catch (Exception e) {
@@ -2022,7 +2207,7 @@ public class MainActivity extends Activity {
                     .setPositiveButton(L.t("Reemplazar"), (d, w) -> doInstall.run())
                     .setNeutralButton(L.t("Añadir como otro"), (d, w) -> {
                         try {
-                            Library.install(conf, Library.newFile(pkg));
+                            afterInstall(Library.install(conf, Library.newFile(pkg)), from);
                             Toast.makeText(this, L.t("Añadido como otro perfil: ") + name, Toast.LENGTH_SHORT).show();
                         } catch (Exception e) {
                             Toast.makeText(this, L.t("No se pudo guardar: ") + e.getMessage(), Toast.LENGTH_LONG).show();
@@ -2037,6 +2222,57 @@ public class MainActivity extends Activity {
                     .setPositiveButton(L.t("Instalar"), (d, w) -> doInstall.run())
                     .setNegativeButton(L.t("Cancelar"), null).show();
         }
+    }
+
+    /**
+     * Tras guardar un perfil: si viene de la comunidad se recuerda su origen y se cuenta la
+     * instalacion (sin cuenta, con el id aleatorio de esta instalacion); si no, se olvida el origen
+     * anterior de ese archivo.
+     */
+    private void afterInstall(java.io.File file, Community.Item from) {
+        if (from == null) {
+            CommunityLinks.forget(this, file.getName());
+            return;
+        }
+        CommunityLinks.remember(this, file, from);
+        final String id = from.id, install = CommunityLinks.installId(this);
+        new Thread(() -> {
+            try {
+                Community.registerInstall(id, install);
+            } catch (Exception ignored) {
+                // sin conexion: el contador es orientativo
+            }
+        }).start();
+    }
+
+    /**
+     * La web vuelve con gpmapper://subido/<id> tras publicar o actualizar un perfil enviado desde
+     * aqui. Solo se acepta si hace poco se envio un archivo y el perfil publicado es del mismo juego.
+     */
+    private void linkPublished(String id) {
+        final java.io.File file = CommunityLinks.takePendingUpload(this);
+        if (file == null || !Community.isId(id)) return;
+        new Thread(() -> {
+            boolean ok = false;
+            try {
+                Community.Item it = Community.profile(this, id);
+                Profile local = Profile.load(file);
+                if (it != null && it.pkg.equals(local.pkg)) {
+                    String conf = new String(java.nio.file.Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
+                    CommunityLinks.rememberOwn(this, file, it, conf);
+                    synchronized (MainActivity.class) {
+                        updatesCache = null;   // que no avise de su propia publicacion
+                    }
+                    ok = true;
+                }
+            } catch (Exception ignored) {
+                // sin conexion: se podra enlazar la proxima vez que lo suba
+            }
+            final boolean linked = ok;
+            runOnUiThread(() -> Toast.makeText(this, linked
+                    ? L.t("Perfil enlazado: la próxima vez podrás actualizarlo desde la app.")
+                    : L.t("No se pudo enlazar el perfil publicado."), Toast.LENGTH_LONG).show());
+        }).start();
     }
 
     /** Nombre visible de una app instalada, o null si no esta instalada (o no es visible). */

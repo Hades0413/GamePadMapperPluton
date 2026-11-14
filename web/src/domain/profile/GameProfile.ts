@@ -1,7 +1,25 @@
 import type { Author } from '@domain/author/Author';
 
 export type ProfileStatus = 'published' | 'hidden';
-export type ProfileSort = 'popular' | 'recent';
+export type ProfileSort = 'popular' | 'recent' | 'installs' | 'rating';
+export const PROFILE_SORTS: readonly ProfileSort[] = ['popular', 'installs', 'rating', 'recent'];
+
+/** Filtros de la lista de perfiles de un juego. */
+export interface ProfileFilters {
+  /** Texto en el titulo o la descripcion. */
+  readonly search: string;
+  /** Marca (primera palabra del modelo: «Redmi», «Samsung»...). */
+  readonly brand: string;
+  /** Modelo exacto («Redmi Note 9»). */
+  readonly model: string;
+  /** Proporcion de pantalla (lado largo / corto) o null. */
+  readonly ratio: number | null;
+}
+
+/** Marca de un modelo: su primera palabra. */
+export function brandOf(model: string): string {
+  return model.trim().split(/\s+/)[0] ?? '';
+}
 
 export const TITLE_MIN = 3;
 export const TITLE_MAX = 60;
@@ -29,9 +47,22 @@ export interface GameProfileSummary {
   readonly deviceModel: string | null;
   readonly bindingCount: number;
   readonly likeCount: number;
+  /** Instalaciones desde la app y respuestas «¿te funcionó?» (orientativos). */
+  readonly installCount: number;
+  readonly worksYes: number;
+  readonly worksNo: number;
   readonly status: ProfileStatus;
   readonly createdAt: Date;
   readonly updatedAt: Date;
+}
+
+/** Votos minimos para mostrar el porcentaje «funciona» (con menos no es fiable). */
+export const MIN_VOTES = 3;
+
+/** Porcentaje (0-100) de quienes dicen que les funciona, o null si aun hay pocos votos. */
+export function worksShare(p: Pick<GameProfileSummary, 'worksYes' | 'worksNo'>): number | null {
+  const total = p.worksYes + p.worksNo;
+  return total < MIN_VOTES ? null : Math.round((p.worksYes * 100) / total);
 }
 
 /** Resultado de dar o quitar «me gusta»: estado final y total exacto en ese momento. */

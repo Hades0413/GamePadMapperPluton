@@ -1,5 +1,7 @@
-import type { NewProfile, ProfileChanges, ProfileRepository, ScreenRatio } from '@application/ports/ProfileRepository';
-import type { GameProfile, GameProfileSummary, LikeResult, ProfileSort } from '@domain/profile/GameProfile';
+import type { NewProfile, ProfileChanges, ProfileRepository } from '@application/ports/ProfileRepository';
+import type {
+  GameProfile, GameProfileSummary, LikeResult, ProfileFilters, ProfileSort,
+} from '@domain/profile/GameProfile';
 import { AppError } from '@domain/shared/AppError';
 import type { ReportReason } from '@domain/report/ReportReason';
 import type { Page, PageRequest } from '@domain/shared/Page';
@@ -20,7 +22,7 @@ export class SupabaseProfileRepository implements ProfileRepository {
   }
 
   async listByGame(
-    packageName: string, sort: ProfileSort, page: PageRequest, ratio?: ScreenRatio | null,
+    packageName: string, sort: ProfileSort, page: PageRequest, filters: ProfileFilters,
   ): Promise<Page<GameProfileSummary>> {
     const [from, to] = rangeOf(page);
     let request = this.#db
@@ -28,11 +30,31 @@ export class SupabaseProfileRepository implements ProfileRepository {
       .select(PROFILE_SUMMARY_COLUMNS)
       .eq('package', packageName)
       .eq('status', 'published');
+    // Los filtros llegan ya saneados (sin comodines ni sintaxis de PostgREST).
+    if (filters.search) request = request.or(`title.ilike.*${filters.search}*,description.ilike.*${filters.search}*`);
+    if (filters.model) request = request.ilike('device_model', filters.model.replace(/[\\%_]/g, '\\$&'));
+    else if (filters.brand) request = request.ilike('device_model', `${filters.brand.replace(/[\\%_]/g, '\\$&')} %`);
     // Misma proporcion de pantalla (2 % de margen): estos perfiles encajan tal cual.
-    if (ratio) request = request.gte('screen_ratio', +(ratio * 0.98).toFixed(3)).lte('screen_ratio', +(ratio * 1.02).toFixed(3));
+    if (filters.ratio) {
+      request = request.gte('screen_ratio', +(filters.ratio * 0.98).toFixed(3)).lte('screen_ratio', +(filters.ratio * 1.02).toFixed(3));
+    }
     if (sort === 'popular') request = request.order('like_count', { ascending: false });
+    if (sort === 'installs') request = request.order('install_count', { ascending: false });
+    if (sort === 'rating') request = request.order('works_yes', { ascending: false }).order('works_no', { ascending: true });
     const rows = parse(summaries, unwrap(await request.order('created_at', { ascending: false }).range(from, to)));
     return toPage(rows.map(toProfileSummary), page);
+  }
+
+  async listDeviceModels(packageName: string): Promise<readonly string[]> {
+    const result = await this.#db
+      .from('game_profiles')
+      .select('device_model')
+      .eq('package', packageName)
+      .eq('status', 'published')
+      .not('device_model', 'is', null)
+      .limit(100);
+    const rows = parse(z.array(z.object({ device_model: z.string() })), unwrap(result));
+    return [...new Set(rows.map((r) => r.device_model))].sort((a, b) => a.localeCompare(b));
   }
 
   async listByAuthor(authorId: string, page: PageRequest): Promise<Page<GameProfileSummary>> {
