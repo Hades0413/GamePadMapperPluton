@@ -41,6 +41,13 @@ public class ProfileTest {
         check(!p.bindings.get("RS").dpad && Profile.LOOK.equals(p.bindings.get("RS").type), "RS camara");
         check(p.bindings.containsKey("L2+A") && p.bindings.containsKey("SELECT+B"), "capas");
         check(p.bindings.containsKey("AXIS_9+"), "eje como boton");
+        check("L2".equals(p.aimButton) && Math.abs(p.aimScale - 0.4f) < 1e-4 && Math.abs(p.lookAccel - 0.5f) < 1e-4,
+                "aim_button / aim_scale / look_accel");
+        check(p.matchesController("Xbox Wireless Controller") && !p.matchesController("DualSense"), "controller");
+        check(Math.abs(p.rumble - 0.3f) < 1e-4, "rumble");
+        check(Math.abs(p.gyro - 1.2f) < 1e-4 && "L2".equals(p.gyroButton) && p.gyroInvert && Math.abs(p.mouse - 0.8f) < 1e-4,
+                "gyro / gyro_button / gyro_invert / mouse");
+        check(p.bindings.containsKey("KB_W") && p.bindings.containsKey("MOUSE_LEFT"), "teclado y raton");
 
         // Ida y vuelta
         p.file = new File(tmp, "a.conf");
@@ -66,6 +73,7 @@ public class ProfileTest {
     static String dump(Profile p) {
         List<String> out = new ArrayList<>();
         for (Profile.Binding b : p.bindings.values()) {
+            if (Profile.isNonRootInput(b.key)) continue;   // teclado y raton: solo sin root
             // gpmapper: toque rapido = macro de 1 paso; rafaga = macro de N pasos
             String t = Profile.QUICK.equals(b.type) || Profile.BURST.equals(b.type) ? "macro" : b.type;
             StringBuilder sb = new StringBuilder(String.format(Locale.ROOT, "%s %s %.0f %.0f", b.key, t, b.x, b.y));
@@ -76,6 +84,10 @@ public class ProfileTest {
             if (Profile.BURST.equals(b.type)) sb.append(' ').append(b.count);
             out.add(sb.toString());
         }
+        Collections.sort(out);
+        out.add(String.format(Locale.ROOT, "~ajustes aim=%s %.2f accel=%.2f rumble=%.2f controller=%s",
+                p.aimButton.isEmpty() ? "-" : p.aimButton, p.aimScale, p.lookAccel, p.rumble,
+                p.controller.isEmpty() ? "-" : p.controller));
         Collections.sort(out);
         return "package " + p.pkg + "\nscreen " + Math.round(p.sw) + "x" + Math.round(p.sh) + "\n" + String.join("\n", out) + "\n";
     }

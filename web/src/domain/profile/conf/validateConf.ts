@@ -16,6 +16,7 @@ const CONTROL = /[\u0001-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
 const SETTINGS = new Set([
   'package', 'name', 'screen', 'deadzone', 'ls_deadzone', 'rs_deadzone',
   'ls_curve', 'rs_curve', 'look_y', 'look_invert', 'ls_axes', 'rs_axes',
+  'aim_button', 'aim_scale', 'look_accel', 'controller', 'rumble', 'gyro', 'gyro_button', 'gyro_invert', 'mouse',
 ]);
 
 class ConfError extends Error {}
@@ -114,6 +115,16 @@ function settingProblem(key: string, value: string): string | null {
     case 'ls_curve': case 'rs_curve': return inRange(value, 0.1, 5) ? null : 'debe estar entre 0.1 y 5';
     case 'look_y': return inRange(value, 0.1, 10) ? null : 'debe estar entre 0.1 y 10';
     case 'look_invert': return value === '0' || value === '1' ? null : 'debe ser 0 o 1';
+    case 'aim_button': case 'gyro_button':
+      return /^[A-Za-z][A-Za-z0-9_]{0,15}$/.test(value) ? null : 'debe ser un botón (por ejemplo L2)';
+    case 'aim_scale': return inRange(value, 0.1, 2) ? null : 'debe estar entre 0.1 y 2';
+    case 'look_accel': return inRange(value, 0, 3) ? null : 'debe estar entre 0 y 3';
+    case 'rumble': return inRange(value, 0, 1) ? null : 'debe estar entre 0 y 1';
+    case 'gyro': case 'mouse': return inRange(value, 0, 5) ? null : 'debe estar entre 0 y 5';
+    case 'gyro_invert': return value === '0' || value === '1' ? null : 'debe ser 0 o 1';
+    case 'controller':
+      return value.length <= 40 && /^[A-Za-z0-9 ._()+-]*$/.test(value)
+        ? null : 'nombre de mando no válido (letras, números y . _ ( ) + -, máximo 40)';
     case 'ls_axes': case 'rs_axes':
       return /^[0-9A-Fa-f]{1,2},[0-9A-Fa-f]{1,2}$/.test(value.replace(/ /g, '')) ? null : 'usa el formato 0,1';
     default: return null;

@@ -103,6 +103,11 @@ typedef struct {
     int ls_ax[2], rs_ax[2];      // ejes de los sticks (-1 = automatico)
     double ls_dz, rs_dz;         // zona muerta de cada stick (-1 = deadzone)
     double ls_curve, rs_curve;   // curva de respuesta (1 = lineal)
+    int aim_mod;                 // apuntar: mientras se mantiene este boton (-1 = no)...
+    double aim_scale;            // ...la camara va a esta velocidad
+    double look_accel;           // la camara acelera hasta (1 + look_accel) con el stick al tope
+    char controller[48];         // al conectar un mando con este nombre se activa el perfil
+    double rumble;               // vibracion del mando al pulsar (0 = no)
     binding_t *b;                // NCODES: botones + LS/RS
     binding_t ax[ABS_CNT][2];    // ejes como botones: [eje][0 = negativo, 1 = positivo]
     layer_t *layers;             // MAX_LAYERS
@@ -211,6 +216,19 @@ static char *trim(char *s) {
     return s;
 }
 
+static double clampd(double v, double lo, double hi) {
+    return v != v ? lo : v < lo ? lo : v > hi ? hi : v;
+}
+
+// ¿'hay' contiene 'aguja' sin distinguir mayusculas?
+static int contains_ci(const char *hay, const char *needle) {
+    size_t n = strlen(needle);
+    if (!n) return 0;
+    for (; *hay; hay++)
+        if (!strncasecmp(hay, needle, n)) return 1;
+    return 0;
+}
+
 static void free_profile(profile_t *p) {
     if (p->b)
         for (int c = 0; c < NCODES; c++) free(p->b[c].steps);
@@ -276,6 +294,8 @@ static int load_profile(const char *path, profile_t *p) {
     p->ls_ax[0] = p->ls_ax[1] = p->rs_ax[0] = p->rs_ax[1] = -1;
     p->ls_dz = p->rs_dz = -1;
     p->ls_curve = p->rs_curve = 1;
+    p->aim_mod = -1;
+    p->aim_scale = 0.5;
     p->b = calloc(NCODES, sizeof(binding_t));
     p->layers = calloc(MAX_LAYERS, sizeof(layer_t));
     p->is_mod = calloc(NCODES, 1);
@@ -309,6 +329,19 @@ static int load_profile(const char *path, profile_t *p) {
         if (!strcasecmp(key, "rs_deadzone")) { p->rs_dz = atof(val); continue; }
         if (!strcasecmp(key, "ls_curve")) { p->ls_curve = atof(val); continue; }
         if (!strcasecmp(key, "rs_curve")) { p->rs_curve = atof(val); continue; }
+        if (!strcasecmp(key, "aim_button")) {
+            int c = -1, ax = -1, dr = 0;
+            if (parse_token(val, &c, &ax, &dr) == 0 && c != CODE_LS && c != CODE_RS) p->aim_mod = c;
+            else logf_("%s:%d: aim_button debe ser un boton", path, ln);
+            continue;
+        }
+        if (!strcasecmp(key, "aim_scale")) { p->aim_scale = clampd(atof(val), 0.1, 2); continue; }
+        if (!strcasecmp(key, "look_accel")) { p->look_accel = clampd(atof(val), 0, 3); continue; }
+        if (!strcasecmp(key, "controller")) { snprintf(p->controller, sizeof p->controller, "%s", val); continue; }
+        if (!strcasecmp(key, "rumble")) { p->rumble = clampd(atof(val), 0, 1); continue; }
+        // Solo para el modo sin root (giroscopio y raton): aqui no aplican.
+        if (!strcasecmp(key, "gyro") || !strcasecmp(key, "gyro_button") || !strcasecmp(key, "gyro_invert")
+            || !strcasecmp(key, "mouse")) continue;
 
         // Capa: "MOD+BOTON" (el '+' final de AXIS_9+ no cuenta).
         int mod = -1;
@@ -324,6 +357,8 @@ static int load_profile(const char *path, profile_t *p) {
             key = trim(plus + 1);
         }
 
+        // Teclado (KB_*) y raton (MOUSE_*): solo los usa el modo sin root.
+        if (!strncasecmp(key, "KB_", 3) || !strncasecmp(key, "MOUSE_", 6)) continue;
         int code = -1, axis = -1, dir = 0;
         int kind = parse_token(key, &code, &axis, &dir);
         if (kind < 0) { logf_("%s:%d: boton desconocido '%s'", path, ln, key); continue; }
@@ -842,6 +877,8 @@ static void macro_clear(void) {
 
 // ------------------------------------------------------------ estado mando
 static int gfd = -1;
+static int ff_id = -1;          // vibracion: efecto subido (-1 = aun no, -2 = el mando no vibra)
+static double ff_level = -1;
 static char gname[128];
 static int grabbed = 0;
 static unsigned char keyp[NCODES];          // botones fisicos pulsados
@@ -939,7 +976,20 @@ static void setup_gamepad_axes(void) {
     logf_("ejes:%s | stick derecho=%X/%X, gatillos=%X/%X", axes, def_rs_x, def_rs_y, trig_l, trig_r);
 }
 
-static char pad_filter[64] = "";   // -g: usar solo el mando cuyo nombre contenga esto
+static char pad_filter[64] = "";
+
+// Al conectar un mando: en cada juego se activa el perfil cuyo 'controller' aparece en su nombre.
+static void activate_for_controller(void) {
+    int changed = 0;
+    for (int i = 0; i < nprofiles; i++) {
+        if (!profiles[i].controller[0] || profiles[i].is_active || !contains_ci(gname, profiles[i].controller)) continue;
+        save_active(profiles[i].pkg, base_name(profiles[i].file));
+        load_active();
+        changed = 1;
+        logf_("mando \"%s\": perfil %s para %s", gname, profile_label(&profiles[i]), profiles[i].pkg);
+    }
+    if (changed) prof_sig = dir_signature();
+}   // -g: usar solo el mando cuyo nombre contenga esto
 
 static void scan_gamepad(void) {
     DIR *d = opendir("/dev/input");
@@ -949,7 +999,8 @@ static void scan_gamepad(void) {
         if (strncmp(e->d_name, "event", 5)) continue;
         char p[64];
         snprintf(p, sizeof p, "/dev/input/%s", e->d_name);
-        int fd = open(p, O_RDONLY | O_NONBLOCK);
+        int fd = open(p, O_RDWR | O_NONBLOCK);   // escritura: solo para la vibracion
+        if (fd < 0) fd = open(p, O_RDONLY | O_NONBLOCK);
         if (fd < 0) continue;
         char nm[128] = {0};
         ioctl(fd, EVIOCGNAME(sizeof nm - 1), nm);
@@ -962,7 +1013,9 @@ static void scan_gamepad(void) {
             memset(axdown, 0, sizeof axdown);
             memset(learn_prev, 0, sizeof learn_prev);
             setup_gamepad_axes();
+            ff_id = -1;
             logf_("mando conectado: \"%s\" (%s)", gname, p);
+            activate_for_controller();
             break;
         }
         close(fd);
@@ -1028,7 +1081,35 @@ static const binding_t *resolve(int kind, int code, int axis, int dir) {
     return kind == 0 ? &cur->b[code] : &cur->ax[axis][dir];
 }
 
+// Vibracion corta del mando al pulsar (si el perfil la pide y el mando la admite).
+static void rumble_pulse(void) {
+    if (!cur || cur->rumble <= 0 || gfd < 0 || ff_id == -2) return;
+    if (ff_id < 0 || ff_level != cur->rumble) {
+        struct ff_effect e;
+        memset(&e, 0, sizeof e);
+        e.type = FF_RUMBLE;
+        e.id = ff_id >= 0 ? ff_id : -1;
+        e.u.rumble.strong_magnitude = (unsigned short)(cur->rumble * 0xFFFF);
+        e.u.rumble.weak_magnitude = (unsigned short)(cur->rumble * 0xFFFF);
+        e.replay.length = 35;
+        if (ioctl(gfd, EVIOCSFF, &e) < 0) {
+            ff_id = -2;
+            logf_("el mando no admite vibracion: %s", strerror(errno));
+            return;
+        }
+        ff_id = e.id;
+        ff_level = cur->rumble;
+    }
+    struct input_event ev;
+    memset(&ev, 0, sizeof ev);
+    ev.type = EV_FF;
+    ev.code = (unsigned short)ff_id;
+    ev.value = 1;
+    if (write(gfd, &ev, sizeof ev) < 0 && errno == EBADF) ff_id = -2;
+}
+
 static void press_action(const binding_t *b, runtime_t *r) {
+    rumble_pulse();
     r->b = b;
     r->active = 1;
     r->slot = -1;
@@ -1208,6 +1289,21 @@ static void apply_stick(int code) {
     }
 }
 
+// Multiplicador de la camara: apuntar (aim_button) y aceleracion con el stick al tope.
+static long long look_full_since[2];
+static double look_speed(int code, double vx, double vy) {
+    double m = 1;
+    if (cur->aim_mod >= 0 && pressed(cur->aim_mod)) m *= cur->aim_scale;
+    int i = code == CODE_RS;
+    if (cur->look_accel > 0 && vx * vx + vy * vy >= 0.81) {
+        long long n = now_ms();
+        if (!look_full_since[i]) look_full_since[i] = n;
+        double k = (n - look_full_since[i]) / 600.0;
+        m *= 1 + cur->look_accel * (k > 1 ? 1 : k);
+    } else look_full_since[i] = 0;
+    return m;
+}
+
 // Camara: arrastre continuo mientras el stick esta inclinado.
 static void look_tick(int code, double dt_ticks) {
     const binding_t *b = &cur->b[code];
@@ -1227,8 +1323,9 @@ static void look_tick(int code, double dt_ticks) {
         return;
     }
     double ys = cur->look_y * (cur->look_invert ? -1 : 1);
-    r->cx += vx * b->r * dt_ticks;
-    r->cy += vy * b->r * ys * dt_ticks;
+    double m = look_speed(code, vx, vy);
+    r->cx += vx * b->r * m * dt_ticks;
+    r->cy += vy * b->r * ys * m * dt_ticks;
     double dx = r->cx - b->x, dy = r->cy - b->y, lim = (cur->sw < cur->sh ? cur->sw : cur->sh) * 0.28;
     int out = r->cx < 0 || r->cy < 0 || r->cx >= cur->sw || r->cy >= cur->sh;
     if (out || dx * dx + dy * dy > lim * lim) {  // demasiado lejos: levantar y volver al centro
@@ -1421,6 +1518,10 @@ static int check_profile(const char *path) {
     verbose = 1;
     if (load_profile(path, &p) != 0) { fprintf(stderr, "no se pudo leer %s\n", path); return 1; }
     printf("package %s\nscreen %.0fx%.0f\n", p.pkg, p.sw, p.sh);
+    char ab[16];
+    printf("~ajustes aim=%s %.2f accel=%.2f rumble=%.2f controller=%s\n",
+           p.aim_mod >= 0 ? code_name(p.aim_mod, ab, sizeof ab) : "-", p.aim_scale, p.look_accel, p.rumble,
+           p.controller[0] ? p.controller : "-");
     char nb[16], kb[64];
     for (int c = 0; c < NCODES; c++) dump_binding(code_name(c, nb, sizeof nb), &p.b[c]);
     for (int a = 0; a < ABS_CNT; a++)

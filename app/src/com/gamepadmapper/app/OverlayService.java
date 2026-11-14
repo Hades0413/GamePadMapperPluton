@@ -139,6 +139,7 @@ public class OverlayService extends Service {
     private TextView toolbarInfo;
     private Button saveButton;
     private View addPanel;
+    private View settingsPanel;
     private LinearLayout editPanel, banner;
     private int offX, offY;          // posicion de la ventana del editor en pantalla
 
@@ -1641,6 +1642,7 @@ public class OverlayService extends Service {
         undoButton = null;
         undo.clear();
         addPanel = null;
+        settingsPanel = null;
         editPanel = null;
         banner = null;
         gameCache.clear();  // puede haber un perfil nuevo
@@ -1680,6 +1682,7 @@ public class OverlayService extends Service {
         toolbarInfo.setEllipsize(android.text.TextUtils.TruncateAt.END);
         toolbar.addView(toolbarInfo);
         toolbar.addView(button(L.t("+ Botón"), v -> toggleAddPanel()));
+        toolbar.addView(button("⚙", C_NEUTRAL, v -> toggleSettings()));
         undoButton = button("↶", C_NEUTRAL, v -> doUndo());
         undoButton.setEnabled(!undo.isEmpty());
         toolbar.addView(undoButton);
@@ -1713,6 +1716,7 @@ public class OverlayService extends Service {
         if (toolbar != null) toolbar.setAlpha(a);
         if (editPanel != null) editPanel.setAlpha(a);
         if (addPanel != null) addPanel.setAlpha(a);
+        if (settingsPanel != null) settingsPanel.setAlpha(a);
         if (banner != null) banner.setAlpha(a);
     }
 
@@ -1778,6 +1782,107 @@ public class OverlayService extends Service {
         int[] sz = measure(card);
         int w = Math.min(sz[0], editor.getWidth() - dp(32));
         editor.addView(card, spotParams(bestSpot(w, sz[1], null, toolbar)));
+        makeDraggable(card, grip, null);
+    }
+
+    // ------------------------------------------------------------------ ajustes del perfil
+
+    private static final String[] AIM_CHOICES = {"", "L2", "R2", "L1", "R1"};
+
+    private static String nextChoice(String cur) {
+        for (int i = 0; i < AIM_CHOICES.length; i++) {
+            if (AIM_CHOICES[i].equals(cur)) return AIM_CHOICES[(i + 1) % AIM_CHOICES.length];
+        }
+        return AIM_CHOICES[0];
+    }
+
+    /** Apuntar, aceleracion, giroscopio, raton, vibracion y mando del perfil. */
+    private void toggleSettings() {
+        if (settingsPanel != null) {
+            editor.removeView(settingsPanel);
+            settingsPanel = null;
+            return;
+        }
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setBackground(roundBg(C_CARD, 18));
+        card.setPadding(dp(8), dp(4), dp(8), dp(8));
+        LinearLayout head = row();
+        TextView grip = handle();
+        head.addView(grip);
+        head.addView(text(L.t("Ajustes del perfil"), 14, Color.WHITE, true), new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        head.addView(button("✕", C_NEUTRAL, v -> toggleSettings()));
+        card.addView(head);
+        Runnable reopen = () -> {
+            toggleSettings();
+            toggleSettings();
+        };
+
+        // Apuntar
+        card.addView(text(L.t("Cámara"), 13, Color.WHITE, true));
+        card.addView(button(profile.aimButton.isEmpty() ? L.t("Botón para apuntar: ninguno")
+                : L.t("Botón para apuntar: ") + Profile.label(profile.aimButton), C_NEUTRAL, v -> {
+            profile.aimButton = nextChoice(profile.aimButton);
+            markDirty();
+            reopen.run();
+        }));
+        if (!profile.aimButton.isEmpty()) {
+            addSlider(card, L.t("Velocidad al apuntar: %d%%"), 10, 100, Math.round(profile.aimScale * 100),
+                    v -> profile.aimScale = v / 100f);
+        }
+        addSlider(card, L.t("Aceleración con el stick al tope: %d%%"), 0, 200, Math.round(profile.lookAccel * 100),
+                v -> profile.lookAccel = v / 100f);
+
+        // Giroscopio y raton (solo sin root)
+        card.addView(text(L.t("Giroscopio y ratón (solo sin root)"), 13, Color.WHITE, true));
+        addSlider(card, L.t("Giroscopio: %d%% (0 = apagado)"), 0, 300, Math.round(profile.gyro * 100),
+                v -> profile.gyro = v / 100f);
+        card.addView(button(profile.gyroButton.isEmpty() ? L.t("Giroscopio: siempre activo")
+                : L.t("Giroscopio: solo mientras mantienes ") + Profile.label(profile.gyroButton), C_NEUTRAL, v -> {
+            profile.gyroButton = nextChoice(profile.gyroButton);
+            markDirty();
+            reopen.run();
+        }));
+        card.addView(button(profile.gyroInvert ? L.t("✓ Giroscopio vertical invertido") : L.t("Invertir giroscopio vertical"),
+                profile.gyroInvert ? C_OK : C_NEUTRAL, v -> {
+                    profile.gyroInvert = !profile.gyroInvert;
+                    markDirty();
+                    reopen.run();
+                }));
+        addSlider(card, L.t("Ratón como cámara: %d%% (0 = apagado)"), 0, 300, Math.round(profile.mouse * 100),
+                v -> profile.mouse = v / 100f);
+        card.addView(text(L.t("Teclas y botones del ratón: «+ Botón» › «Detectar» y pulsa la tecla o el botón."),
+                11, C_TEXT2, false));
+
+        // Mando
+        card.addView(text(L.t("Mando"), 13, Color.WHITE, true));
+        addSlider(card, L.t("Vibración al pulsar: %d%% (0 = apagada)"), 0, 100, Math.round(profile.rumble * 100),
+                v -> profile.rumble = v / 100f);
+        String pad = Profile.cleanController(PadService.lastPad == null ? "" : PadService.lastPad);
+        if (!profile.controller.isEmpty()) {
+            card.addView(button(L.t("✓ Se activa con el mando «") + profile.controller + L.t("» (quitar)"), C_OK, v -> {
+                profile.controller = "";
+                markDirty();
+                reopen.run();
+            }));
+        } else if (!pad.isEmpty()) {
+            card.addView(button(L.t("Activar este perfil al conectar «") + pad + "»", C_NEUTRAL, v -> {
+                profile.controller = pad;
+                markDirty();
+                reopen.run();
+            }));
+        } else {
+            card.addView(text(L.t("Pulsa un botón del mando para poder asociarle este perfil."), 11, C_TEXT2, false));
+        }
+
+        settingsPanel = card;
+        card.setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT));
+        fitToScreen(card, 0, 1);
+        int[] sz = measure(card);
+        int w = Math.min(sz[0], editor.getWidth() - dp(32));
+        editor.addView(card, spotParams(bestSpot(w, Math.min(sz[1], editor.getHeight() - dp(32)), null, toolbar)));
         makeDraggable(card, grip, null);
     }
 

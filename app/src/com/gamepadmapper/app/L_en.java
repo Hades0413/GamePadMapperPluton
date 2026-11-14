@@ -712,5 +712,32 @@ final class L_en {
         m.put("Prueba terminada: el mando vuelve a tocar la pantalla", "Test finished: the gamepad touches the screen again");
         m.put("Modo prueba: pulsa botones y mueve los sticks; nada toca el juego. Vuelve a la burbuja para terminar.", "Test mode: press buttons and move the sticks; nothing touches the game. Go back to the bubble to finish.");
         m.put("modo prueba no disponible: ", "test mode not available: ");
+        m.put("Clic izq.", "L click");
+        m.put("Clic der.", "R click");
+        m.put("Clic rueda", "Wheel click");
+        m.put("Rueda ↑", "Wheel ↑");
+        m.put("Rueda ↓", "Wheel ↓");
+        m.put("Ratón ", "Mouse ");
+        m.put("Ajustes del perfil", "Profile settings");
+        m.put("Botón para apuntar: ninguno", "Aim button: none");
+        m.put("Botón para apuntar: ", "Aim button: ");
+        m.put("Velocidad al apuntar: %d%%", "Speed while aiming: %d%%");
+        m.put("Aceleración con el stick al tope: %d%%", "Acceleration at full stick: %d%%");
+        m.put("Giroscopio y ratón (solo sin root)", "Gyro and mouse (no root only)");
+        m.put("Giroscopio: %d%% (0 = apagado)", "Gyro: %d%% (0 = off)");
+        m.put("Giroscopio: siempre activo", "Gyro: always on");
+        m.put("Giroscopio: solo mientras mantienes ", "Gyro: only while holding ");
+        m.put("✓ Giroscopio vertical invertido", "✓ Vertical gyro inverted");
+        m.put("Invertir giroscopio vertical", "Invert vertical gyro");
+        m.put("Ratón como cámara: %d%% (0 = apagado)", "Mouse as camera: %d%% (0 = off)");
+        m.put("Teclas y botones del ratón: «+ Botón» › «Detectar» y pulsa la tecla o el botón.", "Keys and mouse buttons: «+ Button» › «Detect» and press the key or button.");
+        m.put("Vibración al pulsar: %d%% (0 = apagada)", "Vibration on press: %d%% (0 = off)");
+        m.put("✓ Se activa con el mando «", "✓ Turns on with the gamepad «");
+        m.put("» (quitar)", "» (remove)");
+        m.put("Activar este perfil al conectar «", "Turn on this profile when connecting «");
+        m.put("Pulsa un botón del mando para poder asociarle este perfil.", "Press a gamepad button to link this profile to it.");
+        m.put("mando ", "gamepad ");
+        m.put(": perfil ", ": profile ");
+        m.put("este teléfono no tiene giroscopio", "this phone has no gyroscope");
     }
 }
