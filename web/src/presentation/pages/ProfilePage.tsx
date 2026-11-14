@@ -126,6 +126,7 @@ export default function ProfilePage() {
 
       <section className="space-y-3">
         <ProfileActions profile={profile} />
+        <ButtonLink to={paths.editorFor(profile.id)} variant="ghost" size="sm">{t('Abrir en el editor visual')}</ButtonLink>
         <p className="text-xs text-muted">
           {canShare()
             ? <>{t('«Abrir en la app» muestra el perfil en Gamepad Mapper Plutón para instalarlo; «Enviar a la app» lo comparte por el menú de Android.')} </>
