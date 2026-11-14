@@ -529,7 +529,8 @@ pub fn abrir_enlace(app: tauri::AppHandle, cual: String) -> Resultado<()> {
         "web" => "https://hades0413.github.io/GamePadMapperPluton/",
         "repositorio" => "https://github.com/Hades0413/GamePadMapperPluton",
         "versiones" => "https://github.com/Hades0413/GamePadMapperPluton/releases/tag/escritorio-latest",
-        "licencia" => "https://polyformproject.org/licenses/noncommercial/1.0.0/",
+        // El texto que rige el proyecto (la URL de PolyForm con barra final daba 404).
+        "licencia" => "https://github.com/Hades0413/GamePadMapperPluton/blob/main/LICENSE",
         _ => return Err(ErrorValidacion::Nombre.to_string()),
     };
     app.opener().open_url(url, None::<&str>).map_err(texto)
