@@ -1,0 +1,1 @@
+App más ligera. Al compartir, exportar o subir un perfil se guardan el modelo del móvil, el mando y la pantalla.

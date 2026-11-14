@@ -1,6 +1,6 @@
 # Compila y prueba en cada push con los mismos comandos que en local (Makefile).
 # Al crear un tag v* firma el APK y lo sube al Release (con los modulos y gpm-escritorio para
-# Linux y Windows); el AAB (Google Play) queda como
+# Linux y Windows) y el AAB a Google Play (prueba interna, job «play»); el AAB queda tambien como
 # artefacto descargable de la ejecucion.
 # Secretos necesarios SOLO para firmar (Settings > Secrets and variables > Actions):
 #   KEYSTORE_BASE64    contenido de keystore/gamepad-mapper.jks en base64
@@ -126,3 +126,27 @@ jobs:
             gh release create "$tag" --repo "$REPO" --title "Gamepad Mapper Plutón $ver" --notes "Ver README."
           gh release upload "$tag" --repo "$REPO" --clobber dist/GamepadMapperPluton-"$ver".apk dist/gamepad_mapper-v*.zip dist/gamepadplus_touchfix-v*.zip \
             dist/gpm-escritorio-linux-x86_64 dist/gpm-escritorio-windows-x86_64.exe
+
+  # Sube el AAB firmado a Google Play (pista «Prueba interna») en los tags v*. La clave de la
+  # cuenta de servicio es un secreto del entorno «google-play», que solo pueden usar los tags v*.
+  # Sin el secreto (forks) no hace nada. Notas de la version: play/novedades/<idioma>.txt.
+  play:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-24.04
+    environment: google-play
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: app-firmada
+          path: dist
+      - name: Subir a Google Play (prueba interna)
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          PLAY_TRACK: internal
+        run: |
+          if [ -z "$PLAY_SERVICE_ACCOUNT_JSON" ]; then
+            echo "::notice::Sin PLAY_SERVICE_ACCOUNT_JSON: no se sube a Google Play."; exit 0
+          fi
+          python3 -I scripts/play-subir.py "$(ls dist/GamepadMapper-*.aab | head -n1)"
