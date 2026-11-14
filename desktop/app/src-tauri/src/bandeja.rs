@@ -19,6 +19,7 @@ fn nombre_salida(t: TipoSalida) -> &'static str {
         TipoSalida::Xbox360 => "Xbox 360",
         TipoSalida::Dualshock4 => "DualShock 4",
         TipoSalida::Switchpro => "Switch Pro",
+        TipoSalida::Toques => "Toques / Touch",
     }
 }
 
