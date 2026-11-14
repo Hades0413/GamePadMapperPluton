@@ -12,7 +12,7 @@ export default function PrivacyPage() {
   return (
     <article className="prose-page">
       <h1 className="text-3xl font-bold text-ink">{t('Política de privacidad')}</h1>
-      <p>{t('Última actualización: 13 de noviembre de 2026.')}</p>
+      <p>{t('Última actualización: 14 de noviembre de 2026.')}</p>
       <p>
         {tr('Esta política cubre la app <b>Gamepad Mapper Plutón</b> para Android (<c>com.gamepadmapper.app</c>) y esta web. Las dos son un proyecto personal de Hades0413, gratuito y sin anuncios.')}
       </p>
@@ -53,6 +53,9 @@ export default function PrivacyPage() {
         <li>{t('Guardamos qué perfiles te gustan y los reportes que haces (estos solo los ve la moderación).')}</li>
         <li>
           {tr('Los <b>comentarios</b> que escribes son públicos, con tu nombre de GitHub. Puedes borrarlos cuando quieras (y también el autor del perfil y la moderación). Se borran con tu cuenta.')}
+        </li>
+        <li>
+          {tr('Los <b>mandos</b> que envías (la línea SDL: nombre e identificador del modelo de mando y sus botones) se publican con tu nombre de usuario de GitHub <b>solo después de que los apruebe la moderación</b>. Puedes borrar los pendientes o rechazados cuando quieras; se borran con tu cuenta.')}
         </li>
         <li>
           {t('La sesión se guarda en el almacenamiento local de tu navegador. No usamos cookies de seguimiento, publicidad ni analíticas.')}

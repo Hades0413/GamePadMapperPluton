@@ -16,6 +16,7 @@ export function Footer() {
           <p className="text-xs">{t('Los nombres e iconos de los juegos pertenecen a sus respectivos dueños y se muestran solo para identificarlos.')}</p>
         </div>
         <nav className="flex flex-wrap gap-x-5 gap-y-2" aria-label={t('Pie de página')}>
+          <Link to={paths.controllers} className="hover:text-ink">{t('Mandos')}</Link>
           <Link to={paths.rules} className="hover:text-ink">{t('Normas')}</Link>
           <Link to={paths.privacy} className="hover:text-ink">{t('Privacidad')}</Link>
           <ExternalLink href={links.repoUrl} className="hover:text-ink">{t('Código en GitHub')}</ExternalLink>

@@ -9,6 +9,8 @@ SHELL := bash
 .DEFAULT_GOAL := help
 .ONESHELL:
 
+comma := ,
+
 # Version de la app (de app/AndroidManifest.xml)
 VERSION := $(shell sed -n 's/.*android:versionName="\([^"]*\)".*/\1/p' app/AndroidManifest.xml)
 CODE    := $(shell sed -n 's/.*android:versionCode="\([^"]*\)".*/\1/p' app/AndroidManifest.xml)
@@ -60,6 +62,33 @@ escritorio-windows: ## Version de escritorio para Windows -> dist/gpm-escritorio
 	@./desktop/build.sh windows
 
 escritorio: escritorio-linux escritorio-windows ## Las dos versiones de escritorio
+
+# =============================================================================
+# APP DE ESCRITORIO (desktop/app/: Tauri v2, Rust + React; necesita Rust, Node 22+ y pnpm)
+# =============================================================================
+
+app-escritorio-ui: ## App de escritorio: interfaz (tipos, lint, pruebas) -> desktop/app/ui/dist
+	@cd desktop/app/ui && pnpm install --frozen-lockfile && pnpm check && pnpm build
+
+app-escritorio-dev: ## App de escritorio: interfaz en el navegador con un mando simulado (http://localhost:1420)
+	@cd desktop/app/ui && pnpm install --frozen-lockfile && pnpm dev
+
+app-escritorio-base: ## App de escritorio: refresca la base de mandos incluida (ultima SDL_GameControllerDB, Windows y Linux)
+	@sha="$$(curl -sf https://api.github.com/repos/mdqinc/SDL_GameControllerDB/commits/master | python3 -c 'import json,sys;d=json.load(sys.stdin);print(d["sha"], d["commit"]["committer"]["date"][:10])')"
+	@[ -n "$$sha" ] || { echo "No se pudo consultar la ultima version"; exit 1; }
+	@set -- $$sha; curl -sfL "https://raw.githubusercontent.com/mdqinc/SDL_GameControllerDB/$$1/gamecontrollerdb.txt" -o /tmp/gpm-gcdb.txt
+	@set -- $$sha; { echo "# SDL GameControllerDB (https://github.com/mdqinc/SDL_GameControllerDB), licencia zlib (ver LICENCIA-SDL_GameControllerDB.txt)."; \
+	  echo "# Copia incluida en la app: commit $$1 ($$2), solo Windows y Linux."; echo "# Para actualizarla: make app-escritorio-base"; \
+	  grep -E 'platform:(Windows|Linux),' /tmp/gpm-gcdb.txt; } > desktop/app/nucleo/datos/gamecontrollerdb.txt
+	@echo "Base incluida: $$(grep -c '^[0-9a-f]' desktop/app/nucleo/datos/gamecontrollerdb.txt) mandos. Revisa y haz commit (y actualiza la fecha en la prueba de basedatos.rs)."
+
+app-escritorio-test: ## App de escritorio: pruebas del nucleo (y con un mando virtual uinput si hay permiso)
+	@cd desktop/app && cargo test -p gpm-nucleo
+	@if [ -w /dev/uinput ]; then cd desktop/app && cargo test -p gpm-nucleo --test uinput -- --ignored; \
+		else echo "⚠️  sin permiso en /dev/uinput: se salta la prueba con mando virtual"; fi
+
+app-escritorio: app-escritorio-ui ## App de escritorio (Tauri) -> desktop/app/target/release/bundle/
+	@cd desktop/app && ui/node_modules/.bin/tauri build $(if $(filter Windows_NT,$(OS)),--bundles nsis,--bundles deb$(comma)appimage)
 
 apk: module ## APK firmado para instalar por USB -> dist/GamepadMapper-<version>.apk
 	@./app/build.sh apk

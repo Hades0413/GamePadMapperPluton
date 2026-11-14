@@ -9,6 +9,7 @@ export const paths = {
   upload: (packageName?: string) => (packageName ? `/subir?juego=${encodeURIComponent(packageName)}` : '/subir'),
   editor: '/editor',
   editorFor: (profileId: string) => `/editor?perfil=${profileId}`,
+  controllers: '/mandos',
   account: '/cuenta',
   admin: '/admin',
   privacy: '/privacidad',

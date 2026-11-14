@@ -14,6 +14,7 @@ export default function RulesPage() {
         <li>{tr('No hacer <b>spam</b>: ni publicidad, ni enlaces, ni el mismo perfil muchas veces.')}</li>
         <li>{t('No subir como tuyo el trabajo de otra persona sin su permiso.')}</li>
         <li>{t('No usar los perfiles para hacer trampas que el juego prohíba.')}</li>
+        <li>{tr('En los <b>mandos</b>: envía solo líneas de mandos que hayas configurado y probado, con el nombre real del mando.')}</li>
         <li>{tr('En los <b>comentarios</b>: ayuda o da tu opinión sobre el perfil; nada de insultos, spam ni datos personales.')}</li>
       </ul>
 
@@ -23,6 +24,7 @@ export default function RulesPage() {
         <li>{tr('Un perfil con <b>3 reportes se oculta automáticamente</b> hasta que lo revisa la moderación.')}</li>
         <li>{tr('La moderación puede ocultar o borrar perfiles y <b>bloquear</b> cuentas que incumplan estas normas.')}</li>
         <li>{t('Para evitar abusos hay límites: 10 perfiles nuevos al día y 100 en total por cuenta, y 30 comentarios al día.')}</li>
+        <li>{t('Los mandos enviados no son públicos hasta que los aprueba la moderación. Límites: 10 envíos al día y 20 pendientes por cuenta.')}</li>
         <li>{t('El autor de un perfil puede borrar los comentarios de su perfil; la moderación, cualquiera.')}</li>
       </ul>
 
