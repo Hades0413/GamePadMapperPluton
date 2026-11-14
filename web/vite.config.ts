@@ -2,8 +2,9 @@
 import { fileURLToPath, URL } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react-swc';
-import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { createHash } from 'node:crypto';
+import { copyFileSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { join, relative } from 'node:path';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 
 const dir = (path: string) => fileURLToPath(new URL(path, import.meta.url));
@@ -19,7 +20,62 @@ const dir = (path: string) => fileURLToPath(new URL(path, import.meta.url));
  *    al compartir el enlace. Los nuevos funcionan igualmente (por 404.html) hasta la proxima
  *    publicacion de la web (el flujo «web» la rehace cada hora).
  */
-const STATIC_ROUTES = ['juegos', 'subir', 'cuenta', 'mandos', 'admin', 'privacidad', 'normas'];
+const STATIC_ROUTES = ['juegos', 'subir', 'cuenta', 'mandos', 'buscar', 'avisos', 'admin', 'privacidad', 'normas'];
+
+/**
+ * Web instalable (PWA): manifiesto y service worker, generados al compilar con la ruta base
+ * (GitHub Pages: /GamePadMapperPluton/). El service worker solo guarda archivos estaticos propios
+ * (ver pwa/sw.template.js): nunca HTML ni nada de Supabase.
+ */
+const THEME = '#110a17';
+const PWA_FILES = ['manifest.webmanifest', 'favicon.svg', 'icon-fg.png', 'pwa-192.png', 'pwa-512.png', 'pwa-maskable-512.png'];
+
+function manifest(base: string): string {
+  return JSON.stringify({
+    id: base,
+    name: 'Gamepad Mapper Plutón',
+    short_name: 'Plutón',
+    description: 'Perfiles de mando para juegos táctiles de Android: busca, descarga y comparte.',
+    lang: 'es',
+    dir: 'ltr',
+    start_url: base,
+    scope: base,
+    display: 'standalone',
+    orientation: 'any',
+    background_color: THEME,
+    theme_color: THEME,
+    categories: ['games', 'utilities'],
+    icons: [
+      { src: `${base}pwa-192.png`, sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: `${base}pwa-512.png`, sizes: '512x512', type: 'image/png', purpose: 'any' },
+      { src: `${base}pwa-maskable-512.png`, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+      { src: `${base}favicon.svg`, sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+    ],
+  }, null, 2);
+}
+
+/** Archivos de una carpeta (rutas relativas con /). */
+function filesIn(folder: string): string[] {
+  return readdirSync(folder).flatMap((name) => {
+    const path = join(folder, name);
+    return statSync(path).isDirectory() ? filesIn(path).map((f) => `${name}/${f}`) : [name];
+  });
+}
+
+/** Service worker con la version (huella de los archivos) y la lista de estaticos a guardar. */
+function serviceWorker(outDir: string, base: string): string {
+  const assets = filesIn(join(outDir, 'assets')).filter((f) => /\.(js|css|woff2?|png|svg|webp|jpg)$/.test(f)).map((f) => `assets/${f}`);
+  const files = [...assets, ...PWA_FILES].sort();
+  const hash = createHash('sha256');
+  for (const f of files) hash.update(f).update(readFileSync(join(outDir, f)));
+  const version = hash.digest('hex').slice(0, 12);
+  const precache = files.map((f) => `${base}${f}`);
+  const template = readFileSync(dir('./pwa/sw.template.js'), 'utf8');
+  return template
+    .replace("'__VERSION__'", JSON.stringify(version))
+    .replace("'__BASE__'", JSON.stringify(base))
+    .replace('__PRECACHE__', JSON.stringify(precache));
+}
 
 const esc = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -75,6 +131,8 @@ function securityAndSpa(supabaseUrl: string, anonKey: string): Plugin {
     "style-src 'self'",
     "img-src 'self' data: blob: https:",
     "font-src 'self'",
+    "worker-src 'self'",
+    "manifest-src 'self'",
     `connect-src 'self' ${supabase} ${supabase.replace(/^http/, 'ws')}`,
     "frame-src 'none'",
     "object-src 'none'",
@@ -83,16 +141,23 @@ function securityAndSpa(supabaseUrl: string, anonKey: string): Plugin {
     ...(local ? [] : ['upgrade-insecure-requests']),
   ].join('; ');
   let outDir = 'dist';
+  let base = '/';
   return {
     name: 'gpm-security-spa',
     apply: 'build',
     configResolved(config) {
       outDir = config.build.outDir;
+      base = config.base;
     },
     transformIndexHtml: () => [
       { tag: 'meta', attrs: { 'http-equiv': 'Content-Security-Policy', content: csp }, injectTo: 'head-prepend' },
+      { tag: 'link', attrs: { rel: 'manifest', href: `${base}manifest.webmanifest` }, injectTo: 'head' },
+      { tag: 'link', attrs: { rel: 'apple-touch-icon', href: `${base}apple-touch-icon.png` }, injectTo: 'head' },
     ],
     async closeBundle() {
+      writeFileSync(join(outDir, 'manifest.webmanifest'), manifest(base));
+      writeFileSync(join(outDir, 'sw.js'), serviceWorker(outDir, base));
+      this.info(`service worker: ${relative(outDir, join(outDir, 'sw.js'))}`);
       const index = join(outDir, 'index.html');
       copyFileSync(index, join(outDir, '404.html'));
       for (const route of STATIC_ROUTES) {

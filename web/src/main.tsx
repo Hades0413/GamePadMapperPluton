@@ -2,6 +2,7 @@ import { createServices } from '@app/container';
 import { readEnv } from '@infrastructure/config/env';
 import { App, ConfigError } from '@presentation/App';
 import { getLang } from '@presentation/i18n/lang';
+import { setupPwa } from '@presentation/lib/pwa';
 import { translate } from '@presentation/i18n/translate';
 import '@presentation/styles/index.css';
 import { StrictMode } from 'react';
@@ -25,6 +26,7 @@ function start(root: ReturnType<typeof createRoot>) {
   try {
     const env = readEnv();
     const basename = env.basePath.replace(/\/$/, '') || '/';
+    setupPwa(env.basePath);
     root.render(
       <StrictMode>
         <App services={createServices(env)} basename={basename} />
