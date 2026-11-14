@@ -19,9 +19,10 @@ use evdev::{
     AbsoluteAxisCode, Device, EventSummary, FFEffect, FFEffectCode, FFEffectData, FFEffectKind, FFReplay, FFTrigger,
     KeyCode,
 };
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::io;
 use std::os::fd::AsRawFd;
+use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
@@ -72,8 +73,9 @@ struct Abierto {
 pub struct FuenteEvdev {
     dir: PathBuf,
     abiertos: Vec<Abierto>,
-    /// Nodos que no son mandos: no se vuelven a abrir mientras existan.
-    descartados: HashSet<PathBuf>,
+    /// Nodos que no son mandos (ruta e inodo): no se vuelven a abrir mientras sigan siendo el
+    /// mismo nodo (si se desconecta y otro dispositivo reutiliza la ruta, el inodo cambia).
+    descartados: HashMap<PathBuf, u64>,
     siguiente_id: u32,
     ultimo_escaneo: Option<Instant>,
 }
@@ -94,7 +96,7 @@ impl FuenteEvdev {
         Self {
             dir: dir.to_owned(),
             abiertos: Vec::new(),
-            descartados: HashSet::new(),
+            descartados: HashMap::new(),
             siguiente_id: 0,
             ultimo_escaneo: None,
         }
@@ -103,7 +105,7 @@ impl FuenteEvdev {
     fn escanear(&mut self, eventos: &mut Vec<Evento>) {
         self.ultimo_escaneo = Some(Instant::now());
         let Ok(entradas) = std::fs::read_dir(&self.dir) else { return };
-        let mut presentes = HashSet::new();
+        let mut presentes = HashMap::new();
         let mut rutas: Vec<PathBuf> = entradas
             .filter_map(Result::ok)
             .map(|e| e.path())
@@ -111,8 +113,11 @@ impl FuenteEvdev {
             .collect();
         rutas.sort_by_key(|p| numero_evento(p));
         for ruta in rutas {
-            presentes.insert(ruta.clone());
-            if self.descartados.contains(&ruta) || self.abiertos.iter().any(|a| a.info.ruta == ruta.to_string_lossy()) {
+            let inodo = std::fs::metadata(&ruta).map(|m| m.ino()).unwrap_or(0);
+            presentes.insert(ruta.clone(), inodo);
+            if self.descartados.get(&ruta) == Some(&inodo)
+                || self.abiertos.iter().any(|a| a.info.ruta == ruta.to_string_lossy())
+            {
                 continue;
             }
             match Device::open(&ruta) {
@@ -125,13 +130,13 @@ impl FuenteEvdev {
                     Err(e) => log::warn!("no se pudo preparar {}: {e}", ruta.display()),
                 },
                 Ok(_) => {
-                    self.descartados.insert(ruta);
+                    self.descartados.insert(ruta, inodo);
                 }
                 // Sin permiso (aun): se reintenta en el siguiente escaneo.
                 Err(_) => {}
             }
         }
-        self.descartados.retain(|p| presentes.contains(p));
+        self.descartados.retain(|p, inodo| presentes.get(p) == Some(inodo));
     }
 
     fn preparar(&mut self, dev: Device, ruta: &Path) -> io::Result<Abierto> {

@@ -16,7 +16,7 @@ export function crearBackendTauri(): Backend {
       const canal = new Channel<Instantanea>();
       canal.onmessage = cb;
       void invoke('suscribir_entrada', { id, canal });
-      return () => void invoke('cancelar_suscripcion', { id });
+      return () => void invoke('cancelar_suscripcion', { canal: canal.id });
     },
     obtenerMapeo: (id) => invoke('obtener_mapeo', { id }),
     editarMapeo: (id, mapeo) => invoke('editar_mapeo', { id, mapeo }),

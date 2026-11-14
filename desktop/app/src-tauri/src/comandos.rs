@@ -51,9 +51,11 @@ pub fn suscribir_entrada(estado: Estado, id: IdMando, canal: Channel<Instantanea
 }
 
 #[tauri::command]
-pub fn cancelar_suscripcion(estado: Estado, id: IdMando) {
+/// Cancela por canal (no por mando): asi una suscripcion nueva al mismo mando no se pierde si la
+/// cancelacion de la anterior llega despues.
+pub fn cancelar_suscripcion(estado: Estado, canal: u32) {
     let mut s = bloquear(&estado.suscripcion);
-    if s.as_ref().is_some_and(|(actual, _)| *actual == id) {
+    if s.as_ref().is_some_and(|(_, actual)| actual.id() == canal) {
         *s = None;
     }
 }
