@@ -1,3 +1,4 @@
+import { ControllerBadge } from '../components/profile/ControllerBadge';
 import { recentlyBroken, worksShare, type GameProfileSummary } from '@domain/profile/GameProfile';
 import { validateConf } from '@domain/profile/conf/validateConf';
 import { useMemo, useState } from 'react';
@@ -107,6 +108,7 @@ export default function ProfilePage() {
           </p>
           <ProfileStats profile={profile} />
           <div className="flex flex-wrap items-center gap-1.5">
+            <ControllerBadge model={profile.controllerModel} type={profile.controllerType} />
             {profile.featuredAt && <span className="rounded-md bg-warning/20 px-2 py-0.5 text-xs font-medium text-warning">★ {t('Destacado')}</span>}
             <TagChips tags={profile.tags} />
             {isOwner && <TagEditor profileId={profile.id} tags={profile.tags} />}

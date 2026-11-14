@@ -8,7 +8,7 @@ import { keys } from './keys';
 export function useGameProfiles(packageName: string, sort: ProfileSort, filters: ProfileFilters) {
   const { listGameProfiles } = useUseCases();
   return useInfiniteQuery({
-    queryKey: [...keys.gameProfiles(packageName, sort), filters.search, filters.brand, filters.model, filters.ratio?.toFixed(3) ?? '', filters.tag ?? ''],
+    queryKey: [...keys.gameProfiles(packageName, sort), filters.search, filters.brand, filters.model, filters.ratio?.toFixed(3) ?? '', filters.tag ?? '', filters.controllerType ?? ''],
     queryFn: ({ pageParam }) => listGameProfiles.execute({ packageName, sort, ...filters, page: pageParam }),
     initialPageParam: 0,
     getNextPageParam: (last, pages) => (last.hasMore ? pages.length : undefined),
@@ -20,7 +20,7 @@ export function useGameProfiles(packageName: string, sort: ProfileSort, filters:
 export function useSearchProfiles(sort: ProfileSort, filters: ProfileFilters) {
   const { searchProfiles } = useUseCases();
   return useInfiniteQuery({
-    queryKey: [...keys.searchProfiles(sort), filters.search, filters.brand, filters.model, filters.ratio?.toFixed(3) ?? '', filters.tag ?? ''],
+    queryKey: [...keys.searchProfiles(sort), filters.search, filters.brand, filters.model, filters.ratio?.toFixed(3) ?? '', filters.tag ?? '', filters.controllerType ?? ''],
     queryFn: ({ pageParam }) => searchProfiles.execute({ sort, ...filters, page: pageParam }),
     initialPageParam: 0,
     getNextPageParam: (last, pages) => (last.hasMore ? pages.length : undefined),

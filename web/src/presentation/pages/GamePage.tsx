@@ -34,10 +34,11 @@ export default function GamePage() {
     model: filters.model,
     ratio: filters.onlyMine && myScreen ? ratioOf(myScreen) : null,
     tag: filters.tag,
+    controllerType: filters.controllerType,
   });
   const items = profiles.data?.pages.flatMap((p) => p.items) ?? [];
   const liked = useLiked(items.map((p) => p.id));
-  const filtering = !!(filters.search || filters.brand || filters.model || filters.onlyMine || filters.tag);
+  const filtering = !!(filters.search || filters.brand || filters.model || filters.onlyMine || filters.tag || filters.controllerType);
   useDocumentTitle(game.data?.name, game.data ? t('Perfiles de mando para {name}.', { name: game.data.name }) : undefined);
 
   if (game.isPending) return <PageSpinner />;

@@ -19,11 +19,36 @@ export const gameRow = z.object({
   last_profile_at: z.string().nullable(),
 });
 
-export const PROFILE_SUMMARY_COLUMNS =
+const LEGACY_SUMMARY_COLUMNS =
   'id,package,title,description,screen_w,screen_h,device_model,binding_count,like_count,install_count,works_yes,works_no,recent_yes,recent_no,tags,featured_at,status,created_at,updated_at,' +
   // Se nombra la relacion: perfiles y autores tambien se unen por los me gusta y los reportes.
   'author:authors!game_profiles_author_id_fkey(id,username,avatar_url),game:games(name)';
+export const PROFILE_SUMMARY_COLUMNS = `controller_model,controller_type,${LEGACY_SUMMARY_COLUMNS}`;
 export const PROFILE_COLUMNS = `${PROFILE_SUMMARY_COLUMNS},conf`;
+
+/**
+ * Columnas del mando (migracion 20261114080000). Si la web se publica antes de aplicar la
+ * migracion, la primera lectura falla con 42703 («la columna no existe»): desde entonces se lee
+ * sin ellas (y sin el filtro «Tipo de mando») en vez de romper todas las listas.
+ */
+let withoutController = false;
+export const hasControllerColumns = () => !withoutController;
+export const summaryColumns = () => (withoutController ? LEGACY_SUMMARY_COLUMNS : PROFILE_SUMMARY_COLUMNS);
+export const profileColumns = () => `${summaryColumns()},conf`;
+
+const missingController = (error: unknown) => {
+  const e = (typeof error === 'object' && error !== null ? error : {}) as { code?: string; message?: string };
+  return e.code === '42703' && /controller_/.test(e.message ?? '');
+};
+
+/** Ejecuta una lectura de perfiles; si faltan las columnas del mando, la repite sin ellas. */
+export async function readProfiles<T>(run: () => PromiseLike<{ data: T; error: unknown }>): Promise<{ data: T; error: unknown }> {
+  const first = await run();
+  if (!missingController(first.error)) return first;
+  // (Tambien si otra lectura en paralelo ya lo habia descubierto: esta salio con las columnas.)
+  withoutController = true;
+  return run();
+}
 export const GAME_COLUMNS = 'package,name,icon_url,background_url,profile_count,last_profile_at';
 export const AUTHOR_COLUMNS = 'id,username,avatar_url';
 
@@ -35,6 +60,8 @@ export const profileSummaryRow = z.object({
   screen_w: z.number().int(),
   screen_h: z.number().int(),
   device_model: z.string().nullable(),
+  controller_model: z.string().nullable().optional(),
+  controller_type: z.string().nullable().optional(),
   binding_count: z.number().int(),
   like_count: z.number().int(),
   install_count: z.number().int(),
@@ -105,7 +132,8 @@ export const commentRow = z.object({
   created_at: z.string(),
   author: authorRow.nullable(),
 });
-export const COMMENT_COLUMNS = 'id,profile_id,body,created_at,author:authors(id,username,avatar_url)';
+// Se nombra la relacion: comentarios y autores tambien se unen por los reportes de comentarios.
+export const COMMENT_COLUMNS = 'id,profile_id,body,created_at,author:authors!profile_comments_author_id_fkey(id,username,avatar_url)';
 
 export const versionRow = z.object({
   version: z.number().int(),

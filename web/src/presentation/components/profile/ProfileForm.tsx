@@ -1,11 +1,12 @@
 import {
-  checkDescription, checkDeviceModel, checkGameName, checkPackage, checkTitle,
+  checkControllerModel, checkDescription, checkDeviceModel, checkGameName, checkPackage, checkTitle,
 } from '@application/profiles/profileInput';
+import { readConfMeta } from '@domain/profile/conf/confMeta';
 import { CONF_MAX_BYTES } from '@domain/profile/conf/ProfileConfig';
 import { validateConf } from '@domain/profile/conf/validateConf';
-import { DESCRIPTION_MAX, TITLE_MAX } from '@domain/profile/GameProfile';
+import { CONTROLLER_MAX, DESCRIPTION_MAX, DEVICE_MAX, TITLE_MAX } from '@domain/profile/GameProfile';
 import { isValidPackage } from '@domain/game/Game';
-import { useDeferredValue, useMemo, useState, type FormEvent } from 'react';
+import { useDeferredValue, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useT } from '../../i18n/I18nContext';
 import { ratioLabel } from '../../lib/device';
 import { readSmallTextFile } from '../../lib/files';
@@ -16,6 +17,7 @@ import { Alert } from '../ui/Alert';
 import { Button } from '../ui/Button';
 import { Field } from '../ui/Field';
 import { PreviewPanel } from './PreviewPanel';
+import { VisualPlacement } from '../editor/VisualPlacement';
 
 export interface ProfileFormValues {
   conf: string;
@@ -25,6 +27,8 @@ export interface ProfileFormValues {
   description: string;
   /** Modelo del telefono ('' = sin indicar). */
   deviceModel: string;
+  /** Mando con el que se hizo ('' = sin indicar). */
+  controllerModel: string;
 }
 
 /** Devuelve el mensaje de error de una validacion, o null si es correcta. */
@@ -57,9 +61,20 @@ export function ProfileForm({
   const game = useGame(packageOk ? values.packageName.trim() : undefined);
   const existingGame = game.data ?? null;
   const fill = useFillGameImages();
+  const [visual, setVisual] = useState(false);
+  // Campos que ha escrito el usuario: los datos del perfil (# modelo, # mando) nunca los pisan.
+  const typed = useRef({ deviceModel: false, controllerModel: false });
 
   const set = (patch: Partial<ProfileFormValues>) => {
     const next = { ...values, ...patch };
+    if (patch.deviceModel !== undefined) typed.current.deviceModel = true;
+    if (patch.controllerModel !== undefined) typed.current.controllerModel = true;
+    // Comentarios que pone la app al compartir: rellenan el modelo y el mando si estan vacios.
+    if (patch.conf !== undefined) {
+      const meta = readConfMeta(patch.conf);
+      if (meta.model && !typed.current.deviceModel && !next.deviceModel.trim()) next.deviceModel = meta.model;
+      if (meta.controller && !typed.current.controllerModel && !next.controllerModel.trim()) next.controllerModel = meta.controller;
+    }
     // El paquete sale del propio perfil: se rellena solo al pegarlo o cargarlo.
     if (patch.conf !== undefined && mode === 'create') {
       const result = validateConf(patch.conf);
@@ -83,6 +98,7 @@ export function ProfileForm({
     title: problem(() => checkTitle(values.title)),
     description: problem(() => checkDescription(values.description)),
     deviceModel: problem(() => checkDeviceModel(values.deviceModel)),
+    controllerModel: problem(() => checkControllerModel(values.controllerModel)),
   };
   const valid = Object.values(errors).every((e) => e === null);
   const show = (field: keyof typeof errors) => (submitted || (field === 'conf' && values.conf.trim() !== '') ? errors[field] : null);
@@ -92,6 +108,18 @@ export function ProfileForm({
     setSubmitted(true);
     if (valid) onSubmit({ ...values, gameName: existingGame?.name ?? values.gameName });
   };
+
+  // Colocar botones visualmente: el perfil vuelve al campo del formulario al aplicar.
+  if (visual && parsed?.ok) {
+    return (
+      <VisualPlacement initial={parsed.config} conf={values.conf} gameBackground={existingGame?.backgroundUrl ?? null}
+        onCancel={() => setVisual(false)}
+        onApply={(conf) => {
+          set({ conf });
+          setVisual(false);
+        }} />
+    );
+  }
 
   return (
     <form onSubmit={submit} className="grid gap-8 lg:grid-cols-2" noValidate>
@@ -116,6 +144,9 @@ export function ProfileForm({
             }} />
           </label>
           {fileError && <span className="text-xs text-danger">{fileError}</span>}
+          <Button variant="secondary" size="sm" disabled={!parsed?.ok || deferredConf !== values.conf} onClick={() => setVisual(true)}>
+            {t('Colocar botones visualmente')}
+          </Button>
         </div>
 
         <Field label={t('Paquete del juego')} error={show('packageName')}
@@ -179,8 +210,17 @@ export function ProfileForm({
             ? t('Ayuda a quien tenga el mismo móvil a encontrar tu perfil. Pantalla del perfil: {w}×{h} ({ratio}).', { w: parsed.config.screen.width, h: parsed.config.screen.height, ratio: ratioLabel(parsed.config.screen) })
             : t('Ayuda a quien tenga el mismo móvil a encontrar tu perfil.')}>
           {(a) => (
-            <input {...a} className="input" value={values.deviceModel} maxLength={60} placeholder={t('Ej.: Redmi Note 9')}
+            <input {...a} className="input" value={values.deviceModel} maxLength={DEVICE_MAX} placeholder={t('Ej.: Redmi Note 9')}
               autoComplete="off" onChange={(e) => set({ deviceModel: e.target.value })} />
+          )}
+        </Field>
+
+        <Field label={t('Mando (opcional)')} error={show('controllerModel')}
+          hint={t('El mando con el que lo hiciste (Xbox, DualSense, 8BitDo…). Se rellena solo si el perfil viene de la app.')}>
+          {(a) => (
+            <input {...a} className="input" value={values.controllerModel} maxLength={CONTROLLER_MAX}
+              placeholder={t('Ej.: Xbox Wireless Controller')} autoComplete="off" spellCheck={false}
+              onChange={(e) => set({ controllerModel: e.target.value })} />
           )}
         </Field>
 

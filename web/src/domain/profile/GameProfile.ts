@@ -16,7 +16,14 @@ export interface ProfileFilters {
   readonly ratio: number | null;
   /** Etiqueta ('' = todas). */
   readonly tag?: string;
+  /** Tipo de mando ('' = todos). */
+  readonly controllerType?: ControllerType | '';
 }
+
+/** Tipos de mando (lista cerrada; los calcula la base de datos con private.controller_type). */
+export const CONTROLLER_TYPES = ['xbox', 'playstation', 'nintendo', '8bitdo', 'generico', 'otro'] as const;
+export type ControllerType = (typeof CONTROLLER_TYPES)[number];
+export const isControllerType = (t: string): t is ControllerType => (CONTROLLER_TYPES as readonly string[]).includes(t);
 
 /** Etiquetas de perfil (lista cerrada; mismas que private.valid_tags). */
 export const PROFILE_TAGS = [
@@ -45,6 +52,15 @@ export function isValidDeviceModel(value: string): boolean {
   return value.length >= DEVICE_MIN && value.length <= DEVICE_MAX && DEVICE_PATTERN.test(value);
 }
 
+export const CONTROLLER_MIN = 2;
+export const CONTROLLER_MAX = 60;
+const CONTROLLER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9 ._()+/:-]*$/;
+
+/** Mando valido («Wireless Controller (054c:05c4)»; mismas reglas que private.clean_controller). */
+export function isValidControllerModel(value: string): boolean {
+  return value.length >= CONTROLLER_MIN && value.length <= CONTROLLER_MAX && CONTROLLER_PATTERN.test(value);
+}
+
 /** Perfil tal como aparece en un listado (sin el texto .conf). */
 export interface GameProfileSummary {
   readonly id: string;
@@ -56,6 +72,9 @@ export interface GameProfileSummary {
   readonly screen: { readonly width: number; readonly height: number };
   /** Modelo del telefono con el que se hizo (opcional). */
   readonly deviceModel: string | null;
+  /** Mando con el que se hizo (opcional) y su tipo (lo calcula la base de datos). */
+  readonly controllerModel: string | null;
+  readonly controllerType: ControllerType | null;
   readonly bindingCount: number;
   readonly likeCount: number;
   /** Instalaciones desde la app y respuestas «¿te funcionó?» (orientativos). */

@@ -1,4 +1,4 @@
-import type { ProfileSort } from '@domain/profile/GameProfile';
+import { isControllerType, type ProfileSort } from '@domain/profile/GameProfile';
 import { useSearchParams } from 'react-router';
 import type { FilterState } from '../components/profile/ProfileFiltersBar';
 
@@ -9,10 +9,10 @@ function sortFromParam(v: string | null): ProfileSort {
   return found ? found[0] : 'popular';
 }
 
-export const NO_FILTERS: Partial<FilterState> = { search: '', brand: '', model: '', onlyMine: false, tag: '' };
+export const NO_FILTERS: Partial<FilterState> = { search: '', brand: '', model: '', onlyMine: false, tag: '', controllerType: '' };
 
 /**
- * Filtros de una lista de perfiles guardados en la URL (?q=&orden=&marca=&modelo=&pantalla=&etiqueta=):
+ * Filtros de una lista de perfiles guardados en la URL (?q=&orden=&marca=&modelo=&pantalla=&etiqueta=&mando=):
  * se pueden compartir y el boton atras funciona. Los valores se sanean despues, en el caso de uso.
  */
 export function useProfileFilterParams(hasScreen: boolean): [FilterState, (patch: Partial<FilterState>) => void] {
@@ -24,6 +24,7 @@ export function useProfileFilterParams(hasScreen: boolean): [FilterState, (patch
     model: (params.get('modelo') ?? '').slice(0, 60),
     onlyMine: params.get('pantalla') === 'mia' && hasScreen,
     tag: (params.get('etiqueta') ?? '').slice(0, 30),
+    controllerType: ((v) => (isControllerType(v) ? v : ''))(params.get('mando') ?? ''),
   };
   const update = (patch: Partial<FilterState>) => setParams((p) => {
     const next = new URLSearchParams(p);
@@ -35,6 +36,7 @@ export function useProfileFilterParams(hasScreen: boolean): [FilterState, (patch
     put('modelo', v.model);
     put('pantalla', v.onlyMine ? 'mia' : '');
     put('etiqueta', v.tag);
+    put('mando', v.controllerType);
     return next;
   }, { replace: true });
   return [filters, update];
