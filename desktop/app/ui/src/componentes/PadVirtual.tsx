@@ -14,6 +14,7 @@ export function PadVirtual({ pad, salida, compacto = false }: { pad: EstadoPad |
     ls: pad.ls, rs: pad.rs, l2: pad.l2, r2: pad.r2,
   };
   const tipo = salida?.tipo ?? 'ninguna';
+  const etiquetas = Object.fromEntries((['A', 'B', 'X', 'Y', 'L1', 'R1', 'L2', 'R2'] as const).map((c) => [c, nombreEnSalida(c, tipo)]));
   const pulsados = pad ? SALIDAS.filter((s) => pulsadoPad(pad, s)) : [];
   return (
     <section className="card p-4" aria-label={t('Mando virtual')}>
@@ -26,7 +27,7 @@ export function PadVirtual({ pad, salida, compacto = false }: { pad: EstadoPad |
         </span>
       </div>
       <div className={compacto ? 'mx-auto max-w-[18rem]' : 'mx-auto max-w-[26rem]'}>
-        <DiagramaMando estado={estandar} seleccionado={null} pedido={null} asignados={TODOS_ASIGNADOS} onElegir={() => undefined} soloLectura />
+        <DiagramaMando estado={estandar} seleccionado={null} pedido={null} asignados={TODOS_ASIGNADOS} onElegir={() => undefined} soloLectura etiquetas={etiquetas} />
       </div>
       <p className="mt-1 min-h-5 truncate text-center font-mono text-xs text-muted">
         {pulsados.length > 0 ? pulsados.map((s) => nombreEnSalida(s, tipo)).join(' · ') : t('Nada pulsado')}

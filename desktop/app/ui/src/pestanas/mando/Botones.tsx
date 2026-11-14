@@ -24,13 +24,13 @@ export function FilasAcciones({ entradas, m, info, actividadDe, onCambiar }: {
       {entradas.map((e) => {
         const nivel = actividadDe(e);
         const fuente = esControl(e) ? m.asignaciones[e] : undefined;
+        // Entradas crudas: «b11» y debajo el nombre del sistema (BTN_TRIGGER_HAPPY1...).
+        const detalle = esControl(e) ? (fuente ? describirFuente(fuente, info) : t('sin asignar')) : describirFuente(e, info).split(' · ')[1];
         return (
-          <li key={e} className="grid grid-cols-[6.5rem_0.5rem_minmax(0,1fr)] items-center gap-3 py-1.5">
-            <span className="min-w-0">
-              <span className="block truncate text-sm font-semibold">{nombreEntrada(e, info)}</span>
-              {esControl(e) && (
-                <span className="block truncate font-mono text-[11px] text-muted">{fuente ? describirFuente(fuente, info) : t('sin asignar')}</span>
-              )}
+          <li key={e} className="grid grid-cols-[7.5rem_0.5rem_minmax(0,1fr)] items-center gap-3 py-1.5">
+            <span className="min-w-0" title={describirFuente(e, info)}>
+              <span className="block truncate text-sm font-semibold">{esControl(e) ? nombreEntrada(e, info) : e}</span>
+              {detalle && <span className="block truncate font-mono text-[11px] text-muted">{detalle}</span>}
             </span>
             <span className="size-2 rounded-full bg-accent transition-opacity" style={{ opacity: 0.15 + nivel * 0.85 }} title={t('Actividad')} />
             <SelectorAccion accion={accionDe(m, e)} macros={m.macros} salida={m.salida} etiqueta={nombreEntrada(e, info)}

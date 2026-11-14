@@ -3,6 +3,7 @@ import { crearBackend, enTauri } from './backend';
 import { AvisoFlotante } from './componentes/AvisoFlotante';
 import { Cabecera, type Pestana } from './componentes/Cabecera';
 import type { Opciones, Tema } from './dominio/tipos';
+import { enlaceInicial } from './hooks/enlaceInicial';
 import { useAviso } from './hooks/useAviso';
 import { useI18n } from './i18n/contexto';
 import { PestanaAcercaDe } from './pestanas/AcercaDe';
@@ -19,7 +20,10 @@ function aplicarTema(tema: Tema) {
 export function App() {
   const backend = useMemo(() => crearBackend(), []);
   const { t, cambiarIdioma } = useI18n();
-  const [pestana, setPestana] = useState<Pestana>('mandos');
+  const [pestana, setPestana] = useState<Pestana>(() => {
+    const p = enlaceInicial().pestana;
+    return p === 'juegos' || p === 'opciones' || p === 'acerca' ? p : 'mandos';
+  });
   const [pausado, setPausado] = useState(false);
   const { aviso, ejecutar } = useAviso();
 

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Backend } from '../backend';
 import type { EstadoMapeo, IdMando, InfoApp, InfoMando, Instantanea } from '../dominio/tipos';
+import { enlaceInicial } from './enlaceInicial';
 
 /** Mandos conectados (con conexion en caliente) y el elegido. */
 export function useMandos(backend: Backend) {
   const [mandos, setMandos] = useState<InfoMando[]>([]);
-  const [elegido, setElegido] = useState<IdMando | null>(null);
+  const [elegido, setElegido] = useState<IdMando | null>(() => enlaceInicial().mando);
   const [app, setApp] = useState<InfoApp | null>(null);
 
   const refrescarApp = useCallback(() => backend.info().then(setApp), [backend]);

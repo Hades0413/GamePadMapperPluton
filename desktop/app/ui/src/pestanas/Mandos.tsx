@@ -10,6 +10,7 @@ import { PanelAsistente } from '../componentes/PanelAsistente';
 import { LIMITES, NOMBRE_SALIDA } from '../dominio/configuracion';
 import { ERROR } from '../dominio/errores';
 import type { Control, EstadoMapeo, MapeoMando, OrigenMapeo } from '../dominio/tipos';
+import { enlaceInicial } from '../hooks/enlaceInicial';
 import { useMandoActivo, useMandos } from '../hooks/useMandos';
 import { useT } from '../i18n/contexto';
 import { Botones } from './mando/Botones';
@@ -48,7 +49,7 @@ export function PestanaMandos({ backend, ejecutar }: Props) {
   const { mandos, activo, elegir, app, refrescarApp } = useMandos(backend);
   const { estado, setEstado, vivo } = useMandoActivo(backend, activo);
   const [seleccionado, setSeleccionado] = useState<Control | null>(null);
-  const [sub, setSub] = useState<SubPestana>('general');
+  const [sub, setSub] = useState<SubPestana>(() => (enlaceInicial().sub as SubPestana | undefined) ?? 'general');
   const [dialogo, setDialogo] = useState<Dialogo>(null);
   const [presetPegado, setPresetPegado] = useState('');
   const archivoPreset = useRef<HTMLInputElement>(null);
