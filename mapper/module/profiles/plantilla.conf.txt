@@ -1,0 +1,43 @@
+# PLANTILLA - copia este archivo como <juego>.conf y editalo.
+# (Esta plantilla termina en .txt para que NO se cargue.)
+#
+# package = nombre del paquete del juego (Ajustes > Apps > el juego, o en mapper.log)
+# screen  = tamano de pantalla con el que tomaste las coordenadas, tal como se ve
+#           (horizontal: 2340x1080, vertical: 1080x2340 en el Redmi Note 9)
+# deadzone = zona muerta de los sticks, 0.0 a 0.9
+#
+# Acciones:
+#   tap X Y              toca (X,Y) mientras el boton este pulsado
+#   stick X Y RADIO      para LS/RS: mantiene un dedo en (X,Y) y lo arrastra
+#                        hasta RADIO px segun la inclinacion (joysticks en pantalla)
+#   look X Y VELOCIDAD   para LS/RS: arrastre continuo para mover la camara
+#                        (juegos de disparos); VELOCIDAD en px por fotograma
+#   none                 sin accion
+#
+# Botones: A B X Y L1 R1 L2 R2 L3 R3 SELECT START HOME
+#          DPAD_UP DPAD_DOWN DPAD_LEFT DPAD_RIGHT  LS RS
+#          BTN_xxx   cualquier otro boton del mando (codigo hex)
+#          AXIS_x+ / AXIS_x-   un eje usado como boton (gatillos analogicos, etc.)
+#          (lo mas facil: en la app, "Detectar" y pulsar el boton en el mando)
+#
+# Opcionales:
+#   ls_axes = 0,1        ejes (hex) del stick izquierdo si tu mando usa otros
+#   rs_axes = 2,5        ejes (hex) del stick derecho
+#   look_y = 1.0         sensibilidad vertical de la camara (1.0 = igual que la horizontal)
+#   look_invert = 0      1 = invertir el eje Y de la camara
+#
+# Para obtener coordenadas: Opciones de desarrollador > "Ubicacion del puntero",
+# toca el boton del juego y apunta X/Y (con el juego en la orientacion en que se juega).
+
+package = com.ejemplo.juego
+screen = 2340x1080
+deadzone = 0.18
+
+A  = tap 2000 900
+B  = tap 2150 750
+X  = tap 1800 750
+Y  = tap 2000 600
+R2 = tap 2000 400
+L2 = tap 350 400
+LS = stick 400 750 150
+RS = look 1500 500 14

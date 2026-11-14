@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Icono del juego de demostracion: un coche rojo en la carretera al atardecer -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:fillColor="#FFFFC86B" android:pathData="M54,30m-12,0a12,12 0,1 1,24 0a12,12 0,1 1,-24 0" />
+    <path android:fillColor="#FF3A2559" android:pathData="M18,50 L36,34 L50,46 L62,32 L90,50 Z" />
+    <path android:fillColor="#FF2B2B33" android:pathData="M50,50 L58,50 L80,90 L28,90 Z" />
+    <path android:fillColor="#FFE53950" android:pathData="M40,66 h28 a6,6 0 0 1 6,6 v8 a4,4 0 0 1 -4,4 h-32 a4,4 0 0 1 -4,-4 v-8 a6,6 0 0 1 6,-6 z" />
+    <path android:fillColor="#FF7FD3FF" android:pathData="M45,58 h18 a5,5 0 0 1 5,5 v5 h-28 v-5 a5,5 0 0 1 5,-5 z" />
+</vector>

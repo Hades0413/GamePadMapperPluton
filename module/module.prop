@@ -1,0 +1,6 @@
+id=gamepadplus_touchfix
+name=GamepadPlus V3 Touch Fix
+version=v1
+versionCode=1
+author=Hades0413
+description=Hace que Android trate el mando GamepadPlus V3 (modo Home+A, vendor 1949 / product 0402) como pantalla tactil, con coordenadas en la orientacion actual de la pantalla.

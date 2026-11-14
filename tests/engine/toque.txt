@@ -1,0 +1,5 @@
+# Toque simple: A apoya el dedo mientras se mantiene
+pulsa A
+espera 50
+suelta A
+espera 20

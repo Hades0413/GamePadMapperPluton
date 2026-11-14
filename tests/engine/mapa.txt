@@ -1,0 +1,54 @@
+# Traduccion del mando con <base>/mando.map (mandos de la comunidad / SDL GameControllerDB)
+mapa mapa.map
+rango Z -32768 32767
+rango RZ -32768 32767
+rango THROTTLE -100 100
+# El B crudo es la A del perfil (toque) y la A cruda es la B (toque rapido)
+pulsa B
+espera 50
+suelta B
+espera 20
+pulsa A
+espera 50
+suelta A
+espera 20
+# Cruceta en un eje: medio eje -> DPAD_LEFT / DPAD_RIGHT (mueve el joystick con dpad)
+eje THROTTLE -100
+syn
+espera 30
+eje THROTTLE 0
+syn
+espera 30
+eje THROTTLE 90
+syn
+espera 30
+eje THROTTLE 0
+syn
+espera 30
+# El RX crudo lo tapa la regla ABS_2 = ABS_RX: no hace nada
+eje RX 32767
+syn
+espera 30
+eje RX 0
+syn
+espera 30
+# Stick derecho (camara) en Z / RZ, vertical invertida
+eje Z 32767
+syn
+espera 40
+eje Z 0
+syn
+espera 40
+eje RZ -32768
+syn
+espera 40
+eje RZ 0
+syn
+espera 40
+# HOME crudo = L2: con L2 mantenido, A es la capa L2+A
+pulsa HOME
+pulsa B
+espera 40
+suelta B
+suelta HOME
+espera 20

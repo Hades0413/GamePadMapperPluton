@@ -1,0 +1,17 @@
+# Actualizaciones de dependencias (seguridad y versiones) mediante pull requests a develop.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /web
+    target-branch: develop
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      dependencias-web:
+        patterns: ['*']
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: monthly

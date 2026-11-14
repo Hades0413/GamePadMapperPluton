@@ -1,0 +1,218 @@
+# App de escritorio (desktop/app/, Tauri v2): pruebas del nucleo en Rust, interfaz y paquetes para
+# Linux (.deb y AppImage) y Windows (instaladores NSIS y MSI y version portable .zip), con nombres
+# sin espacios. En main se publican en la version «escritorio-latest» de GitHub junto con
+# latest.json (actualizaciones automaticas) si el secreto TAURI_SIGNING_PRIVATE_KEY existe.
+name: escritorio-app
+
+on:
+  push:
+    branches: [main, develop]
+    paths: ['desktop/app/**', '.github/workflows/escritorio-app.yml']
+  pull_request:
+    paths: ['desktop/app/**', '.github/workflows/escritorio-app.yml']
+  workflow_dispatch:
+    inputs:
+      publicar:
+        description: 'Publicar los paquetes en la version escritorio-latest'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: escritorio-app-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  nucleo:
+    name: Nucleo (Rust)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: desktop/app
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Rust estable
+        run: |
+          rustup toolchain install stable --profile minimal --component clippy,rustfmt
+          rustup target add x86_64-pc-windows-gnu
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            desktop/app/target
+          key: nucleo-${{ runner.os }}-${{ hashFiles('desktop/app/Cargo.lock') }}
+      - name: Formato
+        run: cargo fmt --all -- --check
+      - name: Clippy y pruebas
+        run: |
+          cargo clippy -p gpm-nucleo --all-targets -- -D warnings
+          cargo test -p gpm-nucleo
+      - name: Compila para Windows (XInput, ViGEm)
+        run: cargo clippy -p gpm-nucleo --all-targets --target x86_64-pc-windows-gnu -- -D warnings
+      # Mandos virtuales: necesitan /dev/uinput y leer /dev/input (como root en el runner). Si el
+      # kernel del runner no trae uinput, no bloquea el resto.
+      - name: Pruebas con mandos virtuales (uinput)
+        continue-on-error: true
+        run: |
+          sudo modprobe uinput
+          sudo env "PATH=$PATH" CARGO_HOME="$HOME/.cargo" RUSTUP_HOME="$HOME/.rustup" \
+            cargo test -p gpm-nucleo --test uinput --test salida_uinput -- --ignored --nocapture --test-threads=1
+
+  ui:
+    name: Interfaz (React)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: desktop/app/ui
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+        with:
+          package_json_file: desktop/app/ui/package.json
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: desktop/app/ui/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Tipos, lint y pruebas
+        run: pnpm check
+      - name: Compilar
+        run: pnpm build
+
+  app:
+    name: App (${{ matrix.nombre }})
+    needs: [nucleo, ui]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - nombre: Linux
+            os: ubuntu-24.04
+            paquetes: deb,appimage
+          - nombre: Windows
+            os: windows-latest
+            paquetes: nsis,msi
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Bibliotecas de sistema de Tauri
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libwebkit2gtk-4.1-dev libssl-dev \
+            libayatana-appindicator3-dev librsvg2-dev libxdo-dev
+      - name: Rust estable
+        run: rustup toolchain install stable --profile minimal
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            desktop/app/target
+          key: app-${{ runner.os }}-${{ hashFiles('desktop/app/Cargo.lock') }}
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+        with:
+          package_json_file: desktop/app/ui/package.json
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: desktop/app/ui/pnpm-lock.yaml
+      - name: Interfaz
+        working-directory: desktop/app/ui
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+      # Con el secreto se firman los paquetes para el actualizador (.sig); sin el (forks, PR), se
+      # generan igual pero sin firma y no se publica latest.json.
+      - name: Paquetes (${{ matrix.paquetes }})
+        working-directory: desktop/app
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          firmado=()
+          if [ -n "${TAURI_SIGNING_PRIVATE_KEY:-}" ]; then
+            firmado=(--config src-tauri/tauri.firmado.json)
+          else
+            echo "::notice::Sin TAURI_SIGNING_PRIVATE_KEY: paquetes sin firma para el actualizador."
+          fi
+          ui/node_modules/.bin/tauri build --bundles ${{ matrix.paquetes }} "${firmado[@]}"
+          scripts/renombrar-paquetes.sh
+      - name: Version portable (Windows)
+        if: runner.os == 'Windows'
+        working-directory: desktop/app
+        shell: pwsh
+        run: |
+          $v = (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
+          New-Item -ItemType Directory -Force target/release/bundle/portable | Out-Null
+          Compress-Archive -Force -Path target/release/gamepad-mapper-pluton.exe `
+            -DestinationPath "target/release/bundle/portable/gamepad-mapper-pluton_${v}_x64-portable.zip"
+      - name: Guardar paquetes (descargables desde la ejecucion)
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: gamepad-mapper-pluton-escritorio-${{ matrix.nombre }}
+          path: |
+            desktop/app/target/release/bundle/deb/*.deb
+            desktop/app/target/release/bundle/appimage/*.AppImage
+            desktop/app/target/release/bundle/appimage/*.AppImage.sig
+            desktop/app/target/release/bundle/nsis/*.exe
+            desktop/app/target/release/bundle/nsis/*.exe.sig
+            desktop/app/target/release/bundle/msi/*.msi
+            desktop/app/target/release/bundle/msi/*.msi.sig
+            desktop/app/target/release/bundle/portable/*.zip
+          if-no-files-found: error
+
+  # Unico job con permiso de escritura: sube los paquetes a la version «escritorio-latest» (solo
+  # en main o a mano). latest.json apunta a ellos; la app lo consulta para actualizarse.
+  publicar:
+    name: Publicar (escritorio-latest)
+    needs: app
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.publicar)
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: gamepad-mapper-pluton-escritorio-*
+          path: paquetes
+          merge-multiple: true
+      - name: Publicar en escritorio-latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          etiqueta=escritorio-latest
+          version="$(jq -r .version desktop/app/src-tauri/tauri.conf.json)"
+          # Los artefactos llegan en subcarpetas (deb/, nsis/...): todo a una sola carpeta.
+          mkdir -p subir
+          find paquetes -type f -exec cp {} subir/ \;
+          base="https://github.com/${REPO}/releases/download/${etiqueta}"
+          if desktop/app/scripts/latest-json.sh "$version" subir "$base" > subir/latest.json; then
+            echo "latest.json:"; cat subir/latest.json
+          else
+            rm -f subir/latest.json
+            echo "::warning::Paquetes sin firmar (falta el secreto TAURI_SIGNING_PRIVATE_KEY): sin latest.json no hay actualizaciones automaticas."
+          fi
+          gh release view "$etiqueta" --repo "$REPO" > /dev/null 2>&1 || \
+            gh release create "$etiqueta" --repo "$REPO" --latest=false \
+              --title "Gamepad Mapper Plutón — escritorio" \
+              --notes "App de escritorio (Linux y Windows). Se actualiza en cada cambio de main; la app se actualiza sola con latest.json."
+          # Fuera los paquetes de versiones anteriores (los nombres llevan la version).
+          gh release view "$etiqueta" --repo "$REPO" --json assets -q '.assets[].name' | while read -r archivo; do
+            [ -f "subir/$archivo" ] || gh release delete-asset "$etiqueta" "$archivo" --repo "$REPO" -y
+          done
+          gh release upload "$etiqueta" --repo "$REPO" --clobber subir/*

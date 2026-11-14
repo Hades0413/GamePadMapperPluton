@@ -1,0 +1,15 @@
+name: Idea o mejora
+description: Propón algo nuevo para la app, el módulo o la web
+labels: [mejora]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: Qué te gustaría
+    validations:
+      required: true
+  - type: textarea
+    id: para
+    attributes:
+      label: Para qué sirve
+      description: Qué problema resuelve o en qué juego lo necesitas.

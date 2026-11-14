@@ -1,0 +1,18 @@
+     0.000 perfil com.prueba.motor 2400x1080 -> destino 2400x1080
+    20.000 abajo s=0 x=344.00 y=828.00
+    20.000 sync tocando=1
+    20.000 mover s=0 x=456.00 y=828.00
+    20.000 sync tocando=1
+    50.000 mover s=0 x=398.69 y=773.31
+    50.000 sync tocando=1
+    80.000 arriba s=0
+    80.000 sync tocando=0
+   110.000 abajo s=0 x=344.00 y=828.00
+   110.000 sync tocando=1
+   110.000 mover s=0 x=344.00 y=716.00
+   110.000 sync tocando=1
+   140.000 mover s=0 x=423.20 y=748.80
+   140.000 sync tocando=1
+   170.000 arriba s=0
+   170.000 sync tocando=0
+   200.000 fin

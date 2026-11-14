@@ -1,0 +1,6 @@
+# Salidas de compilacion de la app de escritorio (Tauri)
+target/
+node_modules/
+ui/dist/
+src-tauri/gen/
+*.tsbuildinfo

@@ -1,0 +1,8 @@
+# Gamepad Mapper Plutón (app de escritorio): crear mandos virtuales (Xbox 360, DualShock 4,
+# Switch Pro) y el teclado virtual con /dev/uinput.
+# - grupo «input» con lectura y escritura;
+# - y el usuario con sesión abierta (uaccess: tiene que ir antes de 73-seat-late.rules, por eso 70-).
+# Lo instala el paquete .deb. A mano:
+#   sudo install -m 644 70-gamepad-mapper-pluton.rules /etc/udev/rules.d/
+#   sudo udevadm control --reload-rules && sudo udevadm trigger --subsystem-match=misc --sysname-match=uinput
+KERNEL=="uinput", SUBSYSTEM=="misc", MODE="0660", GROUP="input", TAG+="uaccess", OPTIONS+="static_node=uinput"

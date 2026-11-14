@@ -1,0 +1,19 @@
+import { useT } from '../../i18n/I18nContext';
+
+export function Spinner({ className = 'size-6' }: { className?: string }) {
+  return (
+    <svg className={`animate-spin ${className}`} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeOpacity="0.25" strokeWidth="3" />
+      <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function PageSpinner() {
+  const t = useT();
+  return (
+    <div className="flex justify-center py-20 text-primary" role="status" aria-label={t('Cargando')}>
+      <Spinner className="size-8" />
+    </div>
+  );
+}

@@ -1,0 +1,19 @@
+# Capa: L2 (gatillo Z) es modificador; L2+A y L2+X usan otra accion
+eje Z 255
+syn
+espera 30
+pulsa A
+espera 40
+suelta A
+espera 10
+pulsa X
+espera 60
+suelta X
+espera 10
+eje Z 0
+syn
+espera 30
+pulsa A
+espera 40
+suelta A
+espera 20

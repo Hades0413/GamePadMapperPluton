@@ -1,0 +1,26 @@
+{
+  "name": "Gamepad Mapper - perfiles de la comunidad",
+  "presets": [
+    {
+      "name": "Downhill Revived",
+      "package": "app.downhillrevived",
+      "file": "downhill.conf",
+      "author": "gamepad-mapper",
+      "description": "Botones de accion, gatillos, joystick y cruceta (horizontal)."
+    },
+    {
+      "name": "Brawl Stars",
+      "package": "com.supercell.brawlstars",
+      "file": "com.supercell.brawlstars.conf",
+      "author": "Hades0413",
+      "description": "Ataque, súper, gadget e hipercarga; joystick con cruceta. Mantén el ataque mientras te mueves para apuntar."
+    },
+    {
+      "name": "Genshin Impact",
+      "package": "com.miHoYo.GenshinImpact",
+      "file": "com.miHoYo.GenshinImpact.conf",
+      "author": "Hades0413",
+      "description": "Joystick con cruceta, cámara con el stick derecho, gatillos y capas con L1 para las habilidades."
+    }
+  ]
+}

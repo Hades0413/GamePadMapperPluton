@@ -1,0 +1,23 @@
+# Ejes como botones con histeresis (GAS = AXIS_9 y gatillo R2), eje del stick (AXIS_0-) y vibracion
+quitar RX
+quitar RY
+rango GAS 0 1023
+rango BRAKE 0 1023
+eje GAS 300
+syn
+espera 30
+eje GAS 200
+syn
+espera 30
+eje GAS 150
+syn
+espera 30
+eje X -30000
+syn
+espera 30
+eje X -12000
+syn
+espera 30
+eje X 0
+syn
+espera 30

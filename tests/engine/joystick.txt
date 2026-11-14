@@ -1,0 +1,25 @@
+# Joystick en LS: dentro de la zona muerta no toca; luego mueve; la cruceta tambien lo mueve
+eje X 3000
+syn
+espera 20
+eje X 32767
+syn
+espera 30
+eje X 16000
+eje Y -16000
+syn
+espera 30
+eje X 0
+eje Y 0
+syn
+espera 30
+eje HAT0Y -1
+syn
+espera 30
+eje HAT0X 1
+syn
+espera 30
+eje HAT0X 0
+eje HAT0Y 0
+syn
+espera 30

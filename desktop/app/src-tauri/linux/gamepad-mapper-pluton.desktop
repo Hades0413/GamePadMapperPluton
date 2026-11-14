@@ -1,0 +1,12 @@
+[Desktop Entry]
+Categories={{categories}}
+Comment={{comment}}
+Comment[es]=Mapea cualquier mando y conviértelo en un mando Xbox 360, DualShock 4 o Switch Pro
+Comment[en]=Map any controller and turn it into an Xbox 360, DualShock 4 or Switch Pro pad
+Exec={{exec}}
+StartupWMClass={{exec}}
+Icon={{icon}}
+Name=Gamepad Mapper Plutón
+Terminal=false
+Type=Application
+Keywords=gamepad;controller;mando;joystick;xinput;

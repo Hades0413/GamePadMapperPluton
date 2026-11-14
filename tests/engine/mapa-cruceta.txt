@@ -1,0 +1,25 @@
+# Traduccion: cruceta de HAT1 a HAT0 (el HAT0 crudo queda tapado) y botones BTN_TRIGGER/BTN_THUMB
+mapa mapa-cruceta.map
+rango 12 -1 1
+rango 13 -1 1
+eje 12 1
+syn
+espera 30
+eje 12 0
+syn
+espera 30
+# HAT0 crudo: tapado por la regla (no mueve nada)
+eje HAT0Y -1
+syn
+espera 30
+eje HAT0Y 0
+syn
+espera 30
+pulsa BTN_120
+espera 30
+suelta BTN_120
+espera 20
+pulsa BTN_121
+espera 200
+suelta BTN_121
+espera 20

@@ -1,0 +1,55 @@
+# Dependencias
+node_modules/
+
+# Build
+dist/
+build/
+out/
+*.tsbuildinfo
+.turbo/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+
+# Tests y cobertura
+coverage/
+*.lcov
+
+# Variables de entorno — nunca se commitean, salvo la plantilla
+.env
+.env.*
+!.env.example
+
+# Backups de "make db-backup" — pueden tener datos reales
+/backups/
+
+# Certificados TLS — ni siquiera el self-signed de ejemplo (make ssl-generate lo recrea)
+docker/ssl/*.pem
+docker/ssl/*.key
+docker/ssl/*.crt
+!docker/ssl/README.md
+
+# Editores / SO
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# IDEs — configuración local de cada quien, no se comparte por git
+.vscode/
+.idea/
+*.code-workspace
+
+# Asistentes de IA en el editor — estado/config local de cada quien
+.claude/
+.cursor/
+.windsurf/
+.continue/
+
+# Bóveda local del CLI de pruebas (pnpm sticker)
+vault-local/

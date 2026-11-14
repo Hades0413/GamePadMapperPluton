@@ -1,0 +1,18 @@
+GAMEPAD MAPPER
+==============
+
+1. Conecta el mando en modo GAMEPAD: Home + X.
+   (Home + A sigue funcionando con el modulo "GamepadPlus V3 Touch Fix".)
+2. Abre un juego que tenga perfil: el mando se convierte en toques.
+   En las demas apps funciona como un gamepad normal.
+3. SELECT + START mantenidos 1 segundo = pausar / reanudar el mapeo.
+
+Carpeta:   /sdcard/Android/data/com.gamepadmapper.app/files
+           (la crea la app al abrirla; los perfiles antiguos se importan desde la app)
+Perfiles:  <carpeta>/profiles/*.conf  (se recargan solos al guardar; ver plantilla.conf.txt)
+Registro:  <carpeta>/mapper.log
+
+Si un boton no hace nada o hace otra cosa:
+  - Crea un archivo vacio llamado "debug" en la carpeta
+  - Pulsa el boton y mira en mapper.log su nombre (A, B, X, BTN_xxx...)
+  - Ajusta el perfil y borra "debug" al terminar.
