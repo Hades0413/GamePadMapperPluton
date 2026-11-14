@@ -11,7 +11,7 @@ export default function RouteErrorPage() {
   if (isRouteErrorResponse(error) && error.status === 404) return <NotFoundPage />;
   const chunkFailed = error instanceof Error && /dynamically imported module|Loading chunk/i.test(error.message);
   return (
-    <div className="mx-auto max-w-xl px-4 py-16">
+    <div className="mx-auto max-w-xl px-4 py-16" data-pagina="error">
       <EmptyState
         title={chunkFailed ? t('Hay una versión nueva de la web') : t('Algo salió mal')}
         action={<Button onClick={() => window.location.reload()}>{t('Recargar')}</Button>}

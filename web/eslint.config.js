@@ -32,6 +32,8 @@ export default tseslint.config(
   },
   // El router y el contexto no son componentes: la regla de recarga en caliente no aplica.
   { files: ['src/presentation/routes/**', 'src/presentation/di/**'], rules: { 'react-refresh/only-export-components': 'off' } },
+  // Pruebas en navegador (se ejecutan con Node): informan por consola.
+  { files: ['tests/**/*.ts'], languageOptions: { globals: { ...globals.node, ...globals.browser } }, rules: { 'no-console': 'off' } },
   layer('domain', ['application', 'infrastructure', 'presentation', 'app']),
   layer('application', ['infrastructure', 'presentation', 'app']),
   layer('infrastructure', ['presentation', 'app']),

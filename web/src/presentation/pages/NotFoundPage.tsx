@@ -8,8 +8,11 @@ export default function NotFoundPage() {
   const t = useT();
   useDocumentTitle(t('No encontrado'));
   return (
-    <EmptyState title={t('No encontramos esta página')} action={<ButtonLink to={paths.games}>{t('Ver juegos')}</ButtonLink>}>
-      {t('Puede que el enlace esté mal o que se haya borrado.')}
-    </EmptyState>
+    // data-pagina: marca para las pruebas en navegador (tests/e2e).
+    <div data-pagina="no-encontrada">
+      <EmptyState title={t('No encontramos esta página')} action={<ButtonLink to={paths.games}>{t('Ver juegos')}</ButtonLink>}>
+        {t('Puede que el enlace esté mal o que se haya borrado.')}
+      </EmptyState>
+    </div>
   );
 }
