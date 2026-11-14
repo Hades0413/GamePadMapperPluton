@@ -10,14 +10,15 @@ root="$(dirname "$here")"
 apk="${1:-$(ls -t "$root"/dist/GamepadMapper-*.apk | head -n1)}"
 serial="${2:-${ANDROID_SERIAL:-emulator-5554}}"
 pkg=com.gamepadmapper.app
-adb() { command adb -s "$serial" "$@"; }
+# Cada orden con tiempo maximo: en algunas versiones (p. ej. Android 8) "am start -W" puede no volver.
+adb() { timeout "${ADB_TIMEOUT:-60}" adb -s "$serial" "$@"; }
 
 case "$serial" in
     emulator-*) ;;
     *) [ "${GPM_ALLOW_DEVICE:-}" = 1 ] || { echo "Solo en emuladores (GPM_ALLOW_DEVICE=1 para un telefono de pruebas)" >&2; exit 1; } ;;
 esac
 
-adb wait-for-device
+ADB_TIMEOUT=300 adb wait-for-device
 until [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ]; do sleep 2; done
 api="$(adb shell getprop ro.build.version.sdk | tr -d '\r')"
 out="$here/out/emulador-$api"
@@ -40,13 +41,13 @@ tap_text() {
     adb shell input tap $(( ($1 + $3) / 2 )) $(( ($2 + $4) / 2 ))
 }
 
-adb install -r -g "$apk" >/dev/null && ok "instalar" || { bad "instalar"; exit 1; }
+ADB_TIMEOUT=240 adb install -r -g "$apk" >/dev/null && ok "instalar" || { bad "instalar"; exit 1; }
 adb logcat -c 2>/dev/null || true   # Android 8 a veces no deja vaciarlo
 adb shell input keyevent KEYCODE_WAKEUP || true
-adb shell wm dismiss-keyguard 2>/dev/null || true
+adb shell wm dismiss-keyguard >/dev/null 2>&1 || true
 
 # 1. Abrir la app (bienvenida o inicio)
-adb shell am start -W -n "$pkg/.MainActivity" >/dev/null
+adb shell am start -n "$pkg/.MainActivity" >/dev/null
 shot 01-bienvenida 4
 alive && ok "abre la app" || bad "abre la app"
 # Saltar la bienvenida (si aparece) para llegar al inicio.
@@ -58,7 +59,7 @@ base="/sdcard/Android/data/$pkg/files"
 if adb shell mkdir -p "$base/profiles" 2>/dev/null \
    && adb push "$here/fixture.conf" "$base/profiles/com.ejemplo.juego.conf" >/dev/null 2>&1; then
     adb shell am force-stop "$pkg"
-    adb shell am start -W -n "$pkg/.MainActivity" >/dev/null
+    adb shell am start -n "$pkg/.MainActivity" >/dev/null
     shot 02-con-perfil 4
     alive && ok "abre con un perfil (todas las opciones nuevas)" || bad "abre con un perfil"
 else
@@ -66,7 +67,7 @@ else
 fi
 
 # 3. Enlaces de la web
-adb shell am start -W -a android.intent.action.VIEW -d "gpmapper://juego/com.supercell.brawlstars" "$pkg" >/dev/null
+adb shell am start -a android.intent.action.VIEW -d "gpmapper://juego/com.supercell.brawlstars" "$pkg" >/dev/null
 shot 03-comunidad-juego 5
 alive && ok "enlace gpmapper://juego" || bad "enlace gpmapper://juego"
 # La lista tiene que cargar: un error del servidor suele ser una migracion sin aplicar.
@@ -76,10 +77,10 @@ if adb shell cat /sdcard/gpm-ui.xml 2>/dev/null | grep -qE "(respondió|replied)
 else
     ok "la comunidad carga"
 fi
-adb shell am start -W -a android.intent.action.VIEW -d "gpmapper://perfil/00000000-0000-0000-0000-000000000000" "$pkg" >/dev/null
+adb shell am start -a android.intent.action.VIEW -d "gpmapper://perfil/00000000-0000-0000-0000-000000000000" "$pkg" >/dev/null
 shot 04-perfil-inexistente 4
 alive && ok "enlace a un perfil que no existe" || bad "enlace a un perfil que no existe"
-adb shell am start -W -a android.intent.action.VIEW -d "gpmapper://subido/no-es-un-id" "$pkg" >/dev/null
+adb shell am start -a android.intent.action.VIEW -d "gpmapper://subido/no-es-un-id" "$pkg" >/dev/null
 sleep 2
 alive && ok "enlace gpmapper://subido mal formado" || bad "enlace gpmapper://subido mal formado"
 
