@@ -22,7 +22,7 @@ ADB := $(firstword $(wildcard tools/android-sdk/platform-tools/adb tools/android
 DEVICE = $(shell $(ADB) devices 2>/dev/null | awk 'NR>1 && $$2=="device"{print $$1; exit}')
 
 .PHONY: help setup doctor test module touchfix apk aab build install run uninstall \
-        logs logs-off devices version bump release clean distclean web-install web-dev web-check web-build
+        logs logs-off devices version bump release clean distclean web-install web-dev web-check web-build db-test
 
 # =============================================================================
 # PREPARACION
@@ -131,6 +131,9 @@ release: test ## Publica: tag v<version> sobre main (ya fusionado) y GitHub comp
 # =============================================================================
 # WEB (web/: React + Vite, necesita Node 22+ y pnpm)
 # =============================================================================
+
+db-test: ## Pruebas de la base de datos (migraciones, seguridad, «me gusta»...); necesita Docker
+	@./supabase/tests/run.sh
 
 web-install: ## Instala las dependencias de la web
 	@cd web && pnpm install --frozen-lockfile

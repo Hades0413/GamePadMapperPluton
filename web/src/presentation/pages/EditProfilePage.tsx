@@ -28,9 +28,9 @@ export default function EditProfilePage() {
           return (
             <ProfileForm mode="edit" pending={update.isPending} error={update.error}
               initial={{ conf: profile.conf, packageName: profile.packageName, gameName: profile.gameName ?? '',
-                title: profile.title, description: profile.description }}
+                title: profile.title, description: profile.description, deviceModel: profile.deviceModel ?? '' }}
               onSubmit={(v) => update.mutate({ id: profile.id, packageName: profile.packageName, title: v.title,
-                description: v.description, conf: v.conf },
+                description: v.description, conf: v.conf, deviceModel: v.deviceModel },
                 { onSuccess: () => void navigate(paths.profile(profile.id), { replace: true }) })} />
           );
         }}

@@ -1,4 +1,4 @@
-import type { NewProfile, ProfileChanges, ProfileRepository } from '@application/ports/ProfileRepository';
+import type { NewProfile, ProfileChanges, ProfileRepository, ScreenRatio } from '@application/ports/ProfileRepository';
 import type { GameProfile, GameProfileSummary, LikeResult, ProfileSort } from '@domain/profile/GameProfile';
 import { AppError } from '@domain/shared/AppError';
 import type { ReportReason } from '@domain/report/ReportReason';
@@ -19,13 +19,17 @@ export class SupabaseProfileRepository implements ProfileRepository {
     this.#db = db;
   }
 
-  async listByGame(packageName: string, sort: ProfileSort, page: PageRequest): Promise<Page<GameProfileSummary>> {
+  async listByGame(
+    packageName: string, sort: ProfileSort, page: PageRequest, ratio?: ScreenRatio | null,
+  ): Promise<Page<GameProfileSummary>> {
     const [from, to] = rangeOf(page);
     let request = this.#db
       .from('game_profiles')
       .select(PROFILE_SUMMARY_COLUMNS)
       .eq('package', packageName)
       .eq('status', 'published');
+    // Misma proporcion de pantalla (2 % de margen): estos perfiles encajan tal cual.
+    if (ratio) request = request.gte('screen_ratio', +(ratio * 0.98).toFixed(3)).lte('screen_ratio', +(ratio * 1.02).toFixed(3));
     if (sort === 'popular') request = request.order('like_count', { ascending: false });
     const rows = parse(summaries, unwrap(await request.order('created_at', { ascending: false }).range(from, to)));
     return toPage(rows.map(toProfileSummary), page);
@@ -55,6 +59,7 @@ export class SupabaseProfileRepository implements ProfileRepository {
       p_title: profile.title,
       p_description: profile.description,
       p_conf: profile.conf,
+      p_device: profile.deviceModel,
     });
     return parse(z.uuid(), unwrap(result));
   }
@@ -65,6 +70,7 @@ export class SupabaseProfileRepository implements ProfileRepository {
       p_title: changes.title,
       p_description: changes.description,
       p_conf: changes.conf,
+      p_device: changes.deviceModel,
     }));
   }
 

@@ -335,19 +335,54 @@ public class Profile {
         b.type = type;
     }
 
-    /** Escala todas las coordenadas a un nuevo tamano de pantalla. */
+    // ------------------------------------------------------------------ otras pantallas
+    /*
+     * Adaptar un perfil a otra pantalla como lo hacen los juegos con su interfaz: el tamano sigue
+     * a la altura (en horizontal) y cada boton conserva su distancia al borde mas cercano (los de
+     * la izquierda a la izquierda, los de la derecha a la derecha, los del centro centrados), con
+     * una transicion suave entre zonas. Con la misma proporcion de pantalla es un escalado normal.
+     * gpmapper.c (fit_x / fit_y) usa exactamente la misma formula: si se cambia, cambiar las dos.
+     */
+
+    /** Peso del anclaje derecho (o inferior) para una posicion relativa t en 0..1. */
+    private static float anchor(float t) {
+        float w = (t - 0.25f) / 0.5f;
+        w = w < 0 ? 0 : (w > 1 ? 1 : w);
+        return w * w * (3 - 2 * w);
+    }
+
+    /** Factor de tamano al pasar de una pantalla sw x sh a otra w x h. */
+    public static float fitScale(float sw, float sh, float w, float h) {
+        return sw >= sh ? h / sh : w / sw;
+    }
+
+    public static float fitX(float x, float sw, float sh, float w, float h) {
+        if (sw < sh) return x * w / sw;
+        float s = h / sh;
+        return x * s + anchor(x / sw) * (w - sw * s);
+    }
+
+    public static float fitY(float y, float sw, float sh, float w, float h) {
+        if (sw >= sh) return y * h / sh;
+        float s = w / sw;
+        return y * s + anchor(y / sh) * (h - sh * s);
+    }
+
+    /** Adapta todas las coordenadas a un nuevo tamano de pantalla (ver fitX / fitY). */
     public void rescaleTo(float newW, float newH) {
         if (newW <= 0 || newH <= 0 || (newW == sw && newH == sh)) return;
-        float kx = newW / sw, ky = newH / sh, kr = Math.min(kx, ky);
+        float k = fitScale(sw, sh, newW, newH);
         for (Binding b : bindings.values()) {
-            b.x *= kx;
-            b.y *= ky;
-            b.x2 *= kx;
-            b.y2 *= ky;
-            if (STICK.equals(b.type)) b.r *= kr;
+            float x = b.x, y = b.y, x2 = b.x2, y2 = b.y2;
+            b.x = fitX(x, sw, sh, newW, newH);
+            b.y = fitY(y, sw, sh, newW, newH);
+            b.x2 = fitX(x2, sw, sh, newW, newH);
+            b.y2 = fitY(y2, sw, sh, newW, newH);
+            if (STICK.equals(b.type)) b.r *= k;
             for (Step s : b.steps) {
-                s.x *= kx;
-                s.y *= ky;
+                float sx = s.x, sy = s.y;
+                s.x = fitX(sx, sw, sh, newW, newH);
+                s.y = fitY(sy, sw, sh, newW, newH);
             }
         }
         sw = newW;

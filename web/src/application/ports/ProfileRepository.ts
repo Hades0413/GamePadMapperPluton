@@ -8,16 +8,22 @@ export interface NewProfile {
   readonly title: string;
   readonly description: string;
   readonly conf: string;
+  /** Modelo del telefono ('' = sin indicar). */
+  readonly deviceModel: string;
 }
 
 export interface ProfileChanges {
   readonly title: string;
   readonly description: string;
   readonly conf: string;
+  readonly deviceModel: string;
 }
 
+/** Proporcion de pantalla (lado largo / corto) para filtrar perfiles que encajan. */
+export type ScreenRatio = number;
+
 export interface ProfileRepository {
-  listByGame(packageName: string, sort: ProfileSort, page: PageRequest): Promise<Page<GameProfileSummary>>;
+  listByGame(packageName: string, sort: ProfileSort, page: PageRequest, ratio?: ScreenRatio | null): Promise<Page<GameProfileSummary>>;
   listByAuthor(authorId: string, page: PageRequest): Promise<Page<GameProfileSummary>>;
   findById(id: string): Promise<GameProfile | null>;
   publish(profile: NewProfile): Promise<string>;

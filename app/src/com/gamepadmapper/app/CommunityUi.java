@@ -53,6 +53,9 @@ final class CommunityUi {
     private Runnable current;
     /** Cambia en cada navegacion: las respuestas de pantallas ya cerradas se descartan. */
     private int generation;
+    /** Solo perfiles hechos con la proporcion de pantalla de este telefono. */
+    private boolean onlyMine;
+    private final float myRatio;
     /** Cache de la sesion: volver atras no repite peticiones. */
     private final Map<String, Object> memo = new HashMap<>();
 
@@ -73,6 +76,7 @@ final class CommunityUi {
     private CommunityUi(Activity a, Host host) {
         this.a = a;
         this.host = host;
+        this.myRatio = Community.screenRatio(a);
         dialog = new Dialog(a, android.R.style.Theme_DeviceDefault_NoActionBar);
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
 
@@ -283,6 +287,15 @@ final class CommunityUi {
         tabs.addView(tab(L.t("Recientes"), recent, () -> current = () -> showGame(pkg, gameName, true)),
                 new LinearLayout.LayoutParams(0, dp(40), 1));
         body.addView(tabs);
+        // Filtro: solo los hechos con la misma proporcion de pantalla (encajan tal cual).
+        LinearLayout mine = Ui.button(a, 0, (onlyMine ? "✓ " : "") + L.t("Solo los que encajan con mi pantalla"),
+                onlyMine ? Ui.PRIMARY_DARK : Ui.SURFACE_2, onlyMine ? Color.WHITE : Ui.TEXT_2, v -> {
+                    onlyMine = !onlyMine;
+                    current.run();
+                });
+        LinearLayout.LayoutParams mlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(38));
+        mlp.bottomMargin = dp(10);
+        body.addView(mine, mlp);
         final LinearLayout list = new LinearLayout(a);
         list.setOrientation(LinearLayout.VERTICAL);
         body.addView(list);
@@ -300,7 +313,8 @@ final class CommunityUi {
     }
 
     private void loadPage(LinearLayout list, String pkg, boolean recent, int page) {
-        String key = "game:" + pkg + ":" + recent + ":" + page;
+        String key = "game:" + pkg + ":" + recent + ":" + onlyMine + ":" + page;
+        final float ratio = onlyMine ? myRatio : 0;
         LinearLayout target = new LinearLayout(a);
         target.setOrientation(LinearLayout.VERTICAL);
         list.addView(target);
@@ -315,7 +329,7 @@ final class CommunityUi {
         target.addView(spinner);
         new Thread(() -> {
             try {
-                List<Community.Item> items = Community.profiles(a, pkg, recent, page);
+                List<Community.Item> items = Community.profiles(a, pkg, recent, page, ratio);
                 a.runOnUiThread(() -> {
                     if (gen != generation || !dialog.isShowing()) return;
                     target.removeView(spinner);
@@ -344,16 +358,19 @@ final class CommunityUi {
             title.setText(items.get(0).gameName);
         }
         if (items.isEmpty() && page == 0) {
-            empty(L.t("Aún no hay perfiles para este juego."));
+            empty(onlyMine ? L.t("No hay perfiles hechos con tu proporción de pantalla. Los demás también sirven: se adaptan solos.")
+                    : L.t("Aún no hay perfiles para este juego."));
             webRow(Community.gameUrl(pkg));
             return;
         }
         LinearLayout card = card();
         for (Community.Item it : items) {
             LinearLayout r = row(() -> go(() -> showProfile(it.id, it.title)));
-            String sub = (it.author.isEmpty() ? "" : "@" + it.author + " · ") + it.buttons + L.t(" botones")
+            String sub = (it.author.isEmpty() ? "" : "@" + it.author + " · ")
+                    + (it.deviceModel.isEmpty() ? "" : it.deviceModel + " · ") + it.buttons + L.t(" botones")
                     + " · ♥ " + it.likes;
             r.addView(texts(it.title, sub), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+            if (Community.fitsScreen(it, myRatio)) r.addView(Ui.chip(a, L.t("Encaja"), Ui.OK));
             card.addView(r);
         }
         target.addView(card);

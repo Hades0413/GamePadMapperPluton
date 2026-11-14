@@ -62,7 +62,7 @@ enum { B_NONE = 0, B_TAP, B_STICK, B_LOOK, B_MACRO, B_TURBO, B_TOGGLE, B_SWIPE }
 // avisar si el instalado esta desactualizado. Subirlo con cada cambio del formato de perfil.
 // 2 = toque rapido, rafaga, joystick + cruceta (v1.1).
 // 3 = carpeta de la app (Android/data/com.gamepadmapper.app/files) (v1.2).
-#define GPM_BUILD 4
+#define GPM_BUILD 5
 #define MAX_QUEUE 64          // toques de macro en curso a la vez
 
 typedef struct {
@@ -685,13 +685,74 @@ static void t_move_n(int s, double u, double v) {
     dirty = 1;
 }
 
+// ------------------------------------------------------------ otras pantallas
+// Adaptar el perfil a la pantalla real como los juegos adaptan su interfaz: el tamano sigue a la
+// altura (en horizontal) y cada boton conserva su distancia al borde mas cercano, con transicion
+// suave entre zonas. Misma formula que Profile.fitX/fitY en la app: si se cambia, cambiar las dos.
+static double disp_long = 0, disp_short = 0;  // pantalla real (la escribe la app en <base>/display)
+static char display_file[300];
+
+static void read_display(void) {
+    FILE *f = fopen(display_file, "r");
+    if (!f) return;
+    double w = 0, h = 0;
+    if (fscanf(f, "%lfx%lf", &w, &h) == 2 && w >= 100 && h >= 100 && w <= 20000 && h <= 20000) {
+        disp_long = w > h ? w : h;
+        disp_short = w > h ? h : w;
+    }
+    fclose(f);
+}
+
+static double fit_anchor(double t) {
+    double w = (t - 0.25) / 0.5;
+    if (w < 0) w = 0;
+    if (w > 1) w = 1;
+    return w * w * (3 - 2 * w);
+}
+
+static double fit_scale(double sw, double sh, double w, double h) {
+    return sw >= sh ? h / sh : w / sw;
+}
+
+static double fit_x(double x, double sw, double sh, double w, double h) {
+    if (sw < sh) return x * w / sw;
+    double s = h / sh;
+    return x * s + fit_anchor(x / sw) * (w - sw * s);
+}
+
+static double fit_y(double y, double sw, double sh, double w, double h) {
+    if (sw >= sh) return y * h / sh;
+    double s = w / sw;
+    return y * s + fit_anchor(y / sh) * (h - sh * s);
+}
+
+// Tamano de destino para el perfil activo (sin <base>/display: el del propio perfil = sin cambios).
+static void target_size(double *w, double *h) {
+    if (disp_long <= 0) { *w = cur->sw; *h = cur->sh; return; }
+    if (cur->sw >= cur->sh) { *w = disp_long; *h = disp_short; }
+    else { *w = disp_short; *h = disp_long; }
+}
+
 // Toque en pixeles del perfil activo.
 static int t_down(double x, double y) {
-    return t_down_n(x / (cur->sw - 1), y / (cur->sh - 1));
+    double w, h;
+    target_size(&w, &h);
+    return t_down_n(fit_x(x, cur->sw, cur->sh, w, h) / (w - 1), fit_y(y, cur->sw, cur->sh, w, h) / (h - 1));
 }
 
 static void t_move(int s, double x, double y) {
-    t_move_n(s, x / (cur->sw - 1), y / (cur->sh - 1));
+    double w, h;
+    target_size(&w, &h);
+    t_move_n(s, fit_x(x, cur->sw, cur->sh, w, h) / (w - 1), fit_y(y, cur->sw, cur->sh, w, h) / (h - 1));
+}
+
+// Movimiento de un stick: centro adaptado + desplazamiento (en pixeles del perfil) a escala.
+static void t_move_off(int s, double x, double y, double dx, double dy) {
+    double w, h;
+    target_size(&w, &h);
+    double k = fit_scale(cur->sw, cur->sh, w, h);
+    t_move_n(s, (fit_x(x, cur->sw, cur->sh, w, h) + dx * k) / (w - 1),
+             (fit_y(y, cur->sw, cur->sh, w, h) + dy * k) / (h - 1));
 }
 
 static void t_up(int s) {
@@ -1138,7 +1199,7 @@ static void apply_stick(int code) {
             r->active = r->slot >= 0;
             t_sync();  // el juego necesita ver el toque en el centro antes de arrastrar
         }
-        t_move(r->slot, b->x + vx * b->r, b->y + vy * b->r);
+        t_move_off(r->slot, b->x, b->y, vx * b->r, vy * b->r);
     } else if (r->active) {
         t_up(r->slot);
         r->active = 0;
@@ -1333,7 +1394,7 @@ static void write_status(int enabled) {
     snprintf(tmp, sizeof tmp, "%s.tmp", status_file);
     FILE *f = fopen(tmp, "w");
     if (!f) return;
-    fprintf(f, "time=%lld\nuid=%d\nversion=gpmapper 1.3\nbuild=%d\ngamepad=%s\ntouch=%s\nprofile=%s\npackage=%s\nenabled=%d\nrotate=%d\nrotation=%d\n",
+    fprintf(f, "time=%lld\nuid=%d\nversion=gpmapper 1.4\nbuild=%d\ngamepad=%s\ntouch=%s\nprofile=%s\npackage=%s\nenabled=%d\nrotate=%d\nrotation=%d\n",
             (long long)time(NULL), (int)getuid(), GPM_BUILD, gfd >= 0 ? gname : "", tfd >= 0 ? tname : "",
             cur ? profile_label(cur) : "", cur ? cur->pkg : "", enabled, rot_mode, cur_rot);
     fclose(f);
@@ -1383,8 +1444,15 @@ static void on_signal(int s) { (void)s; stop = 1; }
 int main(int argc, char **argv) {
     int c;
     double tap_u = -1, tap_v = -1;
-    while ((c = getopt(argc, argv, "d:vRtp:T:g:c:")) != -1) {
+    while ((c = getopt(argc, argv, "d:vRtp:T:g:c:F:")) != -1) {
         if (c == 'c') return check_profile(optarg);
+        else if (c == 'F') {   // pruebas: -F sw,sh,w,h,x,y -> punto adaptado (como Profile.fitX/fitY)
+            double a[6];
+            if (sscanf(optarg, "%lf,%lf,%lf,%lf,%lf,%lf", &a[0], &a[1], &a[2], &a[3], &a[4], &a[5]) != 6) return 2;
+            printf("%.2f %.2f %.4f\n", fit_x(a[4], a[0], a[1], a[2], a[3]), fit_y(a[5], a[0], a[1], a[2], a[3]),
+                   fit_scale(a[0], a[1], a[2], a[3]));
+            return 0;
+        }
         else if (c == 'd') snprintf(prof_dir, sizeof prof_dir, "%s", optarg);
         else if (c == 'v') verbose = 1;
         else if (c == 'g') snprintf(pad_filter, sizeof pad_filter, "%s", optarg);
@@ -1410,6 +1478,7 @@ int main(int argc, char **argv) {
     snprintf(learn_result, sizeof learn_result, "%s/../learn_result", prof_dir);
     snprintf(active_file, sizeof active_file, "%s/../active.txt", prof_dir);
     snprintf(rotation_file, sizeof rotation_file, "%s/../rotation", prof_dir);
+    snprintf(display_file, sizeof display_file, "%s/../display", prof_dir);
     snprintf(status_file, sizeof status_file, "%s/../status.txt", prof_dir);
 
     if (tap_u >= 0) {  // modo prueba
@@ -1435,10 +1504,11 @@ int main(int argc, char **argv) {
     signal(SIGTERM, on_signal);
     signal(SIGINT, on_signal);
 
-    logf_("gpmapper 1.3 iniciado (uid %d), perfiles en %s%s%s", (int)getuid(), prof_dir,
+    logf_("gpmapper 1.4 iniciado (uid %d), perfiles en %s%s%s", (int)getuid(), prof_dir,
           rot_mode ? ", girando segun la rotacion" : "", touch_fwd ? ", reenvio de modo tactil" : "");
     unlink(learn_flag);  // no arrancar en modo aprender por un archivo viejo
     read_rotation();
+    read_display();
     if (create_vdev() < 0) return 1;
 
     int enabled = 1, active = -1;
@@ -1490,6 +1560,8 @@ int main(int argc, char **argv) {
             last_tscan = n;
             scan_touch();
         }
+
+        if (n - last_status >= 2000) read_display();   // la pantalla casi nunca cambia
 
         if (rot_mode && n - last_rot >= 300) {
             last_rot = n;

@@ -35,6 +35,9 @@ jobs:
       - name: Pruebas del formato de perfil
         run: make test
 
+      - name: Pruebas de la base de datos (Supabase)
+        run: make db-test
+
       - name: Modulos (gpmapper ARM64 y Touch Fix)
         run: make module touchfix
 

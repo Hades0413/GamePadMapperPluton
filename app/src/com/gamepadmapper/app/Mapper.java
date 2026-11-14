@@ -101,6 +101,30 @@ public final class Mapper {
         }
     }
 
+    // ---------------------------------------------------------------- tamano de pantalla
+    private static String lastDisplay = "";
+
+    /**
+     * Escribe el tamano real de la pantalla ("ANCHOxALTO") para que gpmapper adapte los perfiles
+     * hechos en otros telefonos (ver Profile.fitX). Solo escribe si cambia.
+     */
+    public static void writeDisplay(int w, int h) {
+        if (w < 100 || h < 100) return;
+        String v = Math.max(w, h) + "x" + Math.min(w, h);
+        File dir = Profile.baseDir();
+        if (v.equals(lastDisplay) && new File(dir, "display").exists()) return;
+        File tmp = new File(dir, "display.tmp");
+        try {
+            if (!dir.exists() && !dir.mkdirs()) return;
+            try (OutputStream o = new FileOutputStream(tmp)) {
+                o.write((v + "\n").getBytes(StandardCharsets.US_ASCII));
+            }
+            if (!tmp.renameTo(new File(dir, "display"))) return;
+            lastDisplay = v;
+        } catch (IOException ignored) {
+        }
+    }
+
     // ---------------------------------------------------------------- mandos conectados
     public static final class Pad {
         public final String name;

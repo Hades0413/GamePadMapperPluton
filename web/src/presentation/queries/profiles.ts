@@ -5,11 +5,11 @@ import { useUseCases } from '../di/ServicesContext';
 import { useAccount } from './account';
 import { keys } from './keys';
 
-export function useGameProfiles(packageName: string, sort: ProfileSort) {
+export function useGameProfiles(packageName: string, sort: ProfileSort, ratio: number | null = null) {
   const { listGameProfiles } = useUseCases();
   return useInfiniteQuery({
-    queryKey: keys.gameProfiles(packageName, sort),
-    queryFn: ({ pageParam }) => listGameProfiles.execute({ packageName, sort, page: pageParam }),
+    queryKey: [...keys.gameProfiles(packageName, sort), ratio ? ratio.toFixed(3) : 'todas'],
+    queryFn: ({ pageParam }) => listGameProfiles.execute({ packageName, sort, ratio, page: pageParam }),
     initialPageParam: 0,
     getNextPageParam: (last, pages) => (last.hasMore ? pages.length : undefined),
   });

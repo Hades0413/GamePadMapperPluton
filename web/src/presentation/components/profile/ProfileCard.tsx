@@ -1,13 +1,16 @@
 import type { GameProfileSummary } from '@domain/profile/GameProfile';
 import { Link } from 'react-router';
+import { sameRatio, type Screen } from '@domain/profile/conf/fit';
+import { ratioLabel } from '../../lib/device';
 import { compactNumber, timeAgo } from '../../lib/format';
 import { paths } from '../../routes/paths';
 import { Avatar } from '../ui/Avatar';
 import { HeartIcon } from '../ui/icons';
 
 export function ProfileCard({
-  profile, liked = false, showGame = false,
-}: { profile: GameProfileSummary; liked?: boolean; showGame?: boolean }) {
+  profile, liked = false, showGame = false, myScreen = null,
+}: { profile: GameProfileSummary; liked?: boolean; showGame?: boolean; myScreen?: Screen | null }) {
+  const fits = myScreen !== null && sameRatio(profile.screen, myScreen);
   return (
     <article className="card relative flex flex-col gap-3 p-4 transition-colors hover:border-primary/60">
       <div className="flex items-start justify-between gap-3">
@@ -26,6 +29,12 @@ export function ProfileCard({
         </span>
       </div>
       {profile.description && <p className="line-clamp-2 text-sm text-muted">{profile.description}</p>}
+      <div className="flex flex-wrap gap-1.5 text-xs">
+        <span className="rounded-md bg-surface-2 px-2 py-0.5 text-muted">
+          {profile.deviceModel ? `${profile.deviceModel} · ` : ''}{ratioLabel(profile.screen)}
+        </span>
+        {fits && <span className="rounded-md bg-success/15 px-2 py-0.5 font-medium text-success">Encaja con tu pantalla</span>}
+      </div>
       <div className="mt-auto flex items-center justify-between gap-2 text-xs text-muted">
         {profile.author ? (
           <span className="flex min-w-0 items-center gap-2">

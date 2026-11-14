@@ -1041,7 +1041,7 @@ public class PadService extends AccessibilityService {
                 rt.put(which, p = inj.down(sx(b.x), sy(b.y)));  // el juego ve primero el centro
                 p.stick = true;
             }
-            inj.move(p, sx(b.x + s[0] * b.r), sy(b.y + s[1] * b.r));
+            inj.move(p, sx(b.x) + s[0] * sr(b.r), sy(b.y) + s[1] * sr(b.r));
         } else if (p != null) {
             inj.up(p);
             rt.remove(which);
@@ -1176,14 +1176,21 @@ public class PadService extends AccessibilityService {
         }
     }
 
+    /** Coordenadas del perfil -> pantalla real (anclando a los bordes, ver Profile.fitX). */
     private float sx(float x) {
         screen();
-        return x * scrW / cur.sw;
+        return Profile.fitX(x, cur.sw, cur.sh, scrW, scrH);
     }
 
     private float sy(float y) {
         screen();
-        return y * scrH / cur.sh;
+        return Profile.fitY(y, cur.sw, cur.sh, scrW, scrH);
+    }
+
+    /** Distancias del perfil (radio del stick) -> pantalla real. */
+    private float sr(float r) {
+        screen();
+        return r * Profile.fitScale(cur.sw, cur.sh, scrW, scrH);
     }
 
     // ------------------------------------------------------------------ detectar (aprender)

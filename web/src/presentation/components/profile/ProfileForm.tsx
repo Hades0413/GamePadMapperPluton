@@ -1,9 +1,12 @@
-import { checkDescription, checkGameName, checkPackage, checkTitle } from '@application/profiles/profileInput';
+import {
+  checkDescription, checkDeviceModel, checkGameName, checkPackage, checkTitle,
+} from '@application/profiles/profileInput';
 import { CONF_MAX_BYTES } from '@domain/profile/conf/ProfileConfig';
 import { validateConf } from '@domain/profile/conf/validateConf';
 import { DESCRIPTION_MAX, TITLE_MAX } from '@domain/profile/GameProfile';
 import { isValidPackage } from '@domain/game/Game';
 import { useDeferredValue, useMemo, useState, type FormEvent } from 'react';
+import { ratioLabel } from '../../lib/device';
 import { readSmallTextFile } from '../../lib/files';
 import { useFillGameImages, useGame } from '../../queries/games';
 import { GameIcon } from './GameIcon';
@@ -19,6 +22,8 @@ export interface ProfileFormValues {
   gameName: string;
   title: string;
   description: string;
+  /** Modelo del telefono ('' = sin indicar). */
+  deviceModel: string;
 }
 
 /** Devuelve el mensaje de error de una validacion, o null si es correcta. */
@@ -75,6 +80,7 @@ export function ProfileForm({
     gameName: existingGame ? null : problem(() => checkGameName(values.gameName)),
     title: problem(() => checkTitle(values.title)),
     description: problem(() => checkDescription(values.description)),
+    deviceModel: problem(() => checkDeviceModel(values.deviceModel)),
   };
   const valid = Object.values(errors).every((e) => e === null);
   const show = (field: keyof typeof errors) => (submitted || (field === 'conf' && values.conf.trim() !== '') ? errors[field] : null);
@@ -162,6 +168,16 @@ export function ProfileForm({
           {(a) => (
             <textarea {...a} className="input min-h-28" value={values.description} maxLength={DESCRIPTION_MAX + 50}
               onChange={(e) => set({ description: e.target.value })} />
+          )}
+        </Field>
+
+        <Field label="Modelo del teléfono (opcional)" error={show('deviceModel')}
+          hint={parsed?.ok
+            ? `Ayuda a quien tenga el mismo móvil a encontrar tu perfil. Pantalla del perfil: ${parsed.config.screen.width}×${parsed.config.screen.height} (${ratioLabel(parsed.config.screen)}).`
+            : 'Ayuda a quien tenga el mismo móvil a encontrar tu perfil.'}>
+          {(a) => (
+            <input {...a} className="input" value={values.deviceModel} maxLength={60} placeholder="Ej.: Redmi Note 9"
+              autoComplete="off" onChange={(e) => set({ deviceModel: e.target.value })} />
           )}
         </Field>
 
