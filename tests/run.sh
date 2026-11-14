@@ -13,6 +13,19 @@ sep=":"; case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) sep=";" ;; esac   # separad
 out="$(mktemp -d)"
 trap 'rm -rf "$out"' EXIT
 
+echo "== Versiones del motor root"
+# Las tres deben coincidir: gpmapper (GPM_BUILD), la app (RootMode.MODULE_BUILD) y Magisk (module.prop).
+gb="$(sed -n 's/^#define GPM_BUILD \([0-9]*\).*/\1/p' "$root/mapper/src/gpmapper.c")"
+ab="$(sed -n 's/.*MODULE_BUILD = \([0-9]*\);.*/\1/p' "$root/app/src/com/gamepadmapper/app/RootMode.java")"
+mv="$(sed -n 's/^versionCode=\([0-9]*\)$/\1/p' "$root/mapper/module/module.prop")"
+mn="$(sed -n 's/^version=v\([0-9]*\)$/\1/p' "$root/mapper/module/module.prop")"
+if [ -n "$gb" ] && [ "$gb" = "$ab" ] && [ "$gb" = "$mv" ] && [ "$gb" = "$mn" ]; then
+    echo "motor root v$gb en gpmapper, la app y module.prop"
+else
+    echo "VERSIONES DISTINTAS: gpmapper=$gb app=$ab module.prop=v$mn/$mv" >&2
+    exit 1
+fi
+
 echo "== Java (app)"
 "$jdk/bin/javac" -nowarn -encoding UTF-8 -cp "$jar" -sourcepath "$root/app/src" -d "$out/cls" "$here/ProfileTest.java"
 "$jdk/bin/java" -cp "$out/cls$sep$jar" ProfileTest "$here/fixture.conf" > "$out/java.txt"
