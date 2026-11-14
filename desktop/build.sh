@@ -30,7 +30,8 @@ esac
 echo "Compilando $(basename "$bin")..."
 rm -f "$bin"
 set +e
-out="$("$ZIG" cc -std=gnu11 -O2 -Wall -Wextra -o "$bin" "${args[@]}" "${core[@]}" "${libs[@]}" 2>&1)"
+version="$(sed -n 's/.*android:versionName="\([^"]*\)".*/\1/p' "$root/app/AndroidManifest.xml")"
+out="$("$ZIG" cc -std=gnu11 -O2 -Wall -Wextra -DVERSION="\"${version:-dev}\"" -o "$bin" "${args[@]}" "${core[@]}" "${libs[@]}" 2>&1)"
 code=$?
 set -e
 # Solo cuentan los avisos de nuestro codigo (no el conocido de musl crt/dlstart.c)

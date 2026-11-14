@@ -22,7 +22,10 @@
 
 #include "../../mapper/src/core/gpm_repeticion.h"
 
-#define VERSION "1.6"
+// La pone desktop/build.sh con la version de la app (app/AndroidManifest.xml).
+#ifndef VERSION
+#define VERSION "dev"
+#endif
 // Perfiles publicados de la comunidad (clave publica de solo lectura, la misma que usa la web).
 #define SUPABASE_URL "https://gshyhrthaksriamjqdtf.supabase.co/rest/v1/game_profiles"
 #define SUPABASE_KEY "sb_publishable_QTPm_6jVyWGcvWILpDqJoA_skWLqjeD"
