@@ -53,7 +53,7 @@ export default function EditProfilePage() {
             <div className="space-y-6">
               {appConf && (
                 <Alert tone="info">
-                  {t('Se ha cargado la versión de tu teléfono. Revisa la vista previa y guarda para publicar los cambios.')}
+                  {t('Se han cargado tus cambios (de la app o del editor visual). Revisa la vista previa y guarda para publicarlos.')}
                 </Alert>
               )}
               {fromApp && !appConf && (

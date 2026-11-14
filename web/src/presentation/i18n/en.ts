@@ -278,8 +278,8 @@ export const EN: Readonly<Record<string, string>> = {
   'Para subir un perfil y que aparezca tu nombre, inicia sesión con GitHub.': 'To upload a profile under your name, sign in with GitHub.',
   'Inicia sesión para editar tus perfiles.': 'Sign in to edit your profiles.',
   'Solo el autor puede editar este perfil': 'Only the author can edit this profile',
-  'Se ha cargado la versión de tu teléfono. Revisa la vista previa y guarda para publicar los cambios.':
-    'The version from your phone has been loaded. Check the preview and save to publish the changes.',
+  'Se han cargado tus cambios (de la app o del editor visual). Revisa la vista previa y guarda para publicarlos.':
+    'Your changes have been loaded (from the app or the visual editor). Check the preview and save to publish them.',
   'El perfil que envió la app es de otro juego: se muestra la versión publicada.':
     'The profile the app sent is for a different game: the published version is shown.',
 
