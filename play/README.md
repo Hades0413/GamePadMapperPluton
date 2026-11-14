@@ -22,7 +22,7 @@ make apk                                     # o el APK que vayas a enseñar
 
 ## Antes de subir esta versión
 
-- **Versión**: 1.7 (versionCode 9), con los mandos de la comunidad en modo root y la copia en la nube. Sube el AAB de `make aab`.
+- **Versión**: 1.7.1 (versionCode 10, optimizada con R8), con los mandos de la comunidad en modo root y la copia en la nube. Sube el AAB de `make aab`.
 - **Código ofuscado (R8)**: el AAB ya lleva el mapping (`BUNDLE-METADATA/.../proguard.map`), así
   que Play traduce solo las trazas de *Android vitals*. Si Play pidiera el archivo de
   desofuscación (o para una versión subida sin él): *Probar y publicar › Explorador de apps y
