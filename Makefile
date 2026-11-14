@@ -82,9 +82,9 @@ app-escritorio-base: ## App de escritorio: refresca la base de mandos incluida (
 	  grep -E 'platform:(Windows|Linux),' /tmp/gpm-gcdb.txt; } > desktop/app/nucleo/datos/gamecontrollerdb.txt
 	@echo "Base incluida: $$(grep -c '^[0-9a-f]' desktop/app/nucleo/datos/gamecontrollerdb.txt) mandos. Revisa y haz commit (y actualiza la fecha en la prueba de basedatos.rs)."
 
-app-escritorio-test: ## App de escritorio: pruebas del nucleo (y con un mando virtual uinput si hay permiso)
+app-escritorio-test: ## App de escritorio: pruebas del nucleo (y con mandos y toques virtuales uinput si hay permiso)
 	@(cd desktop/app && cargo test -p gpm-nucleo)
-	@if [ -w /dev/uinput ]; then cd desktop/app && cargo test -p gpm-nucleo --test uinput --test salida_uinput -- --ignored --test-threads=1; \
+	@if [ -w /dev/uinput ]; then cd desktop/app && cargo test -p gpm-nucleo --test uinput --test salida_uinput --test toques_uinput -- --ignored --test-threads=1; \
 		else echo "⚠️  sin permiso en /dev/uinput: se saltan las pruebas con mandos virtuales"; fi
 
 app-escritorio-check: ## App de escritorio: formato, clippy (Linux y Windows) y pruebas del nucleo

@@ -2,7 +2,7 @@
 # Genera latest.json para el actualizador de Tauri (version escritorio-latest de GitHub).
 #
 # Uso: scripts/latest-json.sh <version> <carpeta con los paquetes y sus .sig> <url base de descarga>
-#   p. ej. scripts/latest-json.sh 0.1.0 paquetes \
+#   p. ej. scripts/latest-json.sh 0.2.0 paquetes \
 #          https://github.com/Hades0413/GamePadMapperPluton/releases/download/escritorio-latest
 #
 # Plataformas: linux-x86_64 (AppImage) y windows-x86_64 (instalador NSIS; y windows-x86_64-msi).

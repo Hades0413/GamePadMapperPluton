@@ -14,6 +14,7 @@ struct Interno {
     mandos: BTreeMap<IdMando, (InfoMando, EstadoCrudo)>,
     pendientes: Vec<Evento>,
     vibraciones: Vec<(IdMando, f32, f32)>,
+    capturados: std::collections::BTreeSet<IdMando>,
 }
 
 #[derive(Default)]
@@ -107,6 +108,11 @@ impl ControlSimulado {
         }
     }
 
+    /// ¿Esta capturado (uso exclusivo) el mando?
+    pub fn capturado(&self, id: IdMando) -> bool {
+        bloquear(&self.interno).capturados.contains(&id)
+    }
+
     /// Vibraciones pedidas hasta ahora (mando, fuerte, debil).
     pub fn vibraciones(&self) -> Vec<(IdMando, f32, f32)> {
         bloquear(&self.interno).vibraciones.clone()
@@ -136,6 +142,19 @@ impl FuenteMandos for FuenteSimulada {
             return Err(ErrorMandos::NoEncontrado);
         }
         s.vibraciones.push((id, fuerte, debil));
+        Ok(())
+    }
+
+    fn capturar(&mut self, id: IdMando, capturar: bool) -> Result<(), ErrorMandos> {
+        let mut s = bloquear(&self.interno);
+        if !s.mandos.contains_key(&id) {
+            return Err(ErrorMandos::NoEncontrado);
+        }
+        if capturar {
+            s.capturados.insert(id);
+        } else {
+            s.capturados.remove(&id);
+        }
         Ok(())
     }
 }

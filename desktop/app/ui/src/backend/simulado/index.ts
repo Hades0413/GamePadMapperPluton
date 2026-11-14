@@ -10,12 +10,13 @@ import type {
 } from '../../dominio/tipos';
 import type { Backend } from '../backend';
 import { aplicar, entradasExtra, pad } from './aplicar';
-import { estadoAnimado, MANDO_PALETAS, MANDOS_SIMULADOS, mapeoAutomatico, reposo } from './mandos';
+import { estadoAnimado, MANDO_GENERICO, MANDO_PALETAS, MANDOS_SIMULADOS, mapeoAutomatico, reposo } from './mandos';
+import { crearToquesSimulados } from './toques';
 
 /**
  * Backend simulado para `pnpm dev` en el navegador: tres mandos que se mueven solos, un asistente
- * que «pulsa» cada control por ti, mandos virtuales de mentira, juegos y opciones en memoria. Los
- * mapeos guardados van a localStorage.
+ * que «pulsa» cada control por ti, mandos virtuales de mentira, toques (perfiles, un Waydroid por adb y
+ * ventanas de ejemplo), juegos y opciones en memoria. Los mapeos guardados van a localStorage.
  */
 
 const NOMBRE_SDL: Record<Control, string> = {
@@ -71,6 +72,12 @@ export function crearBackendSimulado(): Backend {
     paletas.mapeo.salida = 'dualshock4';
     paletas.mapeo.acciones = { b11: { tipo: 'pad', salida: 'A', modo: 'turbo', turbo_hz: 12 }, b12: { tipo: 'pad', salida: 'TOUCHPAD', modo: 'normal', turbo_hz: 10 } };
   }
+  // El generico viene de ejemplo con «Toques» en la ventana de Waydroid.
+  const generico = mapeos.get(MANDO_GENERICO.id);
+  if (generico && generico.origen !== 'guardado') {
+    generico.mapeo.salida = 'toques';
+    generico.mapeo.toques = { destino: { tipo: 'ventana', titulo: 'Waydroid', clase: 'Waydroid' }, solo_con_foco: true };
+  }
   const asistentes = new Map<IdMando, Asistente>();
   const grabando = new Set<IdMando>();
   let entradasBase = 1614;
@@ -109,6 +116,8 @@ export function crearBackendSimulado(): Backend {
     return { tipo, activa, descripcion: activa ? `/dev/input/event${30 + id}` : null, error: null };
   };
 
+  const toques = crearToquesSimulados(() => mapeos, () => pausado);
+
   const vistaAsistente = (a: Asistente, ahora: number): VistaAsistente => {
     const terminado = a.indice >= PASOS_ASISTENTE.length;
     const fase = terminado ? 'terminado' : ahora - a.inicio < CALIBRACION_MS ? 'calibrando' : 'esperando';
@@ -137,7 +146,7 @@ export function crearBackendSimulado(): Backend {
 
   return {
     info: async () => ({
-      version: '0.1.0', carpeta_mapeos: '~/.config/gamepad-mapper-pluton/mandos', entradas_base_datos: entradasBase,
+      version: '0.2.0', carpeta_mapeos: '~/.config/gamepad-mapper-pluton/mandos', entradas_base_datos: entradasBase,
       base_incluida: '2026-11-09', base_actualizada: actualizada, mandos_anadidos: anadidos, plataforma: 'linux', pausado,
     }),
     listarMandos: async () => structuredClone([...MANDOS_SIMULADOS]),
@@ -239,6 +248,7 @@ export function crearBackendSimulado(): Backend {
       { tipo: 'xbox360', disponible: true, motivo: null },
       { tipo: 'dualshock4', disponible: true, motivo: null },
       { tipo: 'switchpro', disponible: true, motivo: null },
+      { tipo: 'toques', disponible: true, motivo: null },
     ],
     async pausar(p) {
       pausado = p;
@@ -321,7 +331,7 @@ export function crearBackendSimulado(): Backend {
       return { ...opciones };
     },
     leerRegistro: async () => [
-      '10:15:02 UTC [INFO] Gamepad Mapper Pluton 0.1.0 — mapeos en ~/.config/gamepad-mapper-pluton/mandos',
+      '10:15:02 UTC [INFO] Gamepad Mapper Pluton 0.2.0 — mapeos en ~/.config/gamepad-mapper-pluton/mandos',
       '10:15:02 UTC [INFO] mando conectado: Mando Pro con paletas (simulado) (/dev/input/event23)',
       '10:15:02 UTC [INFO] mando virtual Dualshock4 creado en /dev/input/event33',
       '10:15:02 UTC [INFO] Mando Pro con paletas (simulado) capturado (EVIOCGRAB)',
@@ -332,5 +342,6 @@ export function crearBackendSimulado(): Backend {
       return null;
     },
     instalarActualizacion: async () => undefined,
+    ...toques,
   };
 }

@@ -3,7 +3,7 @@
 use nucleo::dispositivos::IdMando;
 use nucleo::opciones::Opciones;
 use nucleo::servicio::{Instantanea, Servicio};
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Mutex, MutexGuard};
 use tauri::ipc::Channel;
 
@@ -14,6 +14,10 @@ pub struct Compartido {
     pub opciones: Mutex<Opciones>,
     /// La bandeja tiene que volver a dibujar su menu (cambio de mandos, pausa...).
     pub bandeja_sucia: AtomicBool,
+    /// Ultima vez (ms desde el arranque) que la interfaz pregunto por los toques: mientras mira,
+    /// se consulta el juego Android aunque ningun mando use los toques.
+    pub toques_mirados: AtomicU64,
+    pub arranque: std::time::Instant,
     esperando: AtomicUsize,
 }
 
@@ -30,6 +34,8 @@ impl Compartido {
             suscripcion: Mutex::new(None),
             opciones: Mutex::new(opciones),
             bandeja_sucia: AtomicBool::new(true),
+            toques_mirados: AtomicU64::new(0),
+            arranque: std::time::Instant::now(),
             esperando: AtomicUsize::new(0),
         }
     }
@@ -49,6 +55,11 @@ impl Compartido {
             std::thread::sleep(std::time::Duration::from_micros(200));
         }
         bloquear(&self.servicio)
+    }
+
+    /// Milisegundos desde el arranque.
+    pub fn ms(&self) -> u64 {
+        self.arranque.elapsed().as_millis() as u64
     }
 
     pub fn opciones(&self) -> Opciones {

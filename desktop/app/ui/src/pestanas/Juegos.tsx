@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import type { Backend } from '../backend';
 import { claseBoton } from '../componentes/boton';
 import { Casilla, Tarjeta } from '../componentes/controles';
-import { idDeNombre, NOMBRE_SALIDA } from '../dominio/configuracion';
-import type { InfoMando, Juego, JuegoActivo, OpcionesApp } from '../dominio/tipos';
+import { idDeNombre, NOMBRE_SALIDA, nombrePerfil } from '../dominio/configuracion';
+import type { InfoMando, Juego, JuegoActivo, OpcionesApp, PerfilLocal } from '../dominio/tipos';
 import { useT } from '../i18n/contexto';
+import { SeccionToques } from './JuegosToques';
 
 interface Props {
   backend: Backend;
@@ -13,7 +14,8 @@ interface Props {
 
 /**
  * Juegos: una configuracion por juego y por modelo de mando que se usa sola cuando el juego tiene
- * el foco (por su ejecutable o la clase de su ventana). Es la base de los perfiles de toques.
+ * el foco (por su ejecutable o la clase de su ventana), y los toques para juegos Android (perfiles,
+ * juego detectado por adb y perfil de toques de cada juego).
  */
 export function PestanaJuegos({ backend, ejecutar }: Props) {
   const t = useT();
@@ -25,6 +27,7 @@ export function PestanaJuegos({ backend, ejecutar }: Props) {
   const [coincidencia, setCoincidencia] = useState('');
   const [detectando, setDetectando] = useState(0);
   const [mandoElegido, setMandoElegido] = useState<number | null>(null);
+  const [perfiles, setPerfiles] = useState<PerfilLocal[]>([]);
 
   useEffect(() => {
     let vivo = true;
@@ -32,6 +35,7 @@ export function PestanaJuegos({ backend, ejecutar }: Props) {
     void backend.listarMandos().then((m) => vivo && setMandos(m));
     void backend.juegoActivo().then((j) => vivo && setActivo(j));
     void backend.obtenerOpciones().then((o) => vivo && setOpciones(o));
+    void backend.perfilesToques().then((p) => vivo && setPerfiles(p));
     const quitarMandos = backend.alCambiarMandos(setMandos);
     const quitarJuego = backend.alCambiarJuego(setActivo);
     return () => {
@@ -66,7 +70,8 @@ export function PestanaJuegos({ backend, ejecutar }: Props) {
 
   return (
     <main className="min-h-0 flex-1 overflow-y-auto p-4">
-      <div className="mx-auto grid max-w-6xl gap-4 lg:grid-cols-[22rem_minmax(0,1fr)]">
+      <div className="mx-auto max-w-6xl space-y-6">
+      <div className="grid gap-4 lg:grid-cols-[22rem_minmax(0,1fr)]">
         <div className="space-y-4">
           <Tarjeta titulo={t('Cambio automático')}>
             {opciones && (
@@ -144,19 +149,37 @@ export function PestanaJuegos({ backend, ejecutar }: Props) {
                 {Object.entries(j.mapeos).map(([guid, m]) => (
                   <li key={guid} className="flex flex-wrap items-center gap-2 rounded-lg bg-surface-2/60 px-3 py-1.5 text-sm">
                     <span className="min-w-0 flex-1 truncate">{nombreDeGuid(guid) ?? m.nombre}</span>
-                    <span className="text-xs text-muted">{m.salida !== 'ninguna' ? `→ ${NOMBRE_SALIDA[m.salida]}` : t('sin mando virtual')}</span>
+                    <span className="text-xs text-muted">{m.salida === 'toques' ? `→ ${t('Toques')}` : m.salida !== 'ninguna' ? `→ ${NOMBRE_SALIDA[m.salida]}` : t('sin mando virtual')}</span>
                     <span className="text-xs text-muted">{t('{n} acciones · {m} macros', { n: Object.keys(m.acciones).length, m: m.macros.length })}</span>
                     <button type="button" className={claseBoton('fantasma', 'sm')} aria-label={t('Quitar')}
                       onClick={() => ejecutar(async () => setJuegos(await backend.quitarDeJuego(j.id, guid)))}>✕</button>
                   </li>
                 ))}
               </ul>
+              <label className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted">
+                <span>{t('Perfil de toques de este juego:')}</span>
+                <select className="input h-8 w-72 py-0 text-sm" value={j.perfil_toques ?? ''}
+                  onChange={(e) => ejecutar(async () => setJuegos(await backend.guardarJuego({ ...j, perfil_toques: e.target.value || null })))}>
+                  <option value="">{t('Ninguno (juego detectado por adb)')}</option>
+                  {j.perfil_toques && !perfiles.some((p) => p.id === j.perfil_toques) && <option value={j.perfil_toques}>{j.perfil_toques}</option>}
+                  {perfiles.map((p) => <option key={p.id} value={p.id}>{`${nombrePerfil(p)} — ${p.paquete}`}</option>)}
+                </select>
+              </label>
             </section>
           ))}
           <p className="text-xs text-muted">
-            {t('Para editar la configuración de un juego: ajústala en «Mandos» y vuelve a pulsar «Copiar config. del mando». Próximamente: perfiles de toques por juego (Android).')}
+            {t('Para editar la configuración de un juego: ajústala en «Mandos» y vuelve a pulsar «Copiar config. del mando». Un juego Android en una ventana (Waydroid, scrcpy) puede llevar su perfil de toques aunque no haya adb.')}
           </p>
         </div>
+      </div>
+
+      <section aria-label={t('Toques (juegos Android)')} className="space-y-3">
+        <div>
+          <h2 className="text-lg font-semibold">{t('Toques (juegos Android)')}</h2>
+          <p className="text-sm text-muted">{t('Juega con mando a juegos Android que se ven en el PC (Waydroid, emuladores, scrcpy) con los perfiles de la app y de la comunidad. El destino se elige en Mandos → Salida → Toques.')}</p>
+        </div>
+        <SeccionToques backend={backend} ejecutar={ejecutar} perfiles={perfiles} onPerfiles={setPerfiles} />
+      </section>
       </div>
     </main>
   );

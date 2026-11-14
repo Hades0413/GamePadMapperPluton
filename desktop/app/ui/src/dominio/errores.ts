@@ -1,6 +1,6 @@
 /**
  * Mensajes de error del nucleo en Rust (`#[error(...)]` de servicio.rs, dispositivos/mod.rs,
- * salida/mod.rs, mapeo/validar.rs, juegos.rs, opciones.rs). La interfaz los traduce con t(); el
+ * salida/mod.rs, mapeo/validar.rs, juegos.rs, opciones.rs y toques/). La interfaz los traduce con t(); el
  * backend simulado usa los mismos. Una prueba en Rust comprueba que estan todos.
  */
 export const ERROR = {
@@ -15,6 +15,7 @@ export const ERROR = {
   sinVigem: 'ViGEmBus no está instalado: hace falta para crear mandos virtuales en Windows.',
   sinClienteVigem: 'Falta ViGEmClient.dll (el cliente de ViGEmBus) junto a la app.',
   salidaNoDisponible: 'Este tipo de mando virtual no está disponible en este sistema.',
+  sinEscritorio: 'No se sabe el tamaño del escritorio: los toques necesitan X11 o XWayland.',
   // Validacion de configuraciones (nucleo/src/mapeo/validar.rs)
   validacionGuid: 'La configuración no es válida: GUID incorrecto.',
   validacionNombre: 'La configuración no es válida: un nombre es demasiado largo o tiene caracteres de control.',
@@ -27,6 +28,35 @@ export const ERROR = {
   validacionVersion: 'La configuración es de una versión más nueva: actualiza la app.',
   validacionGrande: 'La configuración es demasiado grande (máximo 1 MB).',
   validacionJson: 'El texto no es una configuración de mando válida.',
+  validacionToques: 'El destino de los toques no es válido.',
+  // Toques (nucleo/src/toques)
+  toquesOcupado: 'Los toques ya los está usando otro mando.',
+  toquesPerfil: 'No se pudo cargar el perfil de toques.',
+  toquesConfig: 'La configuración de los toques no es válida.',
+  adbSin: 'No se encontró adb (Android platform-tools): instálalo para detectar el juego.',
+  adbTiempo: 'adb no respondió a tiempo.',
+  adbFallo: 'adb falló al consultar el dispositivo.',
+  adbSinDispositivo: 'No hay ningún dispositivo Android conectado por adb.',
+  perfilVacio: 'El perfil está vacío.',
+  perfilGrande: 'El perfil es demasiado grande (máximo 16 KB).',
+  perfilCaracteres: 'El perfil tiene caracteres no permitidos.',
+  perfilLineas: 'El perfil tiene demasiadas líneas (máximo 400).',
+  perfilFaltaIgual: 'Una línea del perfil no tiene «=».',
+  perfilBoton: 'El perfil tiene un botón no válido.',
+  perfilRepetido: 'El perfil tiene un botón repetido.',
+  perfilAccion: 'El perfil tiene una acción no válida.',
+  perfilAjuste: 'El perfil tiene un ajuste mal escrito o fuera de rango.',
+  perfilSinPaquete: 'Falta la línea «package = ...».',
+  perfilPaquete: 'El nombre del paquete del juego no es válido.',
+  perfilOtroPaquete: 'El perfil es de otro juego.',
+  perfilSinPantalla: 'Falta la línea «screen = ANCHOxALTO».',
+  perfilSinBotones: 'El perfil no tiene ningún botón asignado.',
+  perfilDemasiadosBotones: 'El perfil tiene demasiados botones (máximo 150).',
+  perfilFuera: 'Hay botones fuera de la pantalla indicada en «screen».',
+  perfilNoExiste: 'Ese perfil de toques no existe.',
+  perfilesDemasiados: 'Hay demasiados perfiles de toques guardados.',
+  comunidadRespuesta: 'La respuesta de la comunidad no es válida.',
+  comunidadSinConexion: 'No se pudieron consultar los perfiles de la comunidad.',
   // Juegos (nucleo/src/juegos.rs) y opciones (nucleo/src/opciones.rs)
   juegoNoValido: 'El juego no es válido: identificador, nombre o ejecutable incorrectos.',
   juegosDemasiados: 'Hay demasiados juegos o mandos en un juego.',
