@@ -74,3 +74,4 @@ captures/
 
 # --- Notas internas del autor (no publicas) ---------------------------
 CONTEXTO.md
+tests/out/

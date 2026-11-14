@@ -324,8 +324,26 @@ public final class Community {
         }
     }
 
+    /**
+     * Envia un diagnostico (el usuario lo ha visto entero y ha pulsado Enviar). Devuelve un codigo
+     * corto para darselo al autor.
+     */
+    public static String submitDiagnostic(String installId, String app, String android, String device, String mode,
+                                          String message, String log) throws IOException {
+        if (!UUID.matcher(installId).matches()) throw new IOException("id");
+        try {
+            String id = rpc("submit_diagnostic", new JSONObject().put("p_install", installId).put("p_app", app)
+                    .put("p_android", android).put("p_device", device).put("p_mode", mode)
+                    .put("p_message", message).put("p_log", log)).replace("\"", "").trim();
+            if (!UUID.matcher(id).matches()) throw new IOException(L.t("Respuesta no válida del servidor"));
+            return id.substring(0, 8).toUpperCase(java.util.Locale.ROOT);
+        } catch (JSONException e) {
+            throw new IOException(e.getMessage());
+        }
+    }
+
     /** Llama a una funcion publica de la base de datos (solo las pensadas para la app sin cuenta). */
-    private static void rpc(String fn, JSONObject body) throws IOException {
+    private static String rpc(String fn, JSONObject body) throws IOException {
         HttpURLConnection h = (HttpURLConnection) new URL(API + "rpc/" + fn).openConnection();
         try {
             h.setConnectTimeout(10000);
@@ -343,7 +361,22 @@ public final class Community {
                 out.write(b);
             }
             int code = h.getResponseCode();
+            if (code == 400 || code == 429) {
+                // Mensaje del servidor ("CODIGO|texto"): p. ej. el limite diario.
+                try (InputStream err = h.getErrorStream()) {
+                    String m = err == null ? "" : new JSONObject(new String(Library.readBytes(err, 8192), StandardCharsets.UTF_8))
+                            .optString("message", "");
+                    int bar = m.indexOf('|');
+                    if (bar > 0) throw new IOException(m.substring(bar + 1));
+                } catch (JSONException ignored) {
+                    // sin mensaje legible
+                }
+            }
             if (code < 200 || code >= 300) throw new IOException(L.t("El servidor respondió ") + code);
+            if (code == 204) return "";
+            try (InputStream in = h.getInputStream()) {
+                return new String(Library.readBytes(in, 8192), StandardCharsets.UTF_8);
+            }
         } finally {
             h.disconnect();
         }

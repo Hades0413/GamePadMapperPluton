@@ -361,6 +361,7 @@ public class OverlayService extends Service {
             if (!fg.equals(currentGame)) {
                 closeMenu();
                 checkCommunity(fg);
+                checkGameUpdated(fg);
             }
             currentGame = fg;
             showBubbleView();
@@ -370,6 +371,46 @@ public class OverlayService extends Service {
             if (bubble != null) bubble.setVisibility(View.GONE);
         }
         updateHints(show ? fg : null);   // L.t("Mostrar controles"): solo en el juego con burbuja
+    }
+
+    // ------------------------------------------------------------------ juego actualizado
+
+    private static final String KEY_GAME_VERSION = "game_version:";
+    /** Juegos que se han actualizado desde que se uso su perfil (hasta que el usuario lo revise). */
+    private final java.util.Set<String> updatedGames = new java.util.HashSet<>();
+
+    private long gameVersion(String pkg) {
+        try {
+            android.content.pm.PackageInfo pi = getPackageManager().getPackageInfo(pkg, 0);
+            return Build.VERSION.SDK_INT >= 28 ? pi.getLongVersionCode() : pi.versionCode;
+        } catch (Exception e) {
+            return -1;
+        }
+    }
+
+    /**
+     * Si el juego se ha actualizado desde la ultima vez que se jugo con su perfil, puede haber
+     * movido sus controles: se avisa una vez y el menu ofrece probar o editar el perfil.
+     */
+    private void checkGameUpdated(String pkg) {
+        if (Library.profilesOf(pkg).isEmpty()) return;
+        long now = gameVersion(pkg);
+        if (now < 0) return;
+        android.content.SharedPreferences p = getSharedPreferences(Games.PREFS, MODE_PRIVATE);
+        long seen = p.getLong(KEY_GAME_VERSION + pkg, -1);
+        if (seen < 0) {
+            p.edit().putLong(KEY_GAME_VERSION + pkg, now).apply();   // primera vez: se toma como buena
+            return;
+        }
+        if (seen == now || updatedGames.contains(pkg)) return;
+        updatedGames.add(pkg);
+        showHint(L.t("El juego se ha actualizado: comprueba que los botones sigan en su sitio (menú de la burbuja)."));
+    }
+
+    /** El usuario ha revisado el perfil tras la actualizacion del juego. */
+    private void gameUpdateReviewed(String pkg) {
+        updatedGames.remove(pkg);
+        getSharedPreferences(Games.PREFS, MODE_PRIVATE).edit().putLong(KEY_GAME_VERSION + pkg, gameVersion(pkg)).apply();
     }
 
     // ------------------------------------------------------------------ comunidad
@@ -1453,8 +1494,19 @@ public class OverlayService extends Service {
                             updateHints(pkg);
                             toast(showing ? L.t("Controles ocultos") : L.t("Controles visibles (no bloquean tus toques)"));
                         }));
+                if (updatedGames.contains(pkg)) {
+                    card.addView(Ui.menuRow(this, R.drawable.ic_warning, Ui.WARN, L.t("El juego se ha actualizado"),
+                            L.t("Toca si los botones siguen bien; si no, prueba o edita el perfil"), v -> {
+                                gameUpdateReviewed(pkg);
+                                closeMenu();
+                                toast(L.t("Perfecto: no se volverá a avisar hasta la próxima actualización"));
+                            }));
+                }
                 card.addView(Ui.menuRow(this, R.drawable.ic_edit, Ui.PRIMARY, L.t("Editar controles"),
-                        active.displayName(), v -> editProfile(active)));
+                        active.displayName(), v -> {
+                            gameUpdateReviewed(pkg);
+                            editProfile(active);
+                        }));
                 if (PadService.canDryRun()) {
                     final boolean testing = PadService.dryRun;
                     card.addView(Ui.menuRow(this, R.drawable.ic_play, testing ? Ui.WARN : Ui.PRIMARY,

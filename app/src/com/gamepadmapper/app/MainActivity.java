@@ -1404,6 +1404,8 @@ public class MainActivity extends Activity {
         LinearLayout d = card();
         d.addView(Ui.menuRow(this, R.drawable.ic_list, Ui.TEXT_2, L.t("Registro del mapeador"),
                 L.t("Últimas líneas de mapper.log (modo root)"), v -> showLog()));
+        d.addView(Ui.menuRow(this, R.drawable.ic_upload, Ui.PRIMARY, L.t("Enviar diagnóstico"),
+                L.t("Si algo falla: lo revisas antes de enviarlo y te damos un código"), v -> sendDiagnostic()));
         content.addView(d);
 
         content.addView(sectionTitle(L.t("Acerca de"), null));
@@ -2454,6 +2456,94 @@ public class MainActivity extends Activity {
     }
 
     // ------------------------------------------------------------------ registro
+    /** Informe para el autor: sin datos personales y siempre visible antes de enviarlo. */
+    private String diagnosticReport() {
+        StringBuilder b = new StringBuilder();
+        Mapper.Status st = Mapper.status();
+        b.append("app ").append(appVersion()).append('\n');
+        b.append("android ").append(android.os.Build.VERSION.RELEASE).append(" (sdk ").append(android.os.Build.VERSION.SDK_INT).append(")\n");
+        b.append("modelo ").append(Community.deviceModel()).append('\n');
+        b.append("accesibilidad ").append(PadService.isEnabled(this) ? "si" : "no")
+                .append(" · servicio ").append(PadService.running ? "activo" : "parado")
+                .append(" · root ").append(st.running ? "en marcha" : "no").append('\n');
+        b.append("mandos:");
+        for (int id : android.view.InputDevice.getDeviceIds()) {
+            android.view.InputDevice dev = android.view.InputDevice.getDevice(id);
+            if (dev == null || dev.isVirtual()) continue;
+            int src = dev.getSources();
+            if ((src & android.view.InputDevice.SOURCE_GAMEPAD) == android.view.InputDevice.SOURCE_GAMEPAD
+                    || (src & android.view.InputDevice.SOURCE_JOYSTICK) == android.view.InputDevice.SOURCE_JOYSTICK) {
+                b.append(" [").append(dev.getName()).append(']');
+            }
+        }
+        b.append('\n');
+        File[] fs = Profile.profilesDir().listFiles((dir, n) -> n.endsWith(".conf"));
+        b.append("perfiles ").append(fs == null ? 0 : fs.length).append('\n');
+        for (String name : new String[]{"mapper.log", "pad.log"}) {
+            List<String> lines = tail(new File(Profile.baseDir(), name), 150);
+            if (lines.isEmpty()) continue;
+            b.append("\n--- ").append(name).append(" ---\n");
+            for (String l : lines) b.append(l).append('\n');
+        }
+        return b.toString();
+    }
+
+    private String appVersion() {
+        try {
+            return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+        } catch (Exception e) {
+            return "?";
+        }
+    }
+
+    private void sendDiagnostic() {
+        final String report = diagnosticReport();
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(20), dp(8), dp(20), 0);
+        final android.widget.EditText what = new android.widget.EditText(this);
+        what.setHint(L.t("¿Qué ha pasado? (opcional)"));
+        what.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(500)});
+        box.addView(what);
+        box.addView(Ui.text(this, L.t("Se enviará este texto (sin tu nombre ni datos personales):"), 12, Ui.TEXT_2, false));
+        TextView t = Ui.text(this, report, 10, Ui.TEXT, false);
+        t.setTypeface(android.graphics.Typeface.MONOSPACE);
+        t.setTextIsSelectable(true);
+        ScrollView sv = new ScrollView(this);
+        sv.addView(t);
+        box.addView(sv, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(260)));
+        new AlertDialog.Builder(this).setTitle(L.t("Enviar diagnóstico")).setView(box)
+                .setPositiveButton(L.t("Enviar"), (dlg, w) -> {
+                    final String msg = what.getText().toString();
+                    final String install = CommunityLinks.installId(this);
+                    final String mode = Mapper.status().running ? "root" : PadService.isEnabled(this) ? "accesibilidad" : "ninguno";
+                    new Thread(() -> {
+                        String code = null, error = null;
+                        try {
+                            code = Community.submitDiagnostic(install, appVersion(), "Android " + android.os.Build.VERSION.RELEASE,
+                                    Community.deviceModel(), mode, msg, report);
+                        } catch (Exception e) {
+                            error = e.getMessage();
+                        }
+                        final String c = code, err = error;
+                        runOnUiThread(() -> {
+                            if (c == null) {
+                                Toast.makeText(this, L.t("No se pudo enviar: ") + err, Toast.LENGTH_LONG).show();
+                                return;
+                            }
+                            new AlertDialog.Builder(this).setTitle(L.t("Diagnóstico enviado"))
+                                    .setMessage(L.t("Código: ") + c + "\n\n" + L.t("Dáselo al autor (por ejemplo en un issue de GitHub) para que encuentre tu informe."))
+                                    .setPositiveButton(L.t("Copiar código"), (d2, w2) -> {
+                                        android.content.ClipboardManager cm = (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+                                        if (cm != null) cm.setPrimaryClip(android.content.ClipData.newPlainText("diagnostico", c));
+                                    })
+                                    .setNegativeButton(L.t("Cerrar"), null).show();
+                        });
+                    }).start();
+                })
+                .setNegativeButton(L.t("Cancelar"), null).show();
+    }
+
     private void showLog() {
         File log = new File(Profile.baseDir(), "mapper.log");
         List<String> lines = tail(log, 60);

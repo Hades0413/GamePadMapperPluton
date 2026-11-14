@@ -758,5 +758,19 @@ final class L_en {
         m.put("). O crea el tuyo:", "). Or make your own:");
         m.put("El asistente busca los botones del juego y te pide pulsar el del mando para cada uno.", "The wizard finds the game's buttons and asks you to press the gamepad button for each one.");
         m.put("últimamente no funciona", "lately not working");
+        m.put("El juego se ha actualizado: comprueba que los botones sigan en su sitio (menú de la burbuja).", "The game was updated: check that the buttons are still in place (bubble menu).");
+        m.put("El juego se ha actualizado", "The game was updated");
+        m.put("Toca si los botones siguen bien; si no, prueba o edita el perfil", "Tap if the buttons are still fine; if not, test or edit the profile");
+        m.put("Perfecto: no se volverá a avisar hasta la próxima actualización", "Great: no more warnings until the next update");
+        m.put("Enviar diagnóstico", "Send diagnostics");
+        m.put("Si algo falla: lo revisas antes de enviarlo y te damos un código", "If something fails: you review it before sending and get a code");
+        m.put("¿Qué ha pasado? (opcional)", "What happened? (optional)");
+        m.put("Se enviará este texto (sin tu nombre ni datos personales):", "This text will be sent (no name or personal data):");
+        m.put("Enviar", "Send");
+        m.put("No se pudo enviar: ", "Could not send: ");
+        m.put("Diagnóstico enviado", "Diagnostics sent");
+        m.put("Código: ", "Code: ");
+        m.put("Dáselo al autor (por ejemplo en un issue de GitHub) para que encuentre tu informe.", "Give it to the author (for example in a GitHub issue) so they can find your report.");
+        m.put("Copiar código", "Copy code");
     }
 }
