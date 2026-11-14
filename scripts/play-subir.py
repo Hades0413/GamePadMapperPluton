@@ -3,6 +3,7 @@
 
     python3 -I scripts/play-subir.py dist/GamepadMapper-1.7.1.aab
     python3 -I scripts/play-subir.py --comprobar     (solo comprueba el acceso; no cambia nada)
+    python3 -I scripts/play-subir.py --promover alpha (pasa la version de la prueba interna a otra pista)
 
 Credenciales (cuenta de servicio con permiso de publicar en la app), por orden:
   PLAY_SERVICE_ACCOUNT_JSON       contenido del JSON de la clave (asi lo pasa GitHub Actions)
@@ -11,7 +12,7 @@ Opcional:
   PLAY_TRACK   internal (por defecto), alpha (prueba cerrada), beta (abierta) o production
   PLAY_STATUS  completed (por defecto) o draft (queda como borrador para revisarlo en Play Console)
 
-Notas de la version: play/novedades/<idioma>.txt (es-ES.txt, en-US.txt...), maximo 500 caracteres.
+Notas de la version: play/novedades/<version>/<idioma>.txt (es-ES.txt, en-US.txt...), max. 500 caracteres.
 
 Solo usa la biblioteca estandar y openssl (para firmar el acceso): sin paquetes de terceros que
 puedan ver la clave. La clave privada se escribe en un archivo temporal 0600 y se borra al acabar.
@@ -133,8 +134,8 @@ def codigo_del_manifiesto() -> int:
     return int(m.group(1))
 
 
-def notas() -> list[dict]:
-    carpeta = RAIZ / "play" / "novedades"
+def notas(version: str) -> list[dict]:
+    carpeta = RAIZ / "play" / "novedades" / version
     lista = []
     for f in sorted(carpeta.glob("*.txt")) if carpeta.is_dir() else []:
         texto = f.read_text(encoding="utf-8").strip()
@@ -166,9 +167,43 @@ def comprobar() -> None:
             print(f"  pista {p['track']}: {v.get('name')} {v.get('versionCodes')} ({v.get('status')})")
 
 
+def promover(destino: str) -> None:
+    """Pasa la version publicada en la prueba interna (mismo bundle y notas) a otra pista de prueba."""
+    if destino not in PISTAS - {"internal", "production"}:
+        fallo("solo se puede promover a alpha (prueba cerrada) o beta (abierta); producción, a mano en Play Console")
+    token = token_de_acceso(cuenta_de_servicio())
+    edicion = pedir("POST", f"{API}/edits", b"{}", token)["id"]
+    try:
+        interna = pedir("GET", f"{API}/edits/{edicion}/tracks/internal", None, token)
+        version = next((v for v in interna.get("releases", []) if v.get("status") == "completed"), None)
+        if not version:
+            fallo("no hay ninguna version publicada en la prueba interna")
+        nueva = {k: version[k] for k in ("name", "versionCodes", "releaseNotes") if k in version}
+        estado = "completed"
+        try:
+            pedir("PUT", f"{API}/edits/{edicion}/tracks/{destino}",
+                  json.dumps({"track": destino, "releases": [dict(nueva, status=estado)]}).encode(), token)
+        except ErrorPlay as e:
+            if "draft" not in e.mensaje.lower():
+                raise
+            estado = "draft"
+            pedir("PUT", f"{API}/edits/{edicion}/tracks/{destino}",
+                  json.dumps({"track": destino, "releases": [dict(nueva, status=estado)]}).encode(), token)
+        pedir("POST", f"{API}/edits/{edicion}:commit", b"{}", token)
+    except ErrorPlay as e:
+        try:
+            pedir("DELETE", f"{API}/edits/{edicion}", None, token)
+        except ErrorPlay:
+            pass
+        fallo(e.mensaje)
+    print(f"Listo: {nueva.get('name')} {nueva['versionCodes']} en la pista «{destino}» ({estado}).")
+
+
 def main() -> None:
     if sys.argv[1:] == ["--comprobar"]:
         return comprobar()
+    if len(sys.argv) == 3 and sys.argv[1] == "--promover":
+        return promover(sys.argv[2])
     if len(sys.argv) != 2:
         fallo("uso: play-subir.py <archivo.aab>")
     aab = Path(sys.argv[1])
@@ -201,8 +236,10 @@ def main() -> None:
 
         def asignar(est: str) -> None:
             version = {"name": nombre, "versionCodes": [str(codigo)], "status": est}
-            if notas():
-                version["releaseNotes"] = notas()
+            if notas(nombre):
+                version["releaseNotes"] = notas(nombre)
+            else:
+                print(f"  aviso: sin notas en play/novedades/{nombre}/")
             pedir("PUT", f"{API}/edits/{edicion}/tracks/{pista}",
                   json.dumps({"track": pista, "releases": [version]}).encode(), token)
 

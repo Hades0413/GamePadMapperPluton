@@ -25,14 +25,15 @@ make apk                                     # o el APK que vayas a enseñar
 Al publicar una versión (`make release`, tag `v*`), GitHub Actions compila y firma el AAB y lo sube
 solo a la pista **Prueba interna** (job `play` de `build.yml`, script `scripts/play-subir.py`).
 
-- **Notas de la versión**: edita `play/novedades/es-ES.txt` y `en-US.txt` (máx. 500 caracteres)
-  **antes** de `make release`.
+- **Notas de la versión**: `play/novedades/<versión>/es-ES.txt` y `en-US.txt` (máx. 500
+  caracteres), **antes** de `make release` (no publica si faltan).
 - **Mientras la app no haya pasado la primera revisión de Google** («(unreviewed)»), Play solo
   acepta borradores por la API: la versión queda como borrador en *Prueba interna* y hay que
   pulsar *Guardar y publicar* en Play Console. Después de la revisión se publica sola.
 - **Si el código de versión ya está en Play** (subido a mano), se usa ese bundle sin volver a subirlo.
-- **Pasar a prueba cerrada o producción**: en Play Console, la versión › *Promocionar versión*
-  (o en local: `PLAY_TRACK=alpha PLAY_SERVICE_ACCOUNT_JSON_FILE=… make play-subir`).
+- **Pasar a la prueba cerrada**: `PLAY_SERVICE_ACCOUNT_JSON_FILE=… make play-promover` (misma
+  versión y notas que la prueba interna; `PISTA=beta` para la abierta). **Producción**, solo a mano
+  en Play Console (*Promocionar versión*): la cuenta de servicio no tiene ese permiso a propósito.
 - **En local**: `PLAY_SERVICE_ACCOUNT_JSON_FILE=/ruta/fuera/del/repo/clave.json make play-subir`.
 
 ### Cuenta de servicio (una sola vez)
