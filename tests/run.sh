@@ -20,7 +20,9 @@ echo "== Java (app)"
 "$jdk/bin/java" -cp "$out/cls$sep$jar" ProfileTest "$here/fixture.conf" > "$out/java.txt"
 
 echo "== C (gpmapper)"
-"$zig" cc -target x86_64-linux-musl -static -O1 -w -o "$out/gpmapper" "$root/mapper/src/gpmapper.c" -lm
+src="$root/mapper/src"
+"$zig" cc -target x86_64-linux-musl -static -O1 -w -o "$out/gpmapper" "$src/gpmapper.c" "$src/core/gpm_core.c" \
+    "$src/core/gpm_repeticion.c" "$src/linux/gpm_evdev.c" -lm
 "$out/gpmapper" -c "$here/fixture.conf" 2>/dev/null > "$out/c.raw"
 { sed -n '1,2p' "$out/c.raw"; sed -n '3,$p' "$out/c.raw" | LC_ALL=C sort; } > "$out/c.txt"
 { sed -n '1,2p' "$out/java.txt"; sed -n '3,$p' "$out/java.txt" | LC_ALL=C sort; } > "$out/j.txt"
