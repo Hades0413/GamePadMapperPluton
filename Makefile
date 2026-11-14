@@ -173,7 +173,12 @@ release: test ## Publica: tag v<version> sobre main (ya fusionado) y GitHub comp
 	@git tag "v$(VERSION)"
 	@git push origin "v$(VERSION)"
 	@echo "✅ Tag v$(VERSION) subido: GitHub Actions publicara el Release en unos minutos."
-	@echo "   Para Google Play: make aab y sube $(AAB) en Play Console."
+	@echo "   Google Play: el AAB se sube solo a la prueba interna (si existe el secreto PLAY_SERVICE_ACCOUNT_JSON)."
+	@echo "   Antes: notas de la version en play/novedades/es-ES.txt y en-US.txt."
+
+play-subir: ## Sube el AAB a Google Play (prueba interna): PLAY_SERVICE_ACCOUNT_JSON_FILE=ruta/clave.json make play-subir
+	@[ -f "$(AAB)" ] || { echo "❌ No existe $(AAB): make aab primero"; exit 1; }
+	@python3 -I scripts/play-subir.py "$(AAB)"
 
 # =============================================================================
 # WEB (web/: React + Vite, necesita Node 22+ y pnpm)
