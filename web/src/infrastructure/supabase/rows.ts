@@ -85,6 +85,17 @@ export const versionRow = z.object({
 
 export type CommentRow = z.infer<typeof commentRow>;
 export type VersionRow = z.infer<typeof versionRow>;
+export const diagnosticRow = z.object({
+  id: z.uuid(),
+  app_version: z.string(),
+  android: z.string(),
+  device: z.string(),
+  mode: z.string(),
+  message: z.string(),
+  log: z.string(),
+  created_at: z.string(),
+});
+
 export type AuthorRow = z.infer<typeof authorRow>;
 export type GameRow = z.infer<typeof gameRow>;
 export type ProfileSummaryRow = z.infer<typeof profileSummaryRow>;

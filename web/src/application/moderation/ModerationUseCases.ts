@@ -4,7 +4,7 @@ import {
   GAME_IMAGE_MAX_BYTES, isGameImageType, type GameImageFile, type GameImageKind,
 } from '@domain/game/GameImage';
 import type {
-  ImportedGame, ModerationRepository, PlayScreenshot, ReportedProfile,
+  Diagnostic, ImportedGame, ModerationRepository, PlayScreenshot, ReportedProfile,
 } from '../ports/ModerationRepository';
 import { checkGameName, checkPackage } from '../profiles/profileInput';
 import { requireId } from '../shared/guards';
@@ -119,5 +119,29 @@ export class UseBackgroundFromPlay {
       throw new AppError('INVALID_INPUT', 'Captura no válida.');
     }
     return this.#moderation.useBackgroundFromPlay(checkPackage(input.packageName), input.screenshotId);
+  }
+}
+
+export class ListDiagnostics {
+  readonly #moderation: ModerationRepository;
+
+  constructor(moderation: ModerationRepository) {
+    this.#moderation = moderation;
+  }
+
+  execute(): Promise<readonly Diagnostic[]> {
+    return this.#moderation.diagnostics();
+  }
+}
+
+export class DeleteDiagnostic {
+  readonly #moderation: ModerationRepository;
+
+  constructor(moderation: ModerationRepository) {
+    this.#moderation = moderation;
+  }
+
+  execute(id: string): Promise<void> {
+    return this.#moderation.deleteDiagnostic(requireId(id));
   }
 }

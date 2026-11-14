@@ -9,7 +9,7 @@ import type { FillGameImages } from '@application/games/FillGameImages';
 import type { GetGame } from '@application/games/GetGame';
 import type { ListGames } from '@application/games/ListGames';
 import type {
-  BanAuthor, ImportGameFromPlay, ListPlayScreenshots, ListReportedProfiles, ModerateProfile, SetGameImage,
+  BanAuthor, DeleteDiagnostic, ImportGameFromPlay, ListDiagnostics, ListPlayScreenshots, ListReportedProfiles, ModerateProfile, SetGameImage,
   UpdateGame, UseBackgroundFromPlay,
 } from '@application/moderation/ModerationUseCases';
 import type { DeleteProfile } from '@application/profiles/DeleteProfile';
@@ -59,6 +59,8 @@ export interface UseCases {
   readonly setProfileTags: SetProfileTags;
   readonly listFeaturedProfiles: ListFeaturedProfiles;
   readonly featureProfile: FeatureProfile;
+  readonly listDiagnostics: ListDiagnostics;
+  readonly deleteDiagnostic: DeleteDiagnostic;
 }
 
 export interface SiteLinks {

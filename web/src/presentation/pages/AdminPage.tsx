@@ -3,10 +3,11 @@ import { RequireAccount } from '../components/auth/RequireAccount';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { useGames } from '../queries/games';
 import { useReportedProfiles } from '../queries/moderation';
+import { DiagnosticsPanel } from './admin/DiagnosticsPanel';
 import { GamesPanel } from './admin/GamesPanel';
 import { ReportsPanel } from './admin/ReportsPanel';
 
-type Tab = 'juegos' | 'reportes';
+type Tab = 'juegos' | 'reportes' | 'diagnosticos';
 
 function Tabs({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
   const reported = useReportedProfiles();
@@ -16,6 +17,7 @@ function Tabs({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
   const items: [Tab, string, number, string][] = [
     ['juegos', 'Juegos', toFix, 'bg-warning/20 text-warning'],
     ['reportes', 'Reportes', pending, 'bg-danger/20 text-danger'],
+    ['diagnosticos', 'Diagnósticos', 0, ''],
   ];
   return (
     <div role="tablist" aria-label="Secciones" className="flex gap-1 border-b border-line">
@@ -34,7 +36,8 @@ function Tabs({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
 export default function AdminPage() {
   useDocumentTitle('Moderación');
   const [params, setParams] = useSearchParams();
-  const tab: Tab = params.get('tab') === 'reportes' ? 'reportes' : 'juegos';
+  const raw = params.get('tab');
+  const tab: Tab = raw === 'reportes' || raw === 'diagnosticos' ? raw : 'juegos';
   return (
     <RequireAccount admin reason="Inicia sesión como administrador.">
       {() => (
@@ -44,7 +47,7 @@ export default function AdminPage() {
             <p className="mt-1 text-muted">Completa los juegos (icono y captura) y revisa los perfiles reportados.</p>
           </div>
           <Tabs tab={tab} onChange={(t) => setParams(t === 'juegos' ? {} : { tab: t }, { replace: true })} />
-          {tab === 'juegos' ? <GamesPanel /> : <ReportsPanel />}
+          {tab === 'juegos' ? <GamesPanel /> : tab === 'reportes' ? <ReportsPanel /> : <DiagnosticsPanel />}
         </div>
       )}
     </RequireAccount>

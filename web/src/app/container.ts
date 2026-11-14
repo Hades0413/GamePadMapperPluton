@@ -14,7 +14,7 @@ import { FillGameImages } from '@application/games/FillGameImages';
 import { GetGame } from '@application/games/GetGame';
 import { ListGames } from '@application/games/ListGames';
 import {
-  BanAuthor, ImportGameFromPlay, ListPlayScreenshots, ListReportedProfiles, ModerateProfile, SetGameImage,
+  BanAuthor, DeleteDiagnostic, ImportGameFromPlay, ListDiagnostics, ListPlayScreenshots, ListReportedProfiles, ModerateProfile, SetGameImage,
   UpdateGame, UseBackgroundFromPlay,
 } from '@application/moderation/ModerationUseCases';
 import { DeleteProfile } from '@application/profiles/DeleteProfile';
@@ -85,6 +85,8 @@ export function createServices(env: Env): Services {
       setProfileTags: new SetProfileTags(community),
       listFeaturedProfiles: new ListFeaturedProfiles(community),
       featureProfile: new FeatureProfile(community),
+      listDiagnostics: new ListDiagnostics(moderation),
+      deleteDiagnostic: new DeleteDiagnostic(moderation),
     },
   };
 }
