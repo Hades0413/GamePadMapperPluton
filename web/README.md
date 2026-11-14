@@ -14,10 +14,25 @@ cp .env.example .env.local   # pon la URL y la clave publica de Supabase
 pnpm install
 pnpm dev                     # http://localhost:5173
 pnpm check                   # tipos + lint + pruebas
+pnpm e2e                     # pruebas en Chrome contra la base de datos publica (ver abajo)
 pnpm build                   # dist/ listo para GitHub Pages
 ```
 
 Desde la raíz del repo también: `make web-dev`, `make web-check`, `make web-build`.
+
+### Pruebas en navegador (`pnpm e2e`)
+
+`tests/e2e/e2e.ts` compila la web con la ruta base de GitHub Pages (`/GamePadMapperPluton/`), la
+sirve con `vite preview` y la abre en Chrome sin ventana (puppeteer-core, `CHROME_PATH`, por defecto
+`/usr/bin/google-chrome`) contra la base de datos pública, solo leyendo: sin desplazamiento horizontal
+de 320 a 1024 px en español e inglés, enlaces internos que abren una página válida, sin errores de
+consola, y manifiesto y service worker correctos. En CI: `.github/workflows/web-e2e.yml`.
+
+## Web instalable
+
+Manifiesto y service worker se generan al compilar (`vite.config.ts`, `pwa/sw.template.js`). El
+service worker solo guarda los archivos estáticos propios de cada versión (y borra los de versiones
+anteriores); nunca guarda HTML ni toca peticiones a Supabase.
 
 ## Arquitectura por capas
 
