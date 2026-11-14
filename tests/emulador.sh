@@ -83,6 +83,16 @@ alive && ok "enlace a un perfil que no existe" || bad "enlace a un perfil que no
 adb shell am start -a android.intent.action.VIEW -d "gpmapper://subido/no-es-un-id" "$pkg" >/dev/null
 sleep 2
 alive && ok "enlace gpmapper://subido mal formado" || bad "enlace gpmapper://subido mal formado"
+# Vuelta del inicio de sesion sin haberlo empezado (o con un state falso): se rechaza sin cerrarse.
+adb shell am start -a android.intent.action.VIEW -d "'gpmapper://auth?state=falso&code=falso'" "$pkg" >/dev/null
+shot 04-auth-falso 3
+alive && ok "enlace gpmapper://auth sin inicio de sesión pendiente" || bad "enlace gpmapper://auth falso"
+if [ -n "$(adb shell run-as "$pkg" ls shared_prefs/nube.xml 2>/dev/null | tr -d '\r' | grep -v 'No such')" ] \
+   && adb shell run-as "$pkg" cat shared_prefs/nube.xml 2>/dev/null | grep -q '"sesion"'; then
+    bad "un enlace gpmapper://auth falso creó una sesión"
+else
+    ok "un enlace gpmapper://auth falso no crea sesión"
+fi
 
 # 4. Boton de Ajustes rapidos (Android 13+: cmd statusbar)
 if [ "$api" -ge 33 ]; then

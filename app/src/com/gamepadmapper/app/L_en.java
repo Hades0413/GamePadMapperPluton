@@ -789,5 +789,49 @@ final class L_en {
         m.put("Si algún botón sale con un nombre raro, usa «Detectar botón» en el editor", "If a button shows up with an odd name, use «Detect button» in the editor");
         m.put("Usar mapeos de la comunidad", "Use community mappings");
         m.put("Modo root: corrige los botones de mandos genéricos (SDL GameControllerDB y la web)", "Root mode: fixes the buttons of generic gamepads (SDL GameControllerDB and the website)");
+        // Copia en la nube (GitHub)
+        m.put("No hay ningún inicio de sesión pendiente", "There is no pending sign-in");
+        m.put("El inicio de sesión ha caducado: vuelve a intentarlo", "The sign-in expired: please try again");
+        m.put("Respuesta de inicio de sesión no válida", "Invalid sign-in response");
+        m.put("GitHub no permitió el inicio de sesión", "GitHub did not allow the sign-in");
+        m.put("Inicia sesión con GitHub", "Sign in with GitHub");
+        m.put("La sesión ha caducado: vuelve a iniciar sesión con GitHub", "The session expired: sign in with GitHub again");
+        m.put("No se pudo guardar la sesión de forma segura", "Could not store the session securely");
+        m.put("No se pudo leer la sesión guardada", "Could not read the saved session");
+        m.put("Copia en la nube", "Cloud backup");
+        m.put("opcional", "optional");
+        m.put("Guarda tus perfiles en tu cuenta de GitHub para recuperarlos en otro teléfono. Solo tú ves tu copia.",
+                "Keep your profiles in your GitHub account to restore them on another phone. Only you can see your backup.");
+        m.put("Iniciar sesión con GitHub", "Sign in with GitHub");
+        m.put("Copia en la nube activa", "Cloud backup on");
+        m.put("Sesión iniciada con GitHub", "Signed in with GitHub");
+        m.put("Sesión iniciada como @", "Signed in as @");
+        m.put("Subir mis perfiles", "Upload my profiles");
+        m.put("Copia todos los perfiles del teléfono (máximo 200)", "Copies every profile on the phone (up to 200)");
+        m.put("Subiendo perfiles…", "Uploading profiles…");
+        m.put("Perfiles subidos: ", "Profiles uploaded: ");
+        m.put(" · con error: ", " · failed: ");
+        m.put("Restaurar desde la nube", "Restore from the cloud");
+        m.put("Te pregunta antes de sustituir perfiles del teléfono", "Asks before replacing profiles on the phone");
+        m.put("Descargando la copia…", "Downloading the backup…");
+        m.put("No se pudo restaurar: ", "Could not restore: ");
+        m.put("Borrar la copia de la nube", "Delete the cloud backup");
+        m.put("Los perfiles del teléfono no se tocan", "Profiles on the phone are not touched");
+        m.put("Se borrarán todos los perfiles guardados en tu cuenta. Los del teléfono se quedan.",
+                "Every profile saved in your account will be deleted. The ones on the phone stay.");
+        m.put("Borrando…", "Deleting…");
+        m.put("Perfiles borrados de la nube: ", "Profiles deleted from the cloud: ");
+        m.put("Cerrar sesión", "Sign out");
+        m.put("Borra la sesión de este teléfono", "Removes the session from this phone");
+        m.put("Sesión cerrada", "Signed out");
+        m.put("Error: ", "Error: ");
+        m.put("Se abrirá el navegador para entrar con tu cuenta de GitHub (la misma que en la web). ",
+                "The browser will open so you can sign in with your GitHub account (the same as on the website). ");
+        m.put("Tus perfiles se guardan de forma privada: solo tú los ves y se borran con tu cuenta.",
+                "Your profiles are stored privately: only you can see them and they are deleted with your account.");
+        m.put("Continuar", "Continue");
+        m.put("No se pudo abrir el navegador", "Could not open the browser");
+        m.put("Sesión iniciada", "Signed in");
+        m.put("No se pudo iniciar sesión: ", "Could not sign in: ");
     }
 }
