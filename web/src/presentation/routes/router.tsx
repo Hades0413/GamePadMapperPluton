@@ -1,6 +1,7 @@
 import { lazy } from 'react';
 import { createBrowserRouter } from 'react-router';
 import { Layout } from '../components/layout/Layout';
+import { I18nProvider } from '../i18n/I18nProvider';
 import HomePage from '../pages/HomePage';
 import NotFoundPage from '../pages/NotFoundPage';
 import RouteErrorPage from '../pages/RouteErrorPage';
@@ -32,7 +33,8 @@ export function createRouter(basename: string) {
           { path: 'autor/:username', element: <AuthorPage /> },
           { path: 'subir', element: <UploadPage /> },
           { path: 'cuenta', element: <AccountPage /> },
-          { path: 'admin', element: <AdminPage /> },
+          // La moderacion se queda en espanol (la usa solo el equipo).
+          { path: 'admin', element: <I18nProvider force="es"><AdminPage /></I18nProvider> },
           { path: 'privacidad', element: <PrivacyPage /> },
           { path: 'normas', element: <RulesPage /> },
           { path: '*', element: <NotFoundPage /> },

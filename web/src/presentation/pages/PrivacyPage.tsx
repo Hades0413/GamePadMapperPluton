@@ -1,83 +1,76 @@
 import { Link } from 'react-router';
 import { ExternalLink } from '../components/ui/Button';
 import { useLinks } from '../di/ServicesContext';
+import { useI18n } from '../i18n/I18nContext';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { paths } from '../routes/paths';
 
 export default function PrivacyPage() {
-  useDocumentTitle('Política de privacidad');
+  const { t, tr } = useI18n();
+  useDocumentTitle(t('Política de privacidad'));
   const links = useLinks();
   return (
     <article className="prose-page">
-      <h1 className="text-3xl font-bold text-ink">Política de privacidad</h1>
-      <p>Última actualización: 13 de noviembre de 2026.</p>
+      <h1 className="text-3xl font-bold text-ink">{t('Política de privacidad')}</h1>
+      <p>{t('Última actualización: 13 de noviembre de 2026.')}</p>
       <p>
-        Esta política cubre la app <strong>Gamepad Mapper Plutón</strong> para Android
-        (<code>com.gamepadmapper.app</code>) y esta web. Las dos son un proyecto personal de Hades0413, gratuito
-        y sin anuncios.
+        {tr('Esta política cubre la app <b>Gamepad Mapper Plutón</b> para Android (<c>com.gamepadmapper.app</c>) y esta web. Las dos son un proyecto personal de Hades0413, gratuito y sin anuncios.')}
       </p>
 
-      <h2>La app de Android</h2>
+      <h2>{t('La app de Android')}</h2>
       <ul>
-        <li><strong>No recoge ni envía datos personales.</strong> No tiene cuentas, anuncios ni analíticas.</li>
+        <li>{tr('<b>No recoge ni envía datos personales.</b> No tiene cuentas, anuncios ni analíticas.')}</li>
         <li>
-          El <strong>servicio de accesibilidad</strong> se usa solo para leer los botones del mando y tocar la pantalla
-          donde tú configuras. Lo que ocurre en la pantalla y lo que pulsas no se guarda ni se envía a ningún sitio.
+          {tr('El <b>servicio de accesibilidad</b> se usa solo para leer los botones del mando y tocar la pantalla donde tú configuras. Lo que ocurre en la pantalla y lo que pulsas no se guarda ni se envía a ningún sitio.')}
         </li>
-        <li>Tus perfiles se guardan solo en tu teléfono, en la carpeta de la app.</li>
+        <li>{t('Tus perfiles se guardan solo en tu teléfono, en la carpeta de la app.')}</li>
         <li>
-          La app se conecta a internet solo para <strong>descargar el catálogo de perfiles</strong> (con los
-          iconos y capturas de los juegos) y para
-          <strong> comprobar si hay versiones nuevas</strong> en GitHub (esto último se puede desactivar en Ajustes).
-          Esas peticiones no llevan datos tuyos.
+          {tr('La app se conecta a internet solo para <b>descargar el catálogo de perfiles</b> (con los iconos y capturas de los juegos) y para <b>comprobar si hay versiones nuevas</b> en GitHub (esto último se puede desactivar en Ajustes). Esas peticiones no llevan datos tuyos.')}
         </li>
       </ul>
 
-      <h2>Esta web</h2>
+      <h2>{t('Esta web')}</h2>
       <ul>
-        <li>Para <strong>ver y descargar perfiles</strong> no hace falta cuenta y no guardamos nada sobre ti.</li>
+        <li>{tr('Para <b>ver y descargar perfiles</b> no hace falta cuenta y no guardamos nada sobre ti.')}</li>
         <li>
-          Solo si <strong>inicias sesión con GitHub</strong> (para subir perfiles, dar «me gusta» o reportar),
-          guardamos tu <strong>identificador, nombre de usuario y avatar públicos de GitHub</strong>, y el correo que
-          GitHub comparte al iniciar sesión. El correo no se muestra a nadie ni se usa para escribirte.
+          {tr('Solo si <b>inicias sesión con GitHub</b> (para subir perfiles, dar «me gusta» o reportar), guardamos tu <b>identificador, nombre de usuario y avatar públicos de GitHub</b>, y el correo que GitHub comparte al iniciar sesión. El correo no se muestra a nadie ni se usa para escribirte.')}
         </li>
         <li>
-          Lo que publicas (perfiles, título, descripción y, si lo indicas, el modelo de tu teléfono) es{' '}
-          <strong>público</strong> junto con tu nombre de usuario. El modelo es opcional y no te identifica.
+          {tr('Lo que publicas (perfiles, título, descripción y, si lo indicas, el modelo de tu teléfono) es <b>público</b> junto con tu nombre de usuario. El modelo es opcional y no te identifica.')}
         </li>
         <li>
-          Los iconos y capturas de los juegos se toman de la ficha pública de cada juego en Google Play (o los
-          sube la moderación) y se guardan en nuestros servidores: la web y la app no cargan imágenes de otros
-          sitios. Los usuarios no suben imágenes.
+          {t('Los iconos y capturas de los juegos se toman de la ficha pública de cada juego en Google Play (o los sube la moderación) y se guardan en nuestros servidores: la web y la app no cargan imágenes de otros sitios. Los usuarios no suben imágenes.')}
         </li>
-        <li>Guardamos qué perfiles te gustan y los reportes que haces (estos solo los ve la moderación).</li>
+        <li>{t('Guardamos qué perfiles te gustan y los reportes que haces (estos solo los ve la moderación).')}</li>
         <li>
-          La sesión se guarda en el almacenamiento local de tu navegador. No usamos cookies de seguimiento,
-          publicidad ni analíticas.
+          {t('La sesión se guarda en el almacenamiento local de tu navegador. No usamos cookies de seguimiento, publicidad ni analíticas.')}
+        </li>
+        <li>
+          {t('El idioma que eliges (ES/EN) se guarda en el almacenamiento local de tu navegador.')}
         </li>
       </ul>
 
-      <h2>Servicios que usamos</h2>
+      <h2>{t('Servicios que usamos')}</h2>
       <ul>
-        <li><strong>Supabase</strong>: base de datos, inicio de sesión e imágenes de los juegos.</li>
-        <li><strong>GitHub</strong>: inicio de sesión y alojamiento de esta web (GitHub Pages) y del código.</li>
-        <li><strong>Google Play</strong>: distribución de la app.</li>
+        <li>{tr('<b>Supabase</b>: base de datos, inicio de sesión e imágenes de los juegos.')}</li>
+        <li>{tr('<b>GitHub</b>: inicio de sesión y alojamiento de esta web (GitHub Pages) y del código.')}</li>
+        <li>{tr('<b>Google Play</b>: distribución de la app.')}</li>
       </ul>
-      <p>Cada uno trata los datos técnicos de conexión (como la dirección IP) según su propia política.</p>
+      <p>{t('Cada uno trata los datos técnicos de conexión (como la dirección IP) según su propia política.')}</p>
 
-      <h2>Tus derechos y cómo borrar tus datos</h2>
+      <h2>{t('Tus derechos y cómo borrar tus datos')}</h2>
       <p>
-        Puedes borrar tu cuenta y <strong>todos</strong> tus datos en cualquier momento desde{' '}
-        <Link to={paths.account}>Mi cuenta › Borrar mi cuenta</Link>. Se borra al instante. También puedes borrar
-        perfiles sueltos. Para cualquier otra petición, escríbenos en{' '}
-        <ExternalLink href={`${links.repoUrl}/issues`}>GitHub</ExternalLink>.
+        {tr('Puedes borrar tu cuenta y <b>todos</b> tus datos en cualquier momento desde {account}. Se borra al instante. También puedes borrar perfiles sueltos. Para cualquier otra petición, escríbenos en {github}.', {
+          account: <Link to={paths.account}>{t('Mi cuenta › Borrar mi cuenta')}</Link>,
+          github: <ExternalLink href={`${links.repoUrl}/issues`}>GitHub</ExternalLink>,
+        })}
       </p>
 
-      <h2>Menores</h2>
-      <p>La web no está dirigida a menores de 13 años. Para iniciar sesión hace falta una cuenta de GitHub, que exige esa edad mínima.</p>
+      <h2>{t('Menores')}</h2>
+      <p>{t('La web no está dirigida a menores de 13 años. Para iniciar sesión hace falta una cuenta de GitHub, que exige esa edad mínima.')}</p>
 
-      <h2>Cambios</h2>
-      <p>Si cambia esta política, actualizaremos la fecha de arriba.</p>
+      <h2>{t('Cambios')}</h2>
+      <p>{t('Si cambia esta política, actualizaremos la fecha de arriba.')}</p>
     </article>
   );
 }

@@ -1,3 +1,5 @@
+import { useT } from '../../i18n/I18nContext';
+
 export function Spinner({ className = 'size-6' }: { className?: string }) {
   return (
     <svg className={`animate-spin ${className}`} viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -8,8 +10,9 @@ export function Spinner({ className = 'size-6' }: { className?: string }) {
 }
 
 export function PageSpinner() {
+  const t = useT();
   return (
-    <div className="flex justify-center py-20 text-primary" role="status" aria-label="Cargando">
+    <div className="flex justify-center py-20 text-primary" role="status" aria-label={t('Cargando')}>
       <Spinner className="size-8" />
     </div>
   );
