@@ -306,6 +306,13 @@ cumple: `targetSdk 36` (obligatorio desde el 31/08/2026), AAB firmado con tu cla
 binario `gpmapper` alineado a páginas de 16 KB. La app no tiene librerías nativas (`.so`), así que
 funciona en cualquier procesador; el modo root/Shizuku es solo ARM64.
 
+**R8 (código reducido y ofuscado):** `app/build.sh` pasa el código por R8 (viene en las
+build-tools, `lib/d8.jar`) con las reglas de `app/proguard-rules.pro`. El mapping queda en
+`dist/GamepadMapper-<versión>-mapping.txt` y va también dentro del AAB, así que Play Console traduce
+solo las trazas de los errores. Si añades un componente al manifest, una clase que se busque por su
+nombre (reflexión, `Parcelable` que llega de otro proceso...) o código nativo, revisa las reglas.
+`NO_R8=1 ./app/build.sh` compila como antes, sin R8 (para depurar).
+
 Saltos de línea: `.gitattributes` y `.editorconfig` los fijan (LF en todo; CRLF solo en `.ps1`/`.bat`),
 así que da igual el sistema o el editor con que trabajes.
 

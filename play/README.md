@@ -23,6 +23,11 @@ make apk                                     # o el APK que vayas a enseñar
 ## Antes de subir esta versión
 
 - **Versión**: 1.7 (versionCode 9), con los mandos de la comunidad en modo root y la copia en la nube. Sube el AAB de `make aab`.
+- **Código ofuscado (R8)**: el AAB ya lleva el mapping (`BUNDLE-METADATA/.../proguard.map`), así
+  que Play traduce solo las trazas de *Android vitals*. Si Play pidiera el archivo de
+  desofuscación (o para una versión subida sin él): *Probar y publicar › Explorador de apps y
+  paquetes* › la versión › *Descargas* › *Archivo de desofuscación* → sube
+  `dist/GamepadMapper-<versión>-mapping.txt` (de la **misma** compilación que el AAB).
 - **Módulo root**: esta rama trae gpmapper **v7** (lee `mando.map`). La app avisa a quien tenga la
   v6 de que actualice el módulo.
 - **Privacidad**: actualiza la página de privacidad de la web (ver final de `politicas.md`).
