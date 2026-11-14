@@ -5,6 +5,9 @@ import type { GetAuthor } from '@application/authors/GetAuthor';
 import type {
   AddComment, DeleteComment, FeatureProfile, ListComments, ListFeaturedProfiles, ListVersions, SetProfileTags,
 } from '@application/community/CommunityUseCases';
+import type {
+  DeleteMapping, ListApprovedMappings, ListMappingsForReview, ListMyMappings, ReviewMapping, SubmitMapping,
+} from '@application/controllers/ControllerMappingUseCases';
 import type { FillGameImages } from '@application/games/FillGameImages';
 import type { GetGame } from '@application/games/GetGame';
 import type { ListGames } from '@application/games/ListGames';
@@ -61,6 +64,12 @@ export interface UseCases {
   readonly featureProfile: FeatureProfile;
   readonly listDiagnostics: ListDiagnostics;
   readonly deleteDiagnostic: DeleteDiagnostic;
+  readonly listApprovedMappings: ListApprovedMappings;
+  readonly listMyMappings: ListMyMappings;
+  readonly submitMapping: SubmitMapping;
+  readonly deleteMapping: DeleteMapping;
+  readonly listMappingsForReview: ListMappingsForReview;
+  readonly reviewMapping: ReviewMapping;
 }
 
 export interface SiteLinks {

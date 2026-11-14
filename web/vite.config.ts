@@ -19,7 +19,7 @@ const dir = (path: string) => fileURLToPath(new URL(path, import.meta.url));
  *    al compartir el enlace. Los nuevos funcionan igualmente (por 404.html) hasta la proxima
  *    publicacion de la web (el flujo «web» la rehace cada hora).
  */
-const STATIC_ROUTES = ['juegos', 'subir', 'cuenta', 'admin', 'privacidad', 'normas'];
+const STATIC_ROUTES = ['juegos', 'subir', 'cuenta', 'mandos', 'admin', 'privacidad', 'normas'];
 
 const esc = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');

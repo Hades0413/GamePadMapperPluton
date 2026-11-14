@@ -10,6 +10,9 @@ import { GetAuthor } from '@application/authors/GetAuthor';
 import {
   AddComment, DeleteComment, FeatureProfile, ListComments, ListFeaturedProfiles, ListVersions, SetProfileTags,
 } from '@application/community/CommunityUseCases';
+import {
+  DeleteMapping, ListApprovedMappings, ListMappingsForReview, ListMyMappings, ReviewMapping, SubmitMapping,
+} from '@application/controllers/ControllerMappingUseCases';
 import { FillGameImages } from '@application/games/FillGameImages';
 import { GetGame } from '@application/games/GetGame';
 import { ListGames } from '@application/games/ListGames';
@@ -31,6 +34,7 @@ import { createSupabase } from '@infrastructure/supabase/client';
 import { SupabaseAuthGateway } from '@infrastructure/supabase/SupabaseAuthGateway';
 import { SupabaseAuthorRepository } from '@infrastructure/supabase/SupabaseAuthorRepository';
 import { SupabaseCommunityRepository } from '@infrastructure/supabase/SupabaseCommunityRepository';
+import { SupabaseControllerMappingRepository } from '@infrastructure/supabase/SupabaseControllerMappingRepository';
 import { SupabaseGameRepository } from '@infrastructure/supabase/SupabaseGameRepository';
 import { SupabaseModerationRepository } from '@infrastructure/supabase/SupabaseModerationRepository';
 import { SupabaseProfileRepository } from '@infrastructure/supabase/SupabaseProfileRepository';
@@ -46,6 +50,7 @@ export function createServices(env: Env): Services {
   const auth = new SupabaseAuthGateway(db, `${env.siteUrl}/`);
   const moderation = new SupabaseModerationRepository(db);
   const community = new SupabaseCommunityRepository(db);
+  const controllers = new SupabaseControllerMappingRepository(db);
 
   return {
     links: { playUrl: env.playUrl, repoUrl: env.repoUrl, siteUrl: env.siteUrl },
@@ -87,6 +92,12 @@ export function createServices(env: Env): Services {
       featureProfile: new FeatureProfile(community),
       listDiagnostics: new ListDiagnostics(moderation),
       deleteDiagnostic: new DeleteDiagnostic(moderation),
+      listApprovedMappings: new ListApprovedMappings(controllers),
+      listMyMappings: new ListMyMappings(controllers),
+      submitMapping: new SubmitMapping(controllers),
+      deleteMapping: new DeleteMapping(controllers),
+      listMappingsForReview: new ListMappingsForReview(controllers),
+      reviewMapping: new ReviewMapping(controllers),
     },
   };
 }

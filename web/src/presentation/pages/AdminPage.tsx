@@ -2,25 +2,30 @@ import { useSearchParams } from 'react-router';
 import { RequireAccount } from '../components/auth/RequireAccount';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { useGames } from '../queries/games';
+import { useMappingsForReview } from '../queries/controllers';
 import { useReportedProfiles } from '../queries/moderation';
+import { ControllersPanel } from './admin/ControllersPanel';
 import { DiagnosticsPanel } from './admin/DiagnosticsPanel';
 import { GamesPanel } from './admin/GamesPanel';
 import { ReportsPanel } from './admin/ReportsPanel';
 
-type Tab = 'juegos' | 'reportes' | 'diagnosticos';
+type Tab = 'juegos' | 'reportes' | 'mandos' | 'diagnosticos';
 
 function Tabs({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
   const reported = useReportedProfiles();
   const games = useGames('');
   const toFix = (games.data?.pages.flatMap((p) => p.items) ?? []).filter((g) => !g.iconUrl || !g.backgroundUrl).length;
   const pending = reported.data?.length ?? 0;
+  const mappings = useMappingsForReview('pending');
+  const pendingMappings = mappings.data?.length ?? 0;
   const items: [Tab, string, number, string][] = [
     ['juegos', 'Juegos', toFix, 'bg-warning/20 text-warning'],
     ['reportes', 'Reportes', pending, 'bg-danger/20 text-danger'],
+    ['mandos', 'Mandos', pendingMappings, 'bg-warning/20 text-warning'],
     ['diagnosticos', 'Diagnósticos', 0, ''],
   ];
   return (
-    <div role="tablist" aria-label="Secciones" className="flex gap-1 border-b border-line">
+    <div role="tablist" aria-label="Secciones" className="flex gap-1 overflow-x-auto border-b border-line">
       {items.map(([value, label, count, badge]) => (
         <button key={value} type="button" role="tab" aria-selected={tab === value} onClick={() => onChange(value)}
           className={`-mb-px flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
@@ -37,17 +42,17 @@ export default function AdminPage() {
   useDocumentTitle('Moderación');
   const [params, setParams] = useSearchParams();
   const raw = params.get('tab');
-  const tab: Tab = raw === 'reportes' || raw === 'diagnosticos' ? raw : 'juegos';
+  const tab: Tab = raw === 'reportes' || raw === 'mandos' || raw === 'diagnosticos' ? raw : 'juegos';
   return (
     <RequireAccount admin reason="Inicia sesión como administrador.">
       {() => (
         <div className="space-y-6">
           <div>
             <h1 className="text-3xl font-bold">Moderación</h1>
-            <p className="mt-1 text-muted">Completa los juegos (icono y captura) y revisa los perfiles reportados.</p>
+            <p className="mt-1 text-muted">Completa los juegos (icono y captura), revisa los perfiles reportados y aprueba los mandos enviados.</p>
           </div>
           <Tabs tab={tab} onChange={(t) => setParams(t === 'juegos' ? {} : { tab: t }, { replace: true })} />
-          {tab === 'juegos' ? <GamesPanel /> : tab === 'reportes' ? <ReportsPanel /> : <DiagnosticsPanel />}
+          {tab === 'juegos' ? <GamesPanel /> : tab === 'reportes' ? <ReportsPanel /> : tab === 'mandos' ? <ControllersPanel /> : <DiagnosticsPanel />}
         </div>
       )}
     </RequireAccount>
