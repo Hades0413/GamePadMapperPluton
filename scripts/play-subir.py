@@ -2,6 +2,7 @@
 """Sube el AAB a una pista de Google Play (por defecto «Prueba interna») con la API oficial.
 
     python3 -I scripts/play-subir.py dist/GamepadMapper-1.7.1.aab
+    python3 -I scripts/play-subir.py --comprobar     (solo comprueba el acceso; no cambia nada)
 
 Credenciales (cuenta de servicio con permiso de publicar en la app), por orden:
   PLAY_SERVICE_ACCOUNT_JSON       contenido del JSON de la clave (asi lo pasa GitHub Actions)
@@ -145,7 +146,29 @@ def notas() -> list[dict]:
     return lista
 
 
+def comprobar() -> None:
+    """Abre una edicion, lee los bundles y las pistas y la descarta: no cambia nada en Play."""
+    token = token_de_acceso(cuenta_de_servicio())
+    try:
+        edicion = pedir("POST", f"{API}/edits", b"{}", token)["id"]
+        try:
+            bundles = pedir("GET", f"{API}/edits/{edicion}/bundles", None, token).get("bundles", [])
+            pistas = pedir("GET", f"{API}/edits/{edicion}/tracks", None, token).get("tracks", [])
+        finally:
+            pedir("DELETE", f"{API}/edits/{edicion}", None, token)
+    except ErrorPlay as e:
+        fallo(f"sin acceso a la app en Play ({e.mensaje}). ¿Invitaste la cuenta de servicio en "
+              "Usuarios y permisos con esta app y la API activada?")
+    print("Acceso correcto a", PAQUETE)
+    print("  bundles en Play:", ", ".join(str(b.get("versionCode")) for b in bundles) or "ninguno")
+    for p in pistas:
+        for v in p.get("releases", []):
+            print(f"  pista {p['track']}: {v.get('name')} {v.get('versionCodes')} ({v.get('status')})")
+
+
 def main() -> None:
+    if sys.argv[1:] == ["--comprobar"]:
+        return comprobar()
     if len(sys.argv) != 2:
         fallo("uso: play-subir.py <archivo.aab>")
     aab = Path(sys.argv[1])
