@@ -15,12 +15,16 @@ interface Props {
   pedido: Control | null;
   asignados: Partial<Record<Control, string>>;
   onElegir: (c: Control) => void;
+  /** Solo para mirar (el mando virtual): sin botones ni foco. */
+  soloLectura?: boolean;
+  /** Nombres de los botones en otro mando (cruz/circulo, B/A...). */
+  etiquetas?: Partial<Record<Control, string>> | undefined;
 }
 
 const CUERPO =
   'M178 92C128 92 101 112 86 152L46 290C34 336 56 370 96 372C126 374 146 356 166 326C188 300 226 294 320 294C414 294 452 300 474 326C494 356 514 374 544 372C584 370 606 336 594 290L554 152C539 112 512 92 462 92Z';
 
-export function DiagramaMando({ estado, seleccionado, pedido, asignados, onElegir }: Props) {
+export function DiagramaMando({ estado, seleccionado, pedido, asignados, onElegir, soloLectura = false, etiquetas }: Props) {
   const t = useT();
   const pulsado = (c: Control) => estado?.botones[c] ?? false;
 
@@ -40,6 +44,7 @@ export function DiagramaMando({ estado, seleccionado, pedido, asignados, onElegi
         onElegir(c);
       }
     };
+    if (soloLectura) return <g key={c}>{children}</g>;
     return (
       <g key={c} role="button" tabIndex={0} aria-label={t('Elegir la entrada de {control}', { control: ETIQUETA[c] })}
         className={`diag-pieza ${clase(c, ...extra)}`} onClick={() => onElegir(c)} onKeyDown={alPulsarTecla}>
@@ -54,7 +59,7 @@ export function DiagramaMando({ estado, seleccionado, pedido, asignados, onElegi
   const botonCara = (c: Control, x: number, y: number) => pieza(c, (
     <>
       <circle cx={x} cy={y} r={17} fill={relleno(pulsado(c))} className="diag-borde" />
-      <text x={x} y={y + 5} textAnchor="middle" fontSize="15" fontWeight="700" fill={texto(pulsado(c))}>{ETIQUETA[c]}</text>
+      <text x={x} y={y + 5} textAnchor="middle" fontSize="15" fontWeight="700" fill={texto(pulsado(c))}>{etiquetas?.[c] ?? ETIQUETA[c]}</text>
     </>
   ));
 
@@ -72,14 +77,14 @@ export function DiagramaMando({ estado, seleccionado, pedido, asignados, onElegi
       <rect x={x} y={26} width={86} height={30} rx={12} fill="var(--color-surface-2)" className="diag-borde" />
       <clipPath id={`gatillo-${c}`}><rect x={x} y={26} width={86} height={30} rx={12} /></clipPath>
       <rect x={x} y={26} width={86 * valor} height={30} fill="var(--color-primary)" opacity={0.85} clipPath={`url(#gatillo-${c})`} />
-      <text x={x + 43} y={46} textAnchor="middle" fontSize="13" fontWeight="700" fill="var(--color-ink)">{c}</text>
+      <text x={x + 43} y={46} textAnchor="middle" fontSize="13" fontWeight="700" fill="var(--color-ink)">{etiquetas?.[c] ?? c}</text>
     </>
   ));
 
   const bumper = (c: Control, x: number) => pieza(c, (
     <>
       <rect x={x} y={64} width={108} height={22} rx={11} fill={relleno(pulsado(c))} className="diag-borde" />
-      <text x={x + 54} y={79} textAnchor="middle" fontSize="12" fontWeight="700" fill={texto(pulsado(c))}>{c}</text>
+      <text x={x + 54} y={79} textAnchor="middle" fontSize="12" fontWeight="700" fill={texto(pulsado(c))}>{etiquetas?.[c] ?? c}</text>
     </>
   ));
 

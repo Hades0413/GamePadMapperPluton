@@ -1,9 +1,17 @@
+import { completarMapeo } from '../../dominio/configuracion';
 import type { DescEntrada, EstadoCrudo, InfoMando, MapeoMando } from '../../dominio/tipos';
 
 /** Mandos de demostracion para desarrollar la interfaz en el navegador sin mando ni Tauri. */
 
 const desc = (lista: readonly (readonly [number, string])[]): DescEntrada[] =>
   lista.map(([codigo, nombre], indice) => ({ indice, codigo, nombre }));
+
+const BOTONES_XPAD = [
+  [0x130, 'BTN_SOUTH'], [0x131, 'BTN_EAST'], [0x133, 'BTN_NORTH'], [0x134, 'BTN_WEST'], [0x136, 'BTN_TL'],
+  [0x137, 'BTN_TR'], [0x13a, 'BTN_SELECT'], [0x13b, 'BTN_START'], [0x13c, 'BTN_MODE'], [0x13d, 'BTN_THUMBL'],
+  [0x13e, 'BTN_THUMBR'],
+] as const;
+const EJES_XPAD = [[0, 'ABS_X'], [1, 'ABS_Y'], [2, 'ABS_Z'], [3, 'ABS_RX'], [4, 'ABS_RY'], [5, 'ABS_RZ']] as const;
 
 export const MANDO_DEMO: InfoMando = {
   id: 1,
@@ -15,12 +23,29 @@ export const MANDO_DEMO: InfoMando = {
   conexion: 'usb',
   plataforma: 'simulado',
   ruta: '/dev/input/event21',
+  botones: desc(BOTONES_XPAD),
+  ejes: desc(EJES_XPAD),
+  hats: 1,
+  vibracion: true,
+};
+
+/** Mando con cuatro paletas traseras y un eje extra: para la pestana «Botones extra». */
+export const MANDO_PALETAS: InfoMando = {
+  id: 3,
+  nombre: 'Mando Pro con paletas (simulado)',
+  guid: '030000005e040000120b000009050000',
+  vendedor: 0x045e,
+  producto: 0x0b12,
+  version: 0x0509,
+  conexion: 'usb',
+  plataforma: 'simulado',
+  ruta: '/dev/input/event23',
   botones: desc([
-    [0x130, 'BTN_SOUTH'], [0x131, 'BTN_EAST'], [0x133, 'BTN_NORTH'], [0x134, 'BTN_WEST'], [0x136, 'BTN_TL'],
-    [0x137, 'BTN_TR'], [0x13a, 'BTN_SELECT'], [0x13b, 'BTN_START'], [0x13c, 'BTN_MODE'], [0x13d, 'BTN_THUMBL'],
-    [0x13e, 'BTN_THUMBR'],
+    ...BOTONES_XPAD,
+    [0x2c0, 'BTN_TRIGGER_HAPPY1'], [0x2c1, 'BTN_TRIGGER_HAPPY2'], [0x2c2, 'BTN_TRIGGER_HAPPY3'], [0x2c3, 'BTN_TRIGGER_HAPPY4'],
+    [0xa7, 'KEY_RECORD'],
   ]),
-  ejes: desc([[0, 'ABS_X'], [1, 'ABS_Y'], [2, 'ABS_Z'], [3, 'ABS_RX'], [4, 'ABS_RY'], [5, 'ABS_RZ']]),
+  ejes: desc([...EJES_XPAD, [0x28, 'ABS_MISC']]),
   hats: 1,
   vibracion: true,
 };
@@ -45,13 +70,13 @@ export const MANDO_GENERICO: InfoMando = {
   vibracion: false,
 };
 
-export const MANDOS_SIMULADOS: readonly InfoMando[] = [MANDO_DEMO, MANDO_GENERICO];
+export const MANDOS_SIMULADOS: readonly InfoMando[] = [MANDO_DEMO, MANDO_PALETAS, MANDO_GENERICO];
 
-const AJUSTE = { zona_muerta: 0.1, curva: 1, invertir_x: false, invertir_y: false };
+const conXpad = (info: InfoMando) => info.id === MANDO_DEMO.id || info.id === MANDO_PALETAS.id;
 
 /** Mapeo «automatico» de cada mando simulado (lo que daria la base de datos o la heuristica). */
 export function mapeoAutomatico(info: InfoMando): MapeoMando {
-  const asignaciones: MapeoMando['asignaciones'] = info.id === MANDO_DEMO.id
+  const asignaciones: MapeoMando['asignaciones'] = conXpad(info)
     ? {
         A: 'b0', B: 'b1', X: 'b2', Y: 'b3', L1: 'b4', R1: 'b5', SELECT: 'b6', START: 'b7', HOME: 'b8', L3: 'b9',
         R3: 'b10', L2: 'a2', R2: 'a5', LS_X: 'a0', LS_Y: 'a1', RS_X: 'a3', RS_Y: 'a4',
@@ -62,17 +87,14 @@ export function mapeoAutomatico(info: InfoMando): MapeoMando {
         L3: 'b10', R3: 'b11', LS_X: 'a0', LS_Y: 'a1', RS_X: 'a2', RS_Y: 'a3',
         DPAD_UP: 'h0.1', DPAD_DOWN: 'h0.4', DPAD_LEFT: 'h0.8', DPAD_RIGHT: 'h0.2',
       };
-  return {
-    version: 1, guid: info.guid, nombre: info.nombre, asignaciones,
-    stick_izquierdo: { ...AJUSTE }, stick_derecho: { ...AJUSTE },
-  };
+  return completarMapeo({ guid: info.guid, nombre: info.nombre, asignaciones });
 }
 
-/** Estado en reposo: los gatillos analogicos del mando de demostracion reposan en -1. */
+/** Estado en reposo: los gatillos analogicos de los mandos tipo xpad reposan en -1. */
 export function reposo(info: InfoMando): EstadoCrudo {
   return {
     botones: info.botones.map(() => false),
-    ejes: info.ejes.map((e) => (info.id === MANDO_DEMO.id && (e.indice === 2 || e.indice === 5) ? -1 : 0)),
+    ejes: info.ejes.map((e) => (conXpad(info) && (e.indice === 2 || e.indice === 5) ? -1 : 0)),
     hats: Array.from({ length: info.hats }, () => 0),
   };
 }
@@ -85,11 +107,12 @@ export function estadoAnimado(info: InfoMando, t: number): EstadoCrudo {
   e.botones[ciclo % e.botones.length] = s % 0.6 < 0.3;
   e.ejes[0] = Math.cos(s * 1.3) * 0.85;
   e.ejes[1] = Math.sin(s * 1.3) * 0.85;
-  if (info.id === MANDO_DEMO.id) {
+  if (conXpad(info)) {
     e.ejes[3] = Math.sin(s * 0.9) * 0.9;
     e.ejes[4] = Math.sin(s * 1.8) * 0.5;
     e.ejes[2] = -1 + Math.max(0, Math.sin(s * 2)) * 2;
     e.ejes[5] = -1 + Math.max(0, Math.sin(s * 1.1 + 2)) * 2;
+    if (e.ejes.length > 6) e.ejes[6] = Math.sin(s * 0.7);
   } else {
     e.ejes[2] = Math.sin(s * 0.9) * 0.9;
     e.ejes[3] = Math.cos(s * 1.4) * 0.6;

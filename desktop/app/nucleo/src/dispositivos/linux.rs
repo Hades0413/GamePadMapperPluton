@@ -15,6 +15,7 @@ use super::{
     Plataforma,
 };
 use crate::mapeo::sdl::guid_sdl;
+use crate::salida::linux::es_propio;
 use evdev::{
     AbsoluteAxisCode, Device, EventSummary, FFEffect, FFEffectCode, FFEffectData, FFEffectKind, FFReplay, FFTrigger,
     KeyCode,
@@ -68,6 +69,7 @@ struct Abierto {
     hat_xy: Vec<(i32, i32)>,
     estado: EstadoCrudo,
     efecto: Option<FFEffect>,
+    capturado: bool,
 }
 
 pub struct FuenteEvdev {
@@ -118,6 +120,11 @@ impl FuenteEvdev {
             if self.descartados.get(&ruta) == Some(&inodo)
                 || self.abiertos.iter().any(|a| a.info.ruta == ruta.to_string_lossy())
             {
+                continue;
+            }
+            // Nuestros propios mandos virtuales no se leen (el juego veria la entrada dos veces).
+            if es_propio(&ruta) {
+                self.descartados.insert(ruta, inodo);
                 continue;
             }
             match Device::open(&ruta) {
@@ -226,7 +233,7 @@ impl FuenteEvdev {
         for (h, (x, y)) in hat_xy.iter().enumerate() {
             estado.hats[h] = hat::desde_xy(*x, *y);
         }
-        Ok(Abierto { info, dev, botones, ejes, hats, hat_xy, estado, efecto: None })
+        Ok(Abierto { info, dev, botones, ejes, hats, hat_xy, estado, efecto: None, capturado: false })
     }
 
     fn buscar(&mut self, id: IdMando) -> Option<&mut Abierto> {
@@ -324,17 +331,45 @@ impl FuenteMandos for FuenteEvdev {
             return Err(ErrorMandos::SinVibracion);
         }
         let magnitud = |v: f32| (v.clamp(0.0, 1.0) * f32::from(u16::MAX)) as u16;
+        let (fuerte, debil) = (magnitud(fuerte), magnitud(debil));
+        if fuerte == 0 && debil == 0 {
+            // Borrar el efecto (Drop de FFEffect) lo para.
+            a.efecto = None;
+            return Ok(());
+        }
+        // Duracion 0 = sin fin (hasta la siguiente orden), como en el kernel.
         let datos = FFEffectData {
             direction: 0,
             trigger: FFTrigger::default(),
             replay: FFReplay { length: duracion.as_millis().min(u128::from(u16::MAX)) as u16, delay: 0 },
-            kind: FFEffectKind::Rumble { strong_magnitude: magnitud(fuerte), weak_magnitude: magnitud(debil) },
+            kind: FFEffectKind::Rumble { strong_magnitude: fuerte, weak_magnitude: debil },
         };
-        // El efecto anterior se borra al soltarlo (Drop de FFEffect).
+        // Se reutiliza el efecto subido (el juego cambia la vibracion muy a menudo).
+        if let Some(efecto) = a.efecto.as_mut() {
+            if efecto.update(datos).is_ok() {
+                efecto.play(1)?;
+                return Ok(());
+            }
+        }
         a.efecto = None;
         let mut efecto = a.dev.upload_ff_effect(datos)?;
         efecto.play(1)?;
         a.efecto = Some(efecto);
+        Ok(())
+    }
+
+    fn capturar(&mut self, id: IdMando, capturar: bool) -> Result<(), ErrorMandos> {
+        let a = self.buscar(id).ok_or(ErrorMandos::NoEncontrado)?;
+        if capturar == a.capturado {
+            return Ok(());
+        }
+        if capturar {
+            a.dev.grab()?;
+        } else {
+            a.dev.ungrab()?;
+        }
+        a.capturado = capturar;
+        log::info!("{} {}", a.info.nombre, if capturar { "capturado (EVIOCGRAB)" } else { "liberado" });
         Ok(())
     }
 }

@@ -19,10 +19,30 @@
   --font-mono: ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, Consolas, monospace;
 }
 
+/* Tema claro (opcion «Tema»): mismos tonos de la marca sobre fondo claro. */
+:root[data-tema="claro"] {
+  --color-bg: #f6f3fa;
+  --color-surface: #ffffff;
+  --color-surface-2: #efe8f7;
+  --color-line: #dacfe8;
+  --color-ink: #1d1326;
+  --color-muted: #66577a;
+  --color-brand: #3b2148;
+  --color-primary: #7a4bd6;
+  --color-primary-strong: #6a3ccb;
+  --color-accent: #0e8f7d;
+  --color-danger: #c93b3b;
+  --color-success: #1f9d55;
+  --color-warning: #b7791f;
+}
+
 @layer base {
   html {
     color-scheme: dark;
     background: var(--color-bg);
+  }
+  html[data-tema="claro"] {
+    color-scheme: light;
   }
   body {
     @apply h-dvh overflow-hidden bg-bg font-sans text-ink antialiased select-none;
