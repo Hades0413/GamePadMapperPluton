@@ -1,18 +1,21 @@
 import { PASOS_ASISTENTE } from '../../dominio/controles';
+import { completarMapeo, LIMITES } from '../../dominio/configuracion';
 import { leerFuente } from '../../dominio/fuentes';
 import { ERROR } from '../../dominio/errores';
 import { conAsignacion } from '../../dominio/mapeo';
 import { CONTROLES } from '../../dominio/tipos';
 import type {
-  Control, EstadoCrudo, EstadoMapeo, IdMando, InfoMando, Instantanea, MapeoMando, VistaAsistente,
+  Control, Disponibilidad, EstadoCrudo, EstadoMapeo, IdMando, InfoMando, Instantanea, Juego, JuegoActivo, MapeoMando,
+  OpcionesApp, VistaAsistente, VistaSalida,
 } from '../../dominio/tipos';
 import type { Backend } from '../backend';
-import { aplicar } from './aplicar';
-import { estadoAnimado, MANDOS_SIMULADOS, mapeoAutomatico, reposo } from './mandos';
+import { aplicar, entradasExtra, pad } from './aplicar';
+import { estadoAnimado, MANDO_PALETAS, MANDOS_SIMULADOS, mapeoAutomatico, reposo } from './mandos';
 
 /**
- * Backend simulado para `pnpm dev` en el navegador: dos mandos que se mueven solos y un asistente
- * que «pulsa» cada control por ti. Los mapeos guardados van a localStorage.
+ * Backend simulado para `pnpm dev` en el navegador: tres mandos que se mueven solos, un asistente
+ * que «pulsa» cada control por ti, mandos virtuales de mentira, juegos y opciones en memoria. Los
+ * mapeos guardados van a localStorage.
  */
 
 const NOMBRE_SDL: Record<Control, string> = {
@@ -36,7 +39,7 @@ interface Asistente {
 function leerGuardado(guid: string): MapeoMando | null {
   try {
     const t = localStorage.getItem(CLAVE(guid));
-    return t ? (JSON.parse(t) as MapeoMando) : null;
+    return t ? completarMapeo(JSON.parse(t) as MapeoMando) : null;
   } catch {
     return null;
   }
@@ -52,18 +55,35 @@ function pulsar(e: EstadoCrudo, texto: string): EstadoCrudo {
   return e;
 }
 
+const esperar = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 export function crearBackendSimulado(): Backend {
   const mapeos = new Map<IdMando, EstadoMapeo>();
+  const estadoDe = (info: InfoMando, mapeo: MapeoMando, origen: EstadoMapeo['origen'], sinGuardar: boolean): EstadoMapeo =>
+    ({ mapeo, origen, sin_guardar: sinGuardar, extras: entradasExtra(info, mapeo) });
   for (const info of MANDOS_SIMULADOS) {
     const guardado = leerGuardado(info.guid);
-    mapeos.set(info.id, guardado
-      ? { mapeo: guardado, origen: 'guardado', sin_guardar: false }
-      : { mapeo: mapeoAutomatico(info), origen: 'basedatos', sin_guardar: false });
+    mapeos.set(info.id, guardado ? estadoDe(info, guardado, 'guardado', false) : estadoDe(info, mapeoAutomatico(info), 'basedatos', false));
+  }
+  // El mando con paletas viene de ejemplo como DualShock 4 virtual con una paleta en turbo.
+  const paletas = mapeos.get(MANDO_PALETAS.id);
+  if (paletas && paletas.origen !== 'guardado') {
+    paletas.mapeo.salida = 'dualshock4';
+    paletas.mapeo.acciones = { b11: { tipo: 'pad', salida: 'A', modo: 'turbo', turbo_hz: 12 }, b12: { tipo: 'pad', salida: 'TOUCHPAD', modo: 'normal', turbo_hz: 10 } };
   }
   const asistentes = new Map<IdMando, Asistente>();
+  const grabando = new Set<IdMando>();
   let entradasBase = 1614;
   let anadidos = 0;
   let actualizada: number | null = null;
+  let pausado = false;
+  const pausaCb = new Set<(p: boolean) => void>();
+  let juegos: Juego[] = [{ id: 'hollow-knight', nombre: 'Hollow Knight', coincidencia: 'hollow_knight.exe', mapeos: {} }];
+  let opciones: OpcionesApp = {
+    minimizar_a_bandeja: true, iniciar_con_sistema: false, iniciar_minimizado: false, tema: 'oscuro', idioma: 'auto',
+    cambio_automatico: true, atajo_pausa: 'Ctrl+Alt+P', registro: false, buscar_actualizaciones: true,
+    ruta_registro: '~/.config/gamepad-mapper-pluton/registro.log',
+  };
 
   const buscar = (id: IdMando): InfoMando => {
     const info = MANDOS_SIMULADOS.find((m) => m.id === id);
@@ -77,8 +97,16 @@ export function crearBackendSimulado(): Backend {
   };
   const poner = (id: IdMando, mapeo: MapeoMando, origen: EstadoMapeo['origen'], sinGuardar = true) => {
     const info = buscar(id);
-    mapeos.set(id, { mapeo: { ...structuredClone(mapeo), guid: info.guid, nombre: info.nombre }, origen, sin_guardar: sinGuardar });
+    const limpio = completarMapeo({ ...structuredClone(mapeo), guid: info.guid, nombre: info.nombre });
+    if (limpio.macros.length > LIMITES.macros || limpio.capas.length > LIMITES.capas) throw new Error(ERROR.validacionDemasiadas);
+    if (limpio.macros.some((m) => m.pasos.length > LIMITES.pasos)) throw new Error(ERROR.validacionMacro);
+    mapeos.set(id, estadoDe(info, limpio, origen, sinGuardar));
     return estadoMapeo(id);
+  };
+  const salida = (id: IdMando): VistaSalida => {
+    const tipo = mapeos.get(id)?.mapeo.salida ?? 'ninguna';
+    const activa = tipo !== 'ninguna' && !pausado;
+    return { tipo, activa, descripcion: activa ? `/dev/input/event${30 + id}` : null, error: null };
   };
 
   const vistaAsistente = (a: Asistente, ahora: number): VistaAsistente => {
@@ -109,19 +137,28 @@ export function crearBackendSimulado(): Backend {
 
   return {
     info: async () => ({
-      version: '0.1.0', carpeta_mapeos: '~/.config/gamepad-mapper-pluton/mandos', entradas_base_datos: entradasBase,
-      base_incluida: '2026-11-09', base_actualizada: actualizada, mandos_anadidos: anadidos,
+      version: '0.3.0', carpeta_mapeos: '~/.config/gamepad-mapper-pluton/mandos', entradas_base_datos: entradasBase,
+      base_incluida: '2026-11-09', base_actualizada: actualizada, mandos_anadidos: anadidos, plataforma: 'linux', pausado,
     }),
     listarMandos: async () => structuredClone([...MANDOS_SIMULADOS]),
     alCambiarMandos: () => () => undefined,
+    alCambiarPausa(cb) {
+      pausaCb.add(cb);
+      return () => pausaCb.delete(cb);
+    },
+    alCambiarJuego: () => () => undefined,
     suscribirEntrada(id, cb) {
       const info = buscar(id);
       const temporizador = setInterval(() => {
         const ahora = performance.now();
         const crudo = crudoCon(info, ahora);
         const a = asistentes.get(id);
+        const m = estadoMapeo(id).mapeo;
+        const estandar = aplicar(m, crudo);
         const instantanea: Instantanea = {
-          id, crudo, estandar: aplicar(estadoMapeo(id).mapeo, crudo), asistente: a ? vistaAsistente(a, ahora) : null,
+          id, crudo, estandar, asistente: a ? vistaAsistente(a, ahora) : null,
+          pad: pausado ? { botones: 0, ls: [0, 0], rs: [0, 0], l2: 0, r2: 0 } : pad(m, estandar, crudo, ahora),
+          salida: salida(id), juego: null, grabando: grabando.has(id), pausado,
         };
         cb(instantanea);
       }, 1000 / 60);
@@ -148,7 +185,7 @@ export function crearBackendSimulado(): Backend {
       }
       return poner(id, mapeoAutomatico(info), 'basedatos', false);
     },
-    autoMapear: async (id) => poner(id, { ...mapeoAutomatico(buscar(id)), stick_izquierdo: estadoMapeo(id).mapeo.stick_izquierdo, stick_derecho: estadoMapeo(id).mapeo.stick_derecho }, 'basedatos'),
+    autoMapear: async (id) => poner(id, { ...estadoMapeo(id).mapeo, asignaciones: mapeoAutomatico(buscar(id)).asignaciones }, 'basedatos'),
     async exportarSdl(id) {
       const m = estadoMapeo(id).mapeo;
       const pares = Object.entries(m.asignaciones).map(([c, f]) => `${NOMBRE_SDL[c as Control]}:${f}`).join(',');
@@ -157,11 +194,23 @@ export function crearBackendSimulado(): Backend {
     async importarSdl(id, linea) {
       const asignaciones: MapeoMando['asignaciones'] = {};
       for (const par of linea.split(',').slice(2)) {
-        const [salida, entrada] = par.split(':');
-        const control = CONTROLES.find((c) => NOMBRE_SDL[c] === salida);
+        const [salidaSdl, entrada] = par.split(':');
+        const control = CONTROLES.find((c) => NOMBRE_SDL[c] === salidaSdl);
         if (control && entrada && leerFuente(entrada)) asignaciones[control] = entrada;
       }
       return poner(id, { ...estadoMapeo(id).mapeo, asignaciones }, 'manual');
+    },
+    exportarConfig: async (id) => JSON.stringify(estadoMapeo(id).mapeo, null, 2),
+    async importarConfig(id, texto) {
+      if (texto.length > LIMITES.presetBytes) throw new Error(ERROR.validacionGrande);
+      let m: MapeoMando;
+      try {
+        m = JSON.parse(texto) as MapeoMando;
+      } catch {
+        throw new Error(ERROR.validacionJson);
+      }
+      if (typeof m !== 'object' || typeof m.asignaciones !== 'object') throw new Error(ERROR.validacionJson);
+      return poner(id, m, 'manual');
     },
     async anadirMandos(texto) {
       const n = texto.split('\n').filter((l) => /^[0-9a-f]{32},/i.test(l.trim())).length;
@@ -174,7 +223,7 @@ export function crearBackendSimulado(): Backend {
       buscar(id);
     },
     async actualizarBase() {
-      await new Promise((r) => setTimeout(r, 600));
+      await esperar(600);
       const antes = entradasBase;
       entradasBase += 12;
       actualizada = Math.floor(Date.now() / 1000);
@@ -182,6 +231,31 @@ export function crearBackendSimulado(): Backend {
     },
     probarVibracion: async (id) => {
       if (!buscar(id).vibracion) throw new Error(ERROR.sinVibracion);
+    },
+    probarMotores: async (id) => {
+      if (!buscar(id).vibracion) throw new Error(ERROR.sinVibracion);
+    },
+    disponibilidadSalidas: async (): Promise<Disponibilidad[]> => [
+      { tipo: 'xbox360', disponible: true, motivo: null },
+      { tipo: 'dualshock4', disponible: true, motivo: null },
+      { tipo: 'switchpro', disponible: true, motivo: null },
+    ],
+    async pausar(p) {
+      pausado = p;
+      pausaCb.forEach((cb) => cb(p));
+      return p;
+    },
+    reintentarSalida: async (id) => salida(id),
+    grabarMacroIniciar: async (id) => {
+      grabando.add(id);
+    },
+    async grabarMacroTerminar(id) {
+      if (!grabando.delete(id)) throw new Error(ERROR.sinGrabacion);
+      return [
+        { tipo: 'pulsar', salida: 'DPAD_DOWN' }, { tipo: 'esperar', ms: 60 }, { tipo: 'pulsar', salida: 'DPAD_RIGHT' },
+        { tipo: 'soltar', salida: 'DPAD_DOWN' }, { tipo: 'esperar', ms: 60 }, { tipo: 'soltar', salida: 'DPAD_RIGHT' },
+        { tipo: 'toque', salida: 'X', ms: 80 },
+      ];
     },
     async asistenteIniciar(id) {
       buscar(id);
@@ -215,5 +289,48 @@ export function crearBackendSimulado(): Backend {
       asistentes.delete(id);
       return poner(id, { ...estadoMapeo(id).mapeo, asignaciones: a.asignaciones }, 'asistente');
     },
+    listarJuegos: async () => structuredClone(juegos),
+    juegoActivo: async (): Promise<JuegoActivo | null> => null,
+    async guardarJuego(juego) {
+      if (!/^[a-z0-9-]{1,40}$/.test(juego.id) || !juego.nombre.trim() || !juego.coincidencia.trim()) throw new Error(ERROR.juegoNoValido);
+      juegos = juegos.some((j) => j.id === juego.id) ? juegos.map((j) => (j.id === juego.id ? juego : j)) : [...juegos, juego];
+      return structuredClone(juegos);
+    },
+    async borrarJuego(id) {
+      if (!juegos.some((j) => j.id === id)) throw new Error(ERROR.juegoNoExiste);
+      juegos = juegos.filter((j) => j.id !== id);
+      return structuredClone(juegos);
+    },
+    async copiarAJuego(juego, id) {
+      const m = estadoMapeo(id).mapeo;
+      juegos = juegos.map((j) => (j.id === juego ? { ...j, mapeos: { ...j.mapeos, [m.guid]: m } } : j));
+      return structuredClone(juegos);
+    },
+    async quitarDeJuego(juego, guid) {
+      juegos = juegos.map((j) => (j.id === juego ? { ...j, mapeos: Object.fromEntries(Object.entries(j.mapeos).filter(([g]) => g !== guid)) } : j));
+      return structuredClone(juegos);
+    },
+    async ventanaActiva() {
+      await esperar(300);
+      return { ejecutable: 'Celeste.exe', clase: 'celeste.exe', titulo: 'Celeste' };
+    },
+    obtenerOpciones: async () => ({ ...opciones }),
+    async guardarOpciones(o) {
+      if (!/^$|^((Ctrl|Alt|Shift|Super)\+)+([A-Z0-9]|F([1-9]|1[0-2]))$/.test(o.atajo_pausa)) throw new Error(ERROR.atajoNoValido);
+      opciones = { ...opciones, ...o };
+      return { ...opciones };
+    },
+    leerRegistro: async () => [
+      '10:15:02 UTC [INFO] Gamepad Mapper Pluton 0.3.0 — mapeos en ~/.config/gamepad-mapper-pluton/mandos',
+      '10:15:02 UTC [INFO] mando conectado: Mando Pro con paletas (simulado) (/dev/input/event23)',
+      '10:15:02 UTC [INFO] mando virtual Dualshock4 creado en /dev/input/event33',
+      '10:15:02 UTC [INFO] Mando Pro con paletas (simulado) capturado (EVIOCGRAB)',
+    ],
+    abrirEnlace: async () => undefined,
+    buscarActualizacion: async () => {
+      await esperar(500);
+      return null;
+    },
+    instalarActualizacion: async () => undefined,
   };
 }

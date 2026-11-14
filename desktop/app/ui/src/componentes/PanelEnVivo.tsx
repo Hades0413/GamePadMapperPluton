@@ -3,7 +3,9 @@ import type { EstadoCrudo, InfoMando } from '../dominio/tipos';
 import { useT } from '../i18n/contexto';
 
 /** Todas las entradas en crudo del mando: botones que se encienden, barras de ejes y hats. */
-export function PanelEnVivo({ info, crudo, ruidosos }: { info: InfoMando; crudo: EstadoCrudo | null; ruidosos: readonly number[] }) {
+export function PanelEnVivo({ info, crudo, ruidosos, extras = [] }: {
+  info: InfoMando; crudo: EstadoCrudo | null; ruidosos: readonly number[]; extras?: readonly string[];
+}) {
   const t = useT();
   return (
     <section className="card p-4" aria-label={t('Entrada en vivo')}>
@@ -19,10 +21,12 @@ export function PanelEnVivo({ info, crudo, ruidosos }: { info: InfoMando; crudo:
       <ul className="mb-4 grid grid-cols-6 gap-1.5">
         {info.botones.map((b) => {
           const on = crudo?.botones[b.indice] ?? false;
+          const extra = extras.includes(`b${b.indice}`);
           return (
-            <li key={b.indice} title={`b${b.indice} · ${b.nombre}`}
+            <li key={b.indice} title={`b${b.indice} · ${b.nombre}${extra ? ` · ${t('botón extra')}` : ''}`}
               className={`flex h-7 items-center justify-center rounded-lg border font-mono text-xs transition-colors ${on
-                ? 'border-primary bg-primary text-bg' : 'border-line bg-surface-2 text-muted'}`}>
+                ? 'border-primary bg-primary text-bg'
+                : extra ? 'border-dashed border-accent/60 bg-surface-2 text-accent' : 'border-line bg-surface-2 text-muted'}`}>
               b{b.indice}
             </li>
           );

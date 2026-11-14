@@ -76,7 +76,15 @@ export function valorEje(texto: string | undefined, crudo: EstadoCrudo): number 
   return (crudo.ejes[f.indice] ?? 0) * (f.invertido ? -1 : 1);
 }
 
-export const esEje =(c: Control): boolean => c === 'LS_X' || c === 'LS_Y' || c === 'RS_X' || c === 'RS_Y';
+/** Valor 0..1 de una fuente usada como gatillo (un eje completo va de -1 suelto a 1 a fondo). */
+export function valorGatillo(texto: string | undefined, crudo: EstadoCrudo): number {
+  const f = texto ? leerFuente(texto) : null;
+  if (!f) return 0;
+  if (f.tipo === 'eje' && f.mitad === 'completa') return Math.min(1, Math.max(0, (valorEje(texto, crudo) + 1) / 2));
+  return actividad(texto ?? '', crudo);
+}
+
+export const esEje = (c: Control): boolean => c === 'LS_X' || c === 'LS_Y' || c === 'RS_X' || c === 'RS_Y';
 export const esGatillo = (c: Control): boolean => c === 'L2' || c === 'R2';
 
 /** Fuentes que se pueden elegir para un control con las entradas de este mando. */
