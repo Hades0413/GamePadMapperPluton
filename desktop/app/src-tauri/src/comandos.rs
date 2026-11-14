@@ -5,9 +5,15 @@ use nucleo::asistente::VistaAsistente;
 use nucleo::dispositivos::{IdMando, InfoMando};
 use nucleo::mapeo::almacen::carpeta_config;
 use nucleo::mapeo::basedatos::{fusionar, version_incluida, BaseDatosSdl};
+use nucleo::juegos::{Juego, Ventana};
+use nucleo::mapeo::acciones::PasoMacro;
+use nucleo::mapeo::validar::{ErrorValidacion, MAX_BYTES_PRESET};
 use nucleo::mapeo::MapeoMando;
-use nucleo::servicio::{EstadoMapeo, Instantanea};
+use nucleo::opciones::Opciones;
+use nucleo::salida::Disponibilidad;
+use nucleo::servicio::{EstadoMapeo, Instantanea, VistaSalida};
 use serde::Serialize;
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use tauri::ipc::Channel;
 use tauri::State;
@@ -101,6 +107,10 @@ pub struct InfoApp {
     base_actualizada: Option<u64>,
     /// Mandos anadidos por el usuario.
     mandos_anadidos: usize,
+    /// Sistema: «linux» o «windows» (para los textos de ayuda).
+    plataforma: &'static str,
+    /// Mandos virtuales en pausa.
+    pausado: bool,
 }
 
 #[tauri::command]
@@ -113,6 +123,8 @@ pub fn info_app(estado: Estado) -> InfoApp {
         base_incluida: version_incluida(),
         base_actualizada: segundos_mtime(ruta_base_actualizada()),
         mandos_anadidos: lineas_validas(ruta_base_usuario()),
+        plataforma: if cfg!(windows) { "windows" } else { "linux" },
+        pausado: s.pausado(),
     }
 }
 
@@ -365,4 +377,160 @@ pub fn asistente_cancelar(estado: Estado, id: IdMando) -> Resultado<()> {
 #[tauri::command]
 pub fn asistente_aplicar(estado: Estado, id: IdMando) -> Resultado<EstadoMapeo> {
     estado.servicio().asistente_aplicar(id).map_err(texto)
+}
+
+// ---------------------------------------------------------------- mandos virtuales y configuracion
+
+#[tauri::command]
+pub fn disponibilidad_salidas(estado: Estado) -> Vec<Disponibilidad> {
+    estado.servicio().disponibilidad()
+}
+
+/// Pausa (true) o reanuda (false) todos los mandos virtuales. Devuelve el estado nuevo.
+#[tauri::command]
+pub fn pausar(app: tauri::AppHandle, estado: Estado, pausado: bool) -> bool {
+    estado.servicio().pausar(pausado);
+    estado.bandeja_sucia.store(true, Ordering::Release);
+    let _ = tauri::Emitter::emit(&app, "pausa-cambiada", pausado);
+    pausado
+}
+
+#[tauri::command]
+pub fn reintentar_salida(estado: Estado, id: IdMando) -> Resultado<VistaSalida> {
+    estado.servicio().reintentar_salida(id).map_err(texto)
+}
+
+#[tauri::command]
+pub fn grabar_macro_iniciar(estado: Estado, id: IdMando) -> Resultado<()> {
+    estado.servicio().grabar_macro_iniciar(id).map_err(texto)
+}
+
+#[tauri::command]
+pub fn grabar_macro_terminar(estado: Estado, id: IdMando) -> Resultado<Vec<PasoMacro>> {
+    estado.servicio().grabar_macro_terminar(id).map_err(texto)
+}
+
+#[tauri::command]
+pub fn exportar_config(estado: Estado, id: IdMando) -> Resultado<String> {
+    estado.servicio().exportar_config(id).map_err(texto)
+}
+
+/// Aplica un preset (JSON) al mando. El tamano se limita antes de leerlo (1 MB).
+#[tauri::command]
+pub fn importar_config(estado: Estado, id: IdMando, texto: String) -> Resultado<EstadoMapeo> {
+    if texto.len() > MAX_BYTES_PRESET {
+        return Err(ErrorValidacion::Grande.to_string());
+    }
+    estado.servicio().importar_config(id, &texto).map_err(self::texto)
+}
+
+#[tauri::command]
+pub fn probar_motores(estado: Estado, id: IdMando, fuerte: f32, debil: f32) -> Resultado<()> {
+    if !fuerte.is_finite() || !debil.is_finite() {
+        return Err(ErrorValidacion::Indice.to_string());
+    }
+    estado.servicio().probar_motores(id, fuerte, debil).map_err(texto)
+}
+
+// ---------------------------------------------------------------- juegos
+
+#[tauri::command]
+pub fn listar_juegos(estado: Estado) -> Vec<Juego> {
+    estado.servicio().juegos().to_vec()
+}
+
+#[derive(Serialize)]
+pub struct JuegoActivo {
+    id: String,
+    nombre: String,
+}
+
+#[tauri::command]
+pub fn juego_activo(estado: Estado) -> Option<JuegoActivo> {
+    estado.servicio().juego_activo().map(|(id, nombre)| JuegoActivo { id, nombre })
+}
+
+#[tauri::command]
+pub fn guardar_juego(estado: Estado, juego: Juego) -> Resultado<Vec<Juego>> {
+    estado.servicio().guardar_juego(juego).map_err(texto)
+}
+
+#[tauri::command]
+pub fn borrar_juego(estado: Estado, juego: String) -> Resultado<Vec<Juego>> {
+    estado.servicio().borrar_juego(&juego).map_err(texto)
+}
+
+#[tauri::command]
+pub fn copiar_a_juego(estado: Estado, juego: String, id: IdMando) -> Resultado<Vec<Juego>> {
+    estado.servicio().copiar_a_juego(&juego, id).map_err(texto)
+}
+
+#[tauri::command]
+pub fn quitar_de_juego(estado: Estado, juego: String, guid: String) -> Resultado<Vec<Juego>> {
+    estado.servicio().quitar_de_juego(&juego, &guid).map_err(texto)
+}
+
+/// Ventana con el foco ahora (para anadir un juego desde la ventana activa).
+#[tauri::command]
+pub async fn ventana_activa() -> Option<Ventana> {
+    tauri::async_runtime::spawn_blocking(nucleo::foco::ventana_activa).await.ok().flatten()
+}
+
+// ---------------------------------------------------------------- opciones
+
+#[derive(Serialize)]
+pub struct OpcionesApp {
+    #[serde(flatten)]
+    opciones: Opciones,
+    /// Donde se guarda el registro si se activa.
+    ruta_registro: Option<String>,
+}
+
+fn con_extras(mut o: Opciones) -> OpcionesApp {
+    // Lo que manda es el sistema (el usuario puede haber quitado la entrada a mano).
+    o.iniciar_con_sistema = nucleo::sistema::autoarranque_activo();
+    OpcionesApp { opciones: o, ruta_registro: crate::registro::ruta_archivo().map(|p| p.display().to_string()) }
+}
+
+#[tauri::command]
+pub fn obtener_opciones(estado: Estado) -> OpcionesApp {
+    con_extras(estado.opciones())
+}
+
+/// Guarda las opciones y las aplica (inicio con el sistema, atajo, registro).
+#[tauri::command]
+pub fn guardar_opciones(app: tauri::AppHandle, estado: Estado, opciones: Opciones) -> Resultado<OpcionesApp> {
+    opciones.validar().map_err(texto)?;
+    let antes = estado.opciones();
+    if opciones.iniciar_con_sistema != nucleo::sistema::autoarranque_activo() {
+        nucleo::sistema::poner_autoarranque(opciones.iniciar_con_sistema).map_err(texto)?;
+    }
+    if opciones.atajo_pausa != antes.atajo_pausa {
+        crate::atajo::registrar(&app, &estado, &opciones.atajo_pausa);
+    }
+    crate::registro::en_archivo(opciones.registro);
+    opciones.guardar().map_err(texto)?;
+    *bloquear(&estado.opciones) = opciones.clone();
+    Ok(con_extras(opciones))
+}
+
+#[tauri::command]
+pub fn leer_registro() -> Vec<String> {
+    crate::registro::ultimas()
+}
+
+/// Enlaces que la interfaz puede abrir: solo estos (la direccion nunca viene de la interfaz).
+#[tauri::command]
+pub fn abrir_enlace(app: tauri::AppHandle, cual: String) -> Resultado<()> {
+    use tauri_plugin_opener::OpenerExt;
+    let url = match cual.as_str() {
+        "vigembus" => "https://github.com/nefarius/ViGEmBus/releases",
+        "vigemclient" => "https://github.com/nefarius/ViGEmClient",
+        "web" => "https://hades0413.github.io/GamePadMapperPluton/",
+        "repositorio" => "https://github.com/Hades0413/GamePadMapperPluton",
+        "versiones" => "https://github.com/Hades0413/GamePadMapperPluton/releases/tag/escritorio-latest",
+        "licencia" => "https://polyformproject.org/licenses/noncommercial/1.0.0/",
+        _ => return Err(ErrorValidacion::Nombre.to_string()),
+    };
+    app.opener().open_url(url, None::<&str>).map_err(texto)
 }
