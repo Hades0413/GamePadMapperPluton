@@ -1,13 +1,15 @@
-# Gamepad Mapper Plutón para escritorio (app, fase 2A)
+# Gamepad Mapper Plutón para escritorio (app 0.2: mandos virtuales y toques)
 
 App de escritorio para **Linux y Windows** con interfaz gráfica, al estilo de x360ce pero propia:
 ves los mandos conectados y su entrada en vivo, decides qué botón o eje alimenta cada control de un
 **mando estándar** y lo **conviertes en otro mando** (Xbox 360, DualShock 4 o Switch Pro virtual) con
-turbo, alterno, macros, capas, botones extra, curvas por eje y vibración. Es una sola app **Tauri v2**
-con la misma interfaz en los dos sistemas y un backend propio de cada uno (`#[cfg(target_os = ...)]`).
+turbo, alterno, macros, capas, botones extra, curvas por eje y vibración, o en **toques** para jugar a
+juegos Android que se ven en el PC (Waydroid, emuladores, scrcpy) con los perfiles de la app y de la
+comunidad. Es una sola app **Tauri v2** con la misma interfaz en los dos sistemas y un backend propio
+de cada uno (`#[cfg(target_os = ...)]`).
 
-> El programa de consola `gpm-escritorio` (toques en juegos Android sobre scrcpy/Waydroid) sigue en
-> [`desktop/README.md`](../README.md). Esta app lo absorberá en la fase 2B.
+> El programa de consola `gpm-escritorio` ([`desktop/README.md`](../README.md)) sigue disponible; la
+> app hace lo mismo con interfaz y el mismo núcleo en C.
 
 ## Qué hace
 
@@ -33,8 +35,8 @@ con la misma interfaz en los dos sistemas y un backend propio de cada uno (`#[cf
   **grabación pulsando el mando**. Límites: 32 macros, 64 pasos, 10 s por paso.
 - **Vibración:** reenviar la del juego al mando físico, intercambiar motores, intensidad general y de
   cada motor, y prueba de cada motor.
-- **Salida:** el mando virtual (ninguno, Xbox 360, DualShock 4, Switch Pro), su estado y por qué no
-  se puede crear (permisos en Linux, ViGEmBus en Windows).
+- **Salida:** el mando virtual (ninguno, Xbox 360, DualShock 4, Switch Pro) o **Toques**, su estado y
+  por qué no se puede crear (permisos en Linux, ViGEmBus en Windows).
 - **Presets:** copiar/pegar la configuración entera (JSON, 1 MB como mucho, validado en el núcleo),
   guardarla y cargarla de archivo; exportar/importar el mapeo como línea SDL.
 - Todo se guarda **por modelo de mando** (GUID) en JSON versionado (v2; los de la v1 se leen y se
@@ -68,6 +70,38 @@ con la misma interfaz en los dos sistemas y un backend propio de cada uno (`#[cf
 - **Pausa global** (cabecera, bandeja o atajo de teclado): quita todos los mandos virtuales y libera
   los físicos.
 
+### Toques (juegos Android en el PC)
+
+La salida **«Toques»** de un mando convierte su mando virtual (con todo lo de su configuración: turbo,
+capas, macros...) en **toques dentro de la ventana del juego**, con los perfiles `.conf` de la app de
+Android y de la web. Es el **mismo núcleo en C** que el motor root de Android y `gpm-escritorio`
+(`mapper/src/core/`, compilado dentro del crate `nucleo` con `build.rs` + `cc` y usado por FFI en
+`nucleo/src/toques/`): el mismo perfil da los mismos toques (los guiones de `tests/engine` dan byte a
+byte lo mismo que `gpmapper -r`).
+
+- **Destino** (Mandos → Salida → Toques): una **ventana** de la lista de ventanas abiertas (título,
+  clase y tamaño; Linux X11/XWayland con x11rb, Windows con `EnumWindows`), que se **sigue** si se mueve
+  o cambia de tamaño; la **pantalla completa**; o un **rectángulo manual** (Wayland puro). Con «solo
+  mientras la ventana tiene el foco», fuera del juego el mando funciona normal. Los toques del perfil
+  se adaptan al rectángulo con la misma fórmula que el móvil.
+- **Salida:** Linux, una pantalla táctil multitáctil virtual (uinput, `INPUT_PROP_DIRECT`) que cubre
+  el escritorio; Windows, `InjectTouchInput` (Windows 8+, sin drivers). Mientras se toca, el mando
+  físico se **captura** (EVIOCGRAB) y se suelta al pausar, perder el foco o quitar la salida. Un solo
+  mando a la vez usa los toques (el núcleo es global).
+- **Perfiles** (pestaña Juegos): en `~/.config/gamepad-mapper-pluton/perfiles/*.conf` (Windows
+  `%APPDATA%\GamepadMapperPluton\perfiles`), validados con las mismas reglas que la web y la base de
+  datos (16 KB, 400 líneas, 150 botones, `package` y `screen`...). Se **importan de archivo**, se
+  **descargan de la comunidad** (perfiles publicados del juego, por «me gusta», con vista previa), se
+  ven dibujados y se borran.
+- **Qué perfil se usa:** el fijado a mano; si no, el del juego activo de la pestaña Juegos (por
+  ventana, p. ej. la de Waydroid); si no, el del **juego Android en primer plano** detectado por **adb**
+  (`dumpsys activity activities` / `dumpsys window`, cada 2 s, solo mientras un mando usa los toques o
+  se mira la pestaña): el elegido para ese paquete o el primero que haya. Con el mando,
+  **SELECT+START** (1 s) pausa o reanuda y **SELECT+R1/L1** cambia al siguiente perfil del mismo juego.
+- **Waydroid:** `adb connect <IP>:5555` (la IP sale en `waydroid status`); los emuladores aparecen
+  solos en `adb devices`. adb (Android platform-tools) se busca en el `PATH` y en las carpetas
+  habituales del SDK, siempre por ruta absoluta.
+
 ### Pestaña «Juegos»
 
 Una configuración por juego y modelo de mando que se usa sola cuando el juego **tiene el foco**: se
@@ -75,7 +109,7 @@ reconoce por su ejecutable o la clase de su ventana (Linux X11/XWayland: `_NET_A
 `WM_CLASS` y `/proc/<pid>/exe` con x11rb, y `xprop` de plan B; Windows: el proceso de la ventana en
 primer plano). Botón «Detectar ventana activa» (3 s para cambiar al juego). Se guardan en
 `juegos.json`. En Wayland puro (sin XWayland) los compositores no dicen qué ventana tiene el foco.
-Es la base de los perfiles de **toques** de la fase 2B.
+Cada juego puede llevar además un **perfil de toques** (juegos Android en una ventana sin adb).
 
 ### Pestaña «Opciones» y bandeja
 
@@ -101,13 +135,20 @@ desktop/app/
 │   │   ├── validar.rs      validación de todo lo que llega de fuera (límites, referencias, 1 MB)
 │   │   ├── sdl.rs, basedatos.rs, auto.rs, almacen.rs (JSON v2 con migración)
 │   ├── src/motor.rs        estado estándar + configuración -> mando virtual y teclas (puro)
-│   ├── src/salida/         mandos virtuales: linux.rs (uinput), windows.rs (ViGEm), simulada.rs
+│   ├── src/salida/         mandos virtuales: linux.rs (uinput), windows.rs (ViGEm), simulada.rs;
+│   │                       pantalla de toques: pantalla_linux.rs (uinput), pantalla_windows.rs
+│   ├── src/toques/         toques: motor.rs (nucleo en C por FFI), perfiles.rs (validacion,
+│   │                       carpeta, comunidad), android.rs (adb), ventanas.rs, config.rs
+│   ├── c/ + build.rs       compila mapper/src/core (gpm_core.c, gpm_repeticion.c) y un puente
 │   ├── src/juegos.rs       configuraciones por juego; foco.rs ventana activa
 │   ├── src/opciones.rs     opciones; sistema.rs inicio con el sistema
-│   ├── src/servicio.rs     une todo para la interfaz
+│   ├── src/servicio.rs     une todo para la interfaz (servicio/toques.rs: la sesion de toques)
 │   ├── tests/uinput.rs     mando de prueba -> fuente evdev, asistente, guardado
-│   └── tests/salida_uinput.rs  mandos virtuales reales: ids, capacidades, captura, turbo, macro,
-│                               capa, latencia, exclusión y vibración de vuelta
+│   ├── tests/salida_uinput.rs  mandos virtuales reales: ids, capacidades, captura, turbo, macro,
+│   │                           capa, latencia, exclusión y vibración de vuelta
+│   ├── tests/toques_motor.rs   el núcleo por FFI da lo mismo que gpmapper -r (tests/engine)
+│   └── tests/toques_uinput.rs  toques reales en una pantalla táctil virtual capturada por la prueba
+│                               (nunca llegan al escritorio)
 ├── src-tauri/              la app: comandos, hilos (lectura y foco), bandeja, atajo, actualizador
 │   ├── linux/              plantilla .desktop, regla udev de uinput, postinst del .deb
 │   └── tauri.firmado.json  activa la firma del actualizador (lo usan make y CI con la clave)
@@ -119,9 +160,11 @@ desktop/app/
 - **Entradas crudas con numeración de SDL** (`b0`, `a2`, `h0.4`) y mapeos en formato SDL; los nombres
   de los controles son los de los perfiles (`A`, `L1`, `DPAD_UP`, `LS_X`...).
 - **Seguridad:** todo lo que llega de la interfaz se valida en Rust (ids, tamaños, rangos, número de
-  macros/pasos/capas, esperas, teclas conocidas, presets ≤ 1 MB con esquema tipado); no hay shell
-  (`Command` con argumentos fijos para `xprop`); las URL que se abren son una lista cerrada en Rust;
-  la ventana solo tiene `core:default` (los plugins se usan desde Rust).
+  macros/pasos/capas, esperas, teclas conocidas, presets ≤ 1 MB con esquema tipado, perfiles de
+  toques ≤ 16 KB con las reglas de la web, destino de los toques, series de adb y paquetes con forma
+  estricta); no hay shell (`Command` con argumentos fijos para `xprop` y `adb`, con tiempo máximo y
+  tope de salida); las URL que se abren o consultan son fijas en Rust (la de la comunidad solo lleva el
+  paquete ya validado); la ventana solo tiene `core:default` (los plugins se usan desde Rust).
 
 ## Probar la interfaz en el navegador (sin mando ni Tauri)
 
@@ -129,6 +172,7 @@ desktop/app/
 make app-escritorio-dev        # o: cd desktop/app/ui && pnpm install && pnpm dev
 # http://localhost:1420  («Modo demostración»: tres mandos, uno con paletas y DualShock 4 virtual)
 # Enlaces directos: http://localhost:1420/#mandos/stick_izquierdo/1  ·  #mandos/extras/3  ·  #juegos
+# Toques de ejemplo: #mandos/salida/2 (Waydroid «por adb» con Clash Royale) y #juegos
 ```
 
 ## Compilar la app
@@ -149,9 +193,9 @@ make app-escritorio        # interfaz + app -> desktop/app/target/release/bundle
 
 Paquetes, **sin espacios en el nombre** (el nombre visible sigue siendo «Gamepad Mapper Plutón»):
 
-- Linux: `deb/gamepad-mapper-pluton_0.1.0_amd64.deb`, `appimage/gamepad-mapper-pluton_0.1.0_amd64.AppImage`
-- Windows: `nsis/gamepad-mapper-pluton_0.1.0_x64-setup.exe`, `msi/gamepad-mapper-pluton_0.1.0_x64_es-ES.msi`
-  y, en CI, `portable/gamepad-mapper-pluton_0.1.0_x64-portable.zip`. Los instaladores llevan el
+- Linux: `deb/gamepad-mapper-pluton_0.2.0_amd64.deb`, `appimage/gamepad-mapper-pluton_0.2.0_amd64.AppImage`
+- Windows: `nsis/gamepad-mapper-pluton_0.2.0_x64-setup.exe`, `msi/gamepad-mapper-pluton_0.2.0_x64_es-ES.msi`
+  y, en CI, `portable/gamepad-mapper-pluton_0.2.0_x64-portable.zip`. Los instaladores llevan el
   instalador de WebView2 dentro (`embedBootstrapper`); Windows 10/11 ya traen WebView2 casi siempre.
 
 El `.deb` instala la regla udev `70-gamepad-mapper-pluton.rules` (`/dev/uinput` para el grupo
@@ -165,7 +209,7 @@ El `.deb` instala la regla udev `70-gamepad-mapper-pluton.rules` (`/dev/uinput` 
 cd desktop/app
 cargo run -p gpm-nucleo --example mando_virtual -- 60    # mando virtual (uinput) durante 60 s
 target/release/gamepad-mapper-pluton --listar-mandos      # lo que ve el backend, en JSON
-cargo test -p gpm-nucleo --test salida_uinput -- --ignored --nocapture --test-threads=1
+cargo test -p gpm-nucleo --test salida_uinput --test toques_uinput -- --ignored --nocapture --test-threads=1
 ```
 
 `GPM_LOG=debug` muestra más registro.
@@ -205,10 +249,9 @@ TAURI_SIGNING_PRIVATE_KEY_PASSWORD="$(cat .../password.txt)" make app-escritorio
 
 ## Hoja de ruta
 
-- **Fase 2B — toques:** «Toques» como otro tipo de salida (pantalla táctil para juegos Android en
-  Waydroid, emuladores, Google Play Games o scrcpy) con el núcleo en C de `mapper/src/core/` por FFI,
-  perfiles de toques por juego sobre la pestaña «Juegos» y detección del juego Android en primer
-  plano (`dumpsys activity`/`window` por adb o la API de Waydroid).
+- **Fase 2B — toques:** hecha en la 0.2 (ver «Toques»). Pendiente: probar con Waydroid, scrcpy y
+  un mando real; en Wayland puro solo hay rectángulo manual; la pantalla táctil de Linux cubre todo
+  el escritorio (con varios monitores el compositor puede asociarla a uno solo).
 - **Fase 3 — editor sobre la ventana del juego** (macros y capas dibujadas encima).
 - **Fase 4 — nube:** presets de mandos y perfiles compartidos con la web.
 - Windows: leer también mandos no XInput (Raw Input / HID) con la misma numeración de SDL.
