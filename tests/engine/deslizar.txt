@@ -1,0 +1,5 @@
+# Deslizar de 1800,500 a 1800,200 en 150 ms
+pulsa R1
+espera 40
+suelta R1
+espera 200

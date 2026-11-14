@@ -1,0 +1,9 @@
+     0.000 perfil com.prueba.motor 2400x1080 -> destino 2400x1080
+  1000.000 mapeo pausado
+  2170.000 mapeo reanudado
+  2220.000 abajo s=0 x=1932.00 y=960.00
+  2220.000 sync tocando=1
+  2240.000 arriba s=0
+  2240.000 sync tocando=0
+  2240.000 aviso Este juego solo tiene un perfil (Motor)
+  2260.000 fin

@@ -1,0 +1,23 @@
+# Camara en RS: arrastre continuo, recentrado al alejarse, apuntar (R2) y aceleracion al tope
+eje RX 20000
+syn
+espera 100
+eje RX 0
+syn
+espera 30
+eje RY -32767
+syn
+espera 900
+eje RY 0
+syn
+espera 30
+eje RZ 255
+syn
+espera 20
+eje RX 32767
+syn
+espera 200
+eje RX 0
+eje RZ 0
+syn
+espera 30

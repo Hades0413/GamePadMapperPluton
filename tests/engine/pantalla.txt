@@ -1,0 +1,23 @@
+# Adaptar a otra pantalla: mas ancha (21:9), luego 16:9
+pantalla 2560x1080
+pulsa A
+espera 20
+suelta A
+eje X 32767
+syn
+espera 20
+eje X 0
+syn
+espera 20
+pantalla 1920x1080
+pulsa A
+espera 20
+suelta A
+pulsa Y
+espera 20
+eje Y 32767
+syn
+espera 20
+eje Y 0
+syn
+espera 20

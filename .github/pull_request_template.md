@@ -10,7 +10,7 @@
 
 - [ ] El PR va contra la rama `develop` (no contra `main`).
 - [ ] `make test` pasa (y `make web-check` si toca `web/`).
-- [ ] Si cambia el formato de los perfiles, está actualizado en la app, en `gpmapper.c`, en
+- [ ] Si cambia el formato de los perfiles, está actualizado en la app, en `mapper/src/core/gpm_core.c`, en
       `web/src/domain/profile/conf/validateConf.ts` y en `supabase/migrations`.
 - [ ] No incluye claves, contraseñas, keystores ni archivos `.env`.
 - [ ] Acepto que mi contribución se publique bajo la licencia del proyecto (PolyForm Noncommercial 1.0.0).
