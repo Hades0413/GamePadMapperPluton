@@ -52,7 +52,7 @@ son 12).
    **Grupo de Google** → guarda → copia el **enlace de participación** (opt-in).
 6. *Crear versión* → sube `dist/GamepadMapper-<versión>.aab` (`make aab`; sube antes la versión
    con `make bump V=1.7` si este AAB lleva cambios respecto al ya subido: el versionCode debe
-   crecer) → notas de [`ficha-*.md`](ficha-es.md) (*Novedades*) → *Revisar* → *Publicar en
+   crecer; el AAB ya incluye el mapping de R8, guarda también `dist/GamepadMapper-<versión>-mapping.txt`) → notas de [`ficha-*.md`](ficha-es.md) (*Novedades*) → *Revisar* → *Publicar en
    prueba cerrada*. La primera revisión puede tardar unos días.
 7. **Países**: en el canal de prueba cerrada, *Países/regiones* → todos los de tus testers.
 8. Envía el **mensaje de reclutamiento** (abajo) con el enlace de participación y apunta a cada
