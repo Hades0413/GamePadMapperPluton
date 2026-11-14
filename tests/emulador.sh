@@ -87,11 +87,14 @@ alive && ok "enlace gpmapper://subido mal formado" || bad "enlace gpmapper://sub
 adb shell am start -a android.intent.action.VIEW -d "'gpmapper://auth?state=falso&code=falso'" "$pkg" >/dev/null
 shot 04-auth-falso 3
 alive && ok "enlace gpmapper://auth sin inicio de sesión pendiente" || bad "enlace gpmapper://auth falso"
-if [ -n "$(adb shell run-as "$pkg" ls shared_prefs/nube.xml 2>/dev/null | tr -d '\r' | grep -v 'No such')" ] \
-   && adb shell run-as "$pkg" cat shared_prefs/nube.xml 2>/dev/null | grep -q '"sesion"'; then
-    bad "un enlace gpmapper://auth falso creó una sesión"
+# Sigue sin sesion: Ajustes muestra «Iniciar sesión con GitHub» (el enlace lleva a Ajustes).
+adb shell input swipe 540 1800 540 700 300 >/dev/null 2>&1 || true
+sleep 1
+adb shell uiautomator dump /sdcard/gpm-ui.xml >/dev/null 2>&1 || true
+if adb shell cat /sdcard/gpm-ui.xml 2>/dev/null | grep -qE "Copia en la nube activa|Cloud backup on"; then
+    bad "un enlace gpmapper://auth falso inició sesión"
 else
-    ok "un enlace gpmapper://auth falso no crea sesión"
+    ok "un enlace gpmapper://auth falso no inicia sesión"
 fi
 
 # 4. Boton de Ajustes rapidos (Android 13+: cmd statusbar)

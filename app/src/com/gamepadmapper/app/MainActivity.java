@@ -771,7 +771,7 @@ public class MainActivity extends Activity {
         }
         c.addView(Ui.divider(this));
         LinearLayout row = Ui.menuRow(this, R.drawable.ic_download, Ui.PRIMARY, L.t("Usar mapeos de la comunidad"),
-                L.t("Modo root: corrige los botones de mandos genéricos (SDL GameControllerDB y la web)"), null);
+                L.t("Modo root o Shizuku: corrige los botones de mandos genéricos (SDL GameControllerDB y la web)"), null);
         row.setClickable(false);
         final Switch sw = new Switch(this);
         sw.setChecked(ControllerMappings.enabled(this));

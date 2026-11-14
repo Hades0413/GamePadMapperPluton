@@ -788,7 +788,7 @@ final class L_en {
         m.put("Mando sin mapeo de la comunidad", "No community mapping for this gamepad");
         m.put("Si algún botón sale con un nombre raro, usa «Detectar botón» en el editor", "If a button shows up with an odd name, use «Detect button» in the editor");
         m.put("Usar mapeos de la comunidad", "Use community mappings");
-        m.put("Modo root: corrige los botones de mandos genéricos (SDL GameControllerDB y la web)", "Root mode: fixes the buttons of generic gamepads (SDL GameControllerDB and the website)");
+        m.put("Modo root o Shizuku: corrige los botones de mandos genéricos (SDL GameControllerDB y la web)", "Root or Shizuku mode: fixes the buttons of generic gamepads (SDL GameControllerDB and the website)");
         // Copia en la nube (GitHub)
         m.put("No hay ningún inicio de sesión pendiente", "There is no pending sign-in");
         m.put("El inicio de sesión ha caducado: vuelve a intentarlo", "The sign-in expired: please try again");
