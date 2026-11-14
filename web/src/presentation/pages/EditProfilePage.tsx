@@ -7,6 +7,7 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { PageSpinner } from '../components/ui/Spinner';
 import { cameFromApp, readAppLink, setFromApp, type PublishedState } from '../lib/appLink';
 import { loadDraft, saveDraft } from '../lib/sessionDraft';
+import { useT } from '../i18n/I18nContext';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { useProfile, useUpdateProfile } from '../queries/profiles';
 import { paths } from '../routes/paths';
@@ -29,7 +30,8 @@ function appVersion(id: string): { conf: string; model: string } | null {
 const packageOf = (conf: string) => /^\s*package\s*=\s*(\S+)/m.exec(conf)?.[1] ?? '';
 
 export default function EditProfilePage() {
-  useDocumentTitle('Editar perfil');
+  const t = useT();
+  useDocumentTitle(t('Editar perfil'));
   const { id = '' } = useParams();
   const [fromApp] = useState(() => appVersion(id));
   const { data: profile, isPending, error, refetch } = useProfile(id);
@@ -38,24 +40,24 @@ export default function EditProfilePage() {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-3xl font-bold">Editar perfil</h1>
-      <RequireAccount reason="Inicia sesión para editar tus perfiles.">
+      <h1 className="text-3xl font-bold">{t('Editar perfil')}</h1>
+      <RequireAccount reason={t('Inicia sesión para editar tus perfiles.')}>
         {(account) => {
           if (isPending) return <PageSpinner />;
           if (error) return <ErrorAlert error={error} onRetry={() => void refetch()} />;
           if (!profile) return <NotFoundPage />;
-          if (profile.author?.id !== account.id) return <EmptyState title="Solo el autor puede editar este perfil" />;
+          if (profile.author?.id !== account.id) return <EmptyState title={t('Solo el autor puede editar este perfil')} />;
           // La version de la app solo se usa si es del mismo juego.
           const appConf = fromApp && packageOf(fromApp.conf) === profile.packageName ? fromApp : null;
           return (
             <div className="space-y-6">
               {appConf && (
                 <Alert tone="info">
-                  Se ha cargado la versión de tu teléfono. Revisa la vista previa y guarda para publicar los cambios.
+                  {t('Se ha cargado la versión de tu teléfono. Revisa la vista previa y guarda para publicar los cambios.')}
                 </Alert>
               )}
               {fromApp && !appConf && (
-                <Alert tone="warning">El perfil que envió la app es de otro juego: se muestra la versión publicada.</Alert>
+                <Alert tone="warning">{t('El perfil que envió la app es de otro juego: se muestra la versión publicada.')}</Alert>
               )}
               <ProfileForm mode="edit" pending={update.isPending} error={update.error}
                 initial={{ conf: appConf?.conf ?? profile.conf, packageName: profile.packageName, gameName: profile.gameName ?? '',

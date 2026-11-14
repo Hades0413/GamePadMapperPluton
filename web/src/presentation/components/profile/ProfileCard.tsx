@@ -3,7 +3,8 @@ import { TagChips } from './CommunitySections';
 import { Link } from 'react-router';
 import { sameRatio, type Screen } from '@domain/profile/conf/fit';
 import { ratioLabel } from '../../lib/device';
-import { compactNumber, timeAgo } from '../../lib/format';
+import { useT } from '../../i18n/I18nContext';
+import { useFormat } from '../../lib/useFormat';
 import { paths } from '../../routes/paths';
 import { Avatar } from '../ui/Avatar';
 import { DownloadIcon, HeartIcon } from '../ui/icons';
@@ -11,6 +12,8 @@ import { DownloadIcon, HeartIcon } from '../ui/icons';
 export function ProfileCard({
   profile, liked = false, showGame = false, myScreen = null,
 }: { profile: GameProfileSummary; liked?: boolean; showGame?: boolean; myScreen?: Screen | null }) {
+  const t = useT();
+  const { compactNumber, timeAgo } = useFormat();
   const share = worksShare(profile);
   const fits = myScreen !== null && sameRatio(profile.screen, myScreen);
   return (
@@ -25,7 +28,7 @@ export function ProfileCard({
           </h3>
         </div>
         <span className={`flex shrink-0 items-center gap-1 text-sm ${liked ? 'text-danger' : 'text-muted'}`}
-          title={`${profile.likeCount} me gusta`}>
+          title={t('{n} me gusta', { n: profile.likeCount })}>
           <HeartIcon filled={liked} />
           {compactNumber(profile.likeCount)}
         </span>
@@ -35,22 +38,22 @@ export function ProfileCard({
         <span className="rounded-md bg-surface-2 px-2 py-0.5 text-muted">
           {profile.deviceModel ? `${profile.deviceModel} · ` : ''}{ratioLabel(profile.screen)}
         </span>
-        {fits && <span className="rounded-md bg-success/15 px-2 py-0.5 font-medium text-success">Encaja con tu pantalla</span>}
-        {profile.featuredAt && <span className="rounded-md bg-warning/20 px-2 py-0.5 font-medium text-warning">★ Destacado</span>}
+        {fits && <span className="rounded-md bg-success/15 px-2 py-0.5 font-medium text-success">{t('Encaja con tu pantalla')}</span>}
+        {profile.featuredAt && <span className="rounded-md bg-warning/20 px-2 py-0.5 font-medium text-warning">★ {t('Destacado')}</span>}
         {recentlyBroken(profile) && (
-          <span className="rounded-md bg-danger/15 px-2 py-0.5 font-medium text-danger">Últimamente no funciona</span>
+          <span className="rounded-md bg-danger/15 px-2 py-0.5 font-medium text-danger">{t('Últimamente no funciona')}</span>
         )}
         <TagChips tags={profile.tags} max={2} />
         {profile.installCount > 0 && (
           <span className="inline-flex items-center gap-1 rounded-md bg-surface-2 px-2 py-0.5 text-muted"
-            title={`${profile.installCount} instalaciones desde la app`}>
+            title={t('{n} instalaciones desde la app', { n: profile.installCount })}>
             <DownloadIcon className="size-3" />{compactNumber(profile.installCount)}
           </span>
         )}
         {share !== null && (
           <span className={`rounded-md px-2 py-0.5 font-medium ${share >= 70 ? 'bg-success/15 text-success' : share >= 40 ? 'bg-warning/15 text-warning' : 'bg-danger/15 text-danger'}`}
-            title={`${profile.worksYes} sí · ${profile.worksNo} no`}>
-            {share} % dice que funciona
+            title={t('{yes} sí · {no} no', { yes: profile.worksYes, no: profile.worksNo })}>
+            {t('{n} % dice que funciona', { n: share })}
           </span>
         )}
       </div>
@@ -62,8 +65,8 @@ export function ProfileCard({
           </span>
         ) : <span />}
         <span className="shrink-0">
-          {profile.bindingCount} botones · {timeAgo(profile.createdAt)}
-          {profile.status === 'hidden' && <span className="ml-2 rounded bg-warning/20 px-1.5 py-0.5 text-warning">Oculto</span>}
+          {t('{n} botones', { n: profile.bindingCount })} · {timeAgo(profile.createdAt)}
+          {profile.status === 'hidden' && <span className="ml-2 rounded bg-warning/20 px-1.5 py-0.5 text-warning">{t('Oculto')}</span>}
         </span>
       </div>
     </article>

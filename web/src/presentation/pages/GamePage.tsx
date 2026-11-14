@@ -11,6 +11,7 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { UploadIcon } from '../components/ui/icons';
 import { LoadMore } from '../components/ui/LoadMore';
 import { PageSpinner } from '../components/ui/Spinner';
+import { useT } from '../i18n/I18nContext';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { useGame } from '../queries/games';
 import { useDeviceModels, useGameProfiles, useLiked } from '../queries/profiles';
@@ -25,6 +26,7 @@ function sortFromParam(v: string | null): ProfileSort {
 }
 
 export default function GamePage() {
+  const t = useT();
   const { packageName = '' } = useParams();
   const [params, setParams] = useSearchParams();
   const [myScreen] = useState(visitorScreen);
@@ -63,7 +65,7 @@ export default function GamePage() {
   const items = profiles.data?.pages.flatMap((p) => p.items) ?? [];
   const liked = useLiked(items.map((p) => p.id));
   const filtering = !!(filters.search || filters.brand || filters.model || filters.onlyMine || filters.tag);
-  useDocumentTitle(game.data?.name, game.data ? `Perfiles de mando para ${game.data.name}.` : undefined);
+  useDocumentTitle(game.data?.name, game.data ? t('Perfiles de mando para {name}.', { name: game.data.name }) : undefined);
 
   if (game.isPending) return <PageSpinner />;
   if (game.error) return <ErrorAlert error={game.error} onRetry={() => void game.refetch()} />;
@@ -77,7 +79,7 @@ export default function GamePage() {
           <h1 className="text-3xl font-bold">{game.data.name}</h1>
           <p className="truncate font-mono text-sm text-muted">{game.data.packageName}</p>
         </div>
-        <ButtonLink to={paths.upload(game.data.packageName)} icon={<UploadIcon />}>Subir mi perfil</ButtonLink>
+        <ButtonLink to={paths.upload(game.data.packageName)} icon={<UploadIcon />}>{t('Subir mi perfil')}</ButtonLink>
       </div>
 
       <ProfileFiltersBar value={filters} onChange={update} models={devices.data ?? []}
@@ -87,12 +89,12 @@ export default function GamePage() {
         <ErrorAlert error={profiles.error} onRetry={() => void profiles.refetch()} />
       ) : items.length === 0 ? (
         filtering ? (
-          <EmptyState title="Ningún perfil coincide con esos filtros"
+          <EmptyState title={t('Ningún perfil coincide con esos filtros')}
             action={<button type="button" className="text-primary hover:underline"
-              onClick={() => update({ search: '', brand: '', model: '', onlyMine: false, tag: '' })}>Quitar filtros</button>} />
+              onClick={() => update({ search: '', brand: '', model: '', onlyMine: false, tag: '' })}>{t('Quitar filtros')}</button>} />
         ) : (
-          <EmptyState title="Aún no hay perfiles para este juego"
-            action={<ButtonLink to={paths.upload(game.data.packageName)}>Subir el primero</ButtonLink>} />
+          <EmptyState title={t('Aún no hay perfiles para este juego')}
+            action={<ButtonLink to={paths.upload(game.data.packageName)}>{t('Subir el primero')}</ButtonLink>} />
         )
       ) : (
         <>
