@@ -19,6 +19,8 @@ const AccountPage = lazy(() => import('../pages/AccountPage'));
 const AdminPage = lazy(() => import('../pages/AdminPage'));
 const PrivacyPage = lazy(() => import('../pages/PrivacyPage'));
 const RulesPage = lazy(() => import('../pages/RulesPage'));
+const SearchPage = lazy(() => import('../pages/SearchPage'));
+const NotificationsPage = lazy(() => import('../pages/NotificationsPage'));
 
 export function createRouter(basename: string) {
   return createBrowserRouter(
@@ -36,6 +38,8 @@ export function createRouter(basename: string) {
           { path: 'subir', element: <UploadPage /> },
           { path: 'editor', element: <EditorPage /> },
           { path: 'mandos', element: <ControllersPage /> },
+          { path: 'buscar', element: <SearchPage /> },
+          { path: 'avisos', element: <NotificationsPage /> },
           { path: 'cuenta', element: <AccountPage /> },
           // La moderacion se queda en espanol (la usa solo el equipo).
           { path: 'admin', element: <I18nProvider force="es"><AdminPage /></I18nProvider> },

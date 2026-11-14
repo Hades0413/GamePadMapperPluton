@@ -18,6 +18,7 @@ export function useSessionSync() {
         void client.invalidateQueries({ queryKey: keys.account });
         void client.invalidateQueries({ queryKey: keys.allLiked });
         void client.invalidateQueries({ queryKey: keys.allProfiles });
+        void client.invalidateQueries({ queryKey: keys.notifications });
       }),
     [observeSession, client],
   );

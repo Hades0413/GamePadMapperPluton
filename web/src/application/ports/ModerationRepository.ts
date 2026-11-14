@@ -1,4 +1,7 @@
 import type { GameImageFile, GameImageKind } from '@domain/game/GameImage';
+import type {
+  BanDays, BannedAuthor, CommentAction, ModerationLogEntry, ReportedComment,
+} from '@domain/moderation/Moderation';
 import type { ProfileStatus } from '@domain/profile/GameProfile';
 
 export interface ReportedProfile {
@@ -47,7 +50,14 @@ export interface ModerationRepository {
   diagnostics(): Promise<readonly Diagnostic[]>;
   deleteDiagnostic(id: string): Promise<void>;
   setProfileStatus(id: string, status: ProfileStatus, clearReports: boolean): Promise<void>;
-  setAuthorBanned(authorId: string, banned: boolean): Promise<void>;
+  /** days null = para siempre. */
+  banAuthor(authorId: string, days: BanDays | null, reason: string): Promise<void>;
+  unbanAuthor(authorId: string, reason: string): Promise<void>;
+  bannedAuthors(): Promise<readonly BannedAuthor[]>;
+  reportedComments(): Promise<readonly ReportedComment[]>;
+  moderateComment(commentId: string, action: CommentAction, reason: string): Promise<void>;
+  /** Historial, del mas reciente al mas antiguo; before = id a partir del cual seguir. */
+  moderationLog(limit: number, before: number | null): Promise<readonly ModerationLogEntry[]>;
   updateGame(packageName: string, changes: GameChanges): Promise<void>;
   /** Nombre e icono desde la ficha publica de Google Play (lo hace el servidor). */
   importGameFromPlay(packageName: string, updateName: boolean): Promise<ImportedGame>;

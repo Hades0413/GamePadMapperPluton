@@ -3,7 +3,7 @@ import type {
 } from '@application/auth/AuthUseCases';
 import type { GetAuthor } from '@application/authors/GetAuthor';
 import type {
-  AddComment, DeleteComment, FeatureProfile, ListComments, ListFeaturedProfiles, ListVersions, SetProfileTags,
+  AddComment, DeleteComment, FeatureProfile, ListComments, ListFeaturedProfiles, ListVersions, ReportComment, SetProfileTags,
 } from '@application/community/CommunityUseCases';
 import type {
   DeleteMapping, ListApprovedMappings, ListMappingsForReview, ListMyMappings, ReviewMapping, SubmitMapping,
@@ -12,14 +12,18 @@ import type { FillGameImages } from '@application/games/FillGameImages';
 import type { GetGame } from '@application/games/GetGame';
 import type { ListGames } from '@application/games/ListGames';
 import type {
-  BanAuthor, DeleteDiagnostic, ImportGameFromPlay, ListDiagnostics, ListPlayScreenshots, ListReportedProfiles, ModerateProfile, SetGameImage,
-  UpdateGame, UseBackgroundFromPlay,
+  BanAuthor, DeleteDiagnostic, ImportGameFromPlay, ListBannedAuthors, ListDiagnostics, ListModerationLog, ListPlayScreenshots,
+  ListReportedComments, ListReportedProfiles, ModerateComment, ModerateProfile, SetGameImage, UnbanAuthor, UpdateGame,
+  UseBackgroundFromPlay,
 } from '@application/moderation/ModerationUseCases';
 import type { DeleteProfile } from '@application/profiles/DeleteProfile';
 import type { GetLikedProfiles } from '@application/profiles/GetLikedProfiles';
 import type { GetProfile } from '@application/profiles/GetProfile';
 import type { ListAuthorProfiles } from '@application/profiles/ListAuthorProfiles';
-import type { ListDeviceModels, ListGameProfiles } from '@application/profiles/ListGameProfiles';
+import type { ListDeviceModels, ListGameProfiles, SearchProfiles } from '@application/profiles/ListGameProfiles';
+import type {
+  CountUnreadNotifications, ListNotifications, MarkAllNotificationsRead, MarkNotificationsRead,
+} from '@application/notifications/NotificationUseCases';
 import type { PublishProfile } from '@application/profiles/PublishProfile';
 import type { ReportProfile } from '@application/profiles/ReportProfile';
 import type { ToggleLike } from '@application/profiles/ToggleLike';
@@ -32,6 +36,7 @@ export interface UseCases {
   readonly fillGameImages: FillGameImages;
   readonly listGameProfiles: ListGameProfiles;
   readonly listDeviceModels: ListDeviceModels;
+  readonly searchProfiles: SearchProfiles;
   readonly listAuthorProfiles: ListAuthorProfiles;
   readonly getProfile: GetProfile;
   readonly publishProfile: PublishProfile;
@@ -50,6 +55,11 @@ export interface UseCases {
   readonly listReportedProfiles: ListReportedProfiles;
   readonly moderateProfile: ModerateProfile;
   readonly banAuthor: BanAuthor;
+  readonly unbanAuthor: UnbanAuthor;
+  readonly listBannedAuthors: ListBannedAuthors;
+  readonly listReportedComments: ListReportedComments;
+  readonly moderateComment: ModerateComment;
+  readonly listModerationLog: ListModerationLog;
   readonly updateGame: UpdateGame;
   readonly importGameFromPlay: ImportGameFromPlay;
   readonly setGameImage: SetGameImage;
@@ -58,6 +68,7 @@ export interface UseCases {
   readonly listComments: ListComments;
   readonly addComment: AddComment;
   readonly deleteComment: DeleteComment;
+  readonly reportComment: ReportComment;
   readonly listVersions: ListVersions;
   readonly setProfileTags: SetProfileTags;
   readonly listFeaturedProfiles: ListFeaturedProfiles;
@@ -70,6 +81,10 @@ export interface UseCases {
   readonly deleteMapping: DeleteMapping;
   readonly listMappingsForReview: ListMappingsForReview;
   readonly reviewMapping: ReviewMapping;
+  readonly listNotifications: ListNotifications;
+  readonly countUnreadNotifications: CountUnreadNotifications;
+  readonly markNotificationsRead: MarkNotificationsRead;
+  readonly markAllNotificationsRead: MarkAllNotificationsRead;
 }
 
 export interface SiteLinks {

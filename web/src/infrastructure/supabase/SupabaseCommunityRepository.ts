@@ -1,6 +1,7 @@
 import type { CommunityRepository } from '@application/ports/CommunityRepository';
 import type { Comment, ProfileVersion } from '@domain/community/Community';
 import type { GameProfileSummary, ProfileTag } from '@domain/profile/GameProfile';
+import type { ReportReason } from '@domain/report/ReportReason';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import { parse, unwrap } from './errors';
@@ -26,6 +27,10 @@ export class SupabaseCommunityRepository implements CommunityRepository {
 
   async deleteComment(commentId: string): Promise<void> {
     unwrap(await this.#db.rpc('delete_comment', { p_id: commentId }));
+  }
+
+  async reportComment(commentId: string, reason: ReportReason, details: string): Promise<void> {
+    unwrap(await this.#db.rpc('report_comment', { p_id: commentId, p_reason: reason, p_details: details }));
   }
 
   async listVersions(profileId: string): Promise<readonly ProfileVersion[]> {

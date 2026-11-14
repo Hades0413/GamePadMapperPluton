@@ -1,6 +1,8 @@
 import { COMMENT_MAX, COMMENT_MIN, type Comment, type ProfileVersion } from '@domain/community/Community';
 import { isProfileTag, MAX_TAGS, type GameProfileSummary, type ProfileTag } from '@domain/profile/GameProfile';
+import { isReportReason, REPORT_DETAILS_MAX } from '@domain/report/ReportReason';
 import { AppError } from '@domain/shared/AppError';
+import { cleanLine } from '@domain/shared/text';
 import type { CommunityRepository } from '../ports/CommunityRepository';
 import { requireId } from '../shared/guards';
 
@@ -34,6 +36,14 @@ export class AddComment extends UseCase {
 export class DeleteComment extends UseCase {
   execute(commentId: string): Promise<void> {
     return this.repo.deleteComment(requireId(commentId));
+  }
+}
+
+export class ReportComment extends UseCase {
+  execute(input: { id: string; reason: string; details: string }): Promise<void> {
+    if (!isReportReason(input.reason)) throw new AppError('INVALID_INPUT', 'Elige un motivo válido.');
+    const details = cleanLine(input.details, 0, REPORT_DETAILS_MAX, 'detalles');
+    return this.repo.reportComment(requireId(input.id), input.reason, details);
   }
 }
 

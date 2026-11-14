@@ -10,6 +10,8 @@ export const paths = {
   editor: '/editor',
   editorFor: (profileId: string) => `/editor?perfil=${profileId}`,
   controllers: '/mandos',
+  search: (query?: string) => (query ? `/buscar?q=${encodeURIComponent(query)}` : '/buscar'),
+  notifications: '/avisos',
   account: '/cuenta',
   admin: '/admin',
   privacy: '/privacidad',

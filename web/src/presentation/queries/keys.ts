@@ -13,4 +13,11 @@ export const keys = {
   reported: ['moderation', 'reported'] as const,
   allProfiles: ['profiles'] as const,
   allLiked: ['liked'] as const,
+  searchProfiles: (sort: ProfileSort) => ['profiles', 'search', sort] as const,
+  notifications: ['notifications'] as const,
+  unreadNotifications: ['notifications', 'unread'] as const,
+  notificationList: ['notifications', 'list'] as const,
+  reportedComments: ['moderation', 'comments'] as const,
+  moderationLog: ['moderation', 'log'] as const,
+  bannedAuthors: ['moderation', 'banned'] as const,
 };

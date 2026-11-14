@@ -8,7 +8,7 @@ import {
 } from '@application/auth/AuthUseCases';
 import { GetAuthor } from '@application/authors/GetAuthor';
 import {
-  AddComment, DeleteComment, FeatureProfile, ListComments, ListFeaturedProfiles, ListVersions, SetProfileTags,
+  AddComment, DeleteComment, FeatureProfile, ListComments, ListFeaturedProfiles, ListVersions, ReportComment, SetProfileTags,
 } from '@application/community/CommunityUseCases';
 import {
   DeleteMapping, ListApprovedMappings, ListMappingsForReview, ListMyMappings, ReviewMapping, SubmitMapping,
@@ -17,14 +17,18 @@ import { FillGameImages } from '@application/games/FillGameImages';
 import { GetGame } from '@application/games/GetGame';
 import { ListGames } from '@application/games/ListGames';
 import {
-  BanAuthor, DeleteDiagnostic, ImportGameFromPlay, ListDiagnostics, ListPlayScreenshots, ListReportedProfiles, ModerateProfile, SetGameImage,
-  UpdateGame, UseBackgroundFromPlay,
+  BanAuthor, DeleteDiagnostic, ImportGameFromPlay, ListBannedAuthors, ListDiagnostics, ListModerationLog, ListPlayScreenshots,
+  ListReportedComments, ListReportedProfiles, ModerateComment, ModerateProfile, SetGameImage, UnbanAuthor, UpdateGame,
+  UseBackgroundFromPlay,
 } from '@application/moderation/ModerationUseCases';
 import { DeleteProfile } from '@application/profiles/DeleteProfile';
 import { GetLikedProfiles } from '@application/profiles/GetLikedProfiles';
 import { GetProfile } from '@application/profiles/GetProfile';
 import { ListAuthorProfiles } from '@application/profiles/ListAuthorProfiles';
-import { ListDeviceModels, ListGameProfiles } from '@application/profiles/ListGameProfiles';
+import { ListDeviceModels, ListGameProfiles, SearchProfiles } from '@application/profiles/ListGameProfiles';
+import {
+  CountUnreadNotifications, ListNotifications, MarkAllNotificationsRead, MarkNotificationsRead,
+} from '@application/notifications/NotificationUseCases';
 import { PublishProfile } from '@application/profiles/PublishProfile';
 import { ReportProfile } from '@application/profiles/ReportProfile';
 import { ToggleLike } from '@application/profiles/ToggleLike';
@@ -37,6 +41,7 @@ import { SupabaseCommunityRepository } from '@infrastructure/supabase/SupabaseCo
 import { SupabaseControllerMappingRepository } from '@infrastructure/supabase/SupabaseControllerMappingRepository';
 import { SupabaseGameRepository } from '@infrastructure/supabase/SupabaseGameRepository';
 import { SupabaseModerationRepository } from '@infrastructure/supabase/SupabaseModerationRepository';
+import { SupabaseNotificationRepository } from '@infrastructure/supabase/SupabaseNotificationRepository';
 import { SupabaseProfileRepository } from '@infrastructure/supabase/SupabaseProfileRepository';
 import type { Services } from '@presentation/di/Services';
 
@@ -51,6 +56,7 @@ export function createServices(env: Env): Services {
   const moderation = new SupabaseModerationRepository(db);
   const community = new SupabaseCommunityRepository(db);
   const controllers = new SupabaseControllerMappingRepository(db);
+  const notifications = new SupabaseNotificationRepository(db);
 
   return {
     links: { playUrl: env.playUrl, repoUrl: env.repoUrl, siteUrl: env.siteUrl },
@@ -60,6 +66,7 @@ export function createServices(env: Env): Services {
       fillGameImages: new FillGameImages(games),
       listGameProfiles: new ListGameProfiles(profiles),
       listDeviceModels: new ListDeviceModels(profiles),
+      searchProfiles: new SearchProfiles(profiles),
       listAuthorProfiles: new ListAuthorProfiles(profiles),
       getProfile: new GetProfile(profiles),
       publishProfile: new PublishProfile(profiles),
@@ -78,6 +85,11 @@ export function createServices(env: Env): Services {
       listReportedProfiles: new ListReportedProfiles(moderation),
       moderateProfile: new ModerateProfile(moderation),
       banAuthor: new BanAuthor(moderation),
+      unbanAuthor: new UnbanAuthor(moderation),
+      listBannedAuthors: new ListBannedAuthors(moderation),
+      listReportedComments: new ListReportedComments(moderation),
+      moderateComment: new ModerateComment(moderation),
+      listModerationLog: new ListModerationLog(moderation),
       updateGame: new UpdateGame(moderation),
       importGameFromPlay: new ImportGameFromPlay(moderation),
       setGameImage: new SetGameImage(moderation),
@@ -86,6 +98,7 @@ export function createServices(env: Env): Services {
       listComments: new ListComments(community),
       addComment: new AddComment(community),
       deleteComment: new DeleteComment(community),
+      reportComment: new ReportComment(community),
       listVersions: new ListVersions(community),
       setProfileTags: new SetProfileTags(community),
       listFeaturedProfiles: new ListFeaturedProfiles(community),
@@ -98,6 +111,10 @@ export function createServices(env: Env): Services {
       deleteMapping: new DeleteMapping(controllers),
       listMappingsForReview: new ListMappingsForReview(controllers),
       reviewMapping: new ReviewMapping(controllers),
+      listNotifications: new ListNotifications(notifications),
+      countUnreadNotifications: new CountUnreadNotifications(notifications),
+      markNotificationsRead: new MarkNotificationsRead(notifications),
+      markAllNotificationsRead: new MarkAllNotificationsRead(notifications),
     },
   };
 }

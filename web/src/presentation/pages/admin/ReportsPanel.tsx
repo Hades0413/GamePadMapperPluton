@@ -1,5 +1,4 @@
 import type { ReportedProfile } from '@application/ports/ModerationRepository';
-import { isReportReason } from '@domain/report/ReportReason';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { Alert, ErrorAlert } from '../../components/ui/Alert';
@@ -9,27 +8,19 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { PageSpinner } from '../../components/ui/Spinner';
 import { errorMessage } from '../../lib/errorMessage';
 import { timeAgo } from '../../lib/format';
-import { REPORT_REASON_LABEL } from '../../lib/labels';
-import { useBanAuthor, useModerateProfile, useReportedProfiles } from '../../queries/moderation';
+import { useModerateProfile, useReportedProfiles } from '../../queries/moderation';
 import { useDeleteProfile } from '../../queries/profiles';
 import { paths } from '../../routes/paths';
+import { BanDialog } from './BanDialog';
+import { reasonText } from './reasons';
 
 type Danger = 'delete' | 'ban' | null;
-
-/** "broken: no va" -> "No funciona / está mal hecho: no va" */
-function reasonText(raw: string): string {
-  const sep = raw.indexOf(':');
-  const code = sep >= 0 ? raw.slice(0, sep) : raw;
-  const label = isReportReason(code) ? REPORT_REASON_LABEL[code] : code;
-  return sep >= 0 ? `${label}:${raw.slice(sep + 1)}` : label;
-}
 
 function ReportCard({ item }: { item: ReportedProfile }) {
   const moderate = useModerateProfile();
   const remove = useDeleteProfile();
-  const ban = useBanAuthor();
   const [danger, setDanger] = useState<Danger>(null);
-  const error = moderate.error ?? remove.error ?? ban.error;
+  const error = moderate.error ?? remove.error;
   const hidden = item.status === 'hidden';
 
   return (
@@ -73,24 +64,17 @@ function ReportCard({ item }: { item: ReportedProfile }) {
         <Button size="sm" variant="ghost" className="text-danger! hover:bg-danger/10" onClick={() => setDanger('ban')}>Bloquear autor</Button>
       </div>
 
-      <Dialog open={danger !== null} onClose={() => setDanger(null)}
-        title={danger === 'ban' ? `¿Bloquear a @${item.username}?` : '¿Borrar este perfil?'}>
-        <p className="text-sm text-muted">
-          {danger === 'ban'
-            ? 'Se ocultarán todos sus perfiles y no podrá subir más, aunque borre la cuenta y vuelva a entrar.'
-            : 'Se borra para siempre, con sus «me gusta» y reportes.'}
-        </p>
+      <Dialog open={danger === 'delete'} onClose={() => setDanger(null)} title="¿Borrar este perfil?">
+        <p className="text-sm text-muted">Se borra para siempre, con sus «me gusta» y reportes.</p>
         <div className="flex justify-end gap-2">
           <Button variant="ghost" onClick={() => setDanger(null)}>Cancelar</Button>
-          <Button variant="danger" loading={remove.isPending || ban.isPending} onClick={() => {
-            const done = { onSuccess: () => setDanger(null) };
-            if (danger === 'ban') ban.mutate({ authorId: item.authorId, banned: true }, done);
-            else remove.mutate(item.id, done);
-          }}>
-            {danger === 'ban' ? 'Bloquear' : 'Borrar'}
+          <Button variant="danger" loading={remove.isPending}
+            onClick={() => remove.mutate(item.id, { onSuccess: () => setDanger(null) })}>
+            Borrar
           </Button>
         </div>
       </Dialog>
+      <BanDialog open={danger === 'ban'} onClose={() => setDanger(null)} authorId={item.authorId} username={item.username} />
     </li>
   );
 }

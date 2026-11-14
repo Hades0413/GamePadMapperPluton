@@ -1,5 +1,7 @@
 export const REPORT_REASONS = ['spam', 'broken', 'offensive', 'copyright', 'other'] as const;
 export type ReportReason = (typeof REPORT_REASONS)[number];
+/** Motivos que tienen sentido para un comentario (la base de datos admite la lista completa). */
+export const COMMENT_REPORT_REASONS: readonly ReportReason[] = ['spam', 'offensive', 'other'];
 export const REPORT_DETAILS_MAX = 300;
 
 export function isReportReason(value: string): value is ReportReason {

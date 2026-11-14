@@ -26,6 +26,13 @@ export function useDeleteComment(profileId: string) {
   });
 }
 
+export function useReportComment() {
+  const { reportComment } = useUseCases();
+  return useMutation({
+    mutationFn: (input: { id: string; reason: string; details: string }) => reportComment.execute(input),
+  });
+}
+
 export function useVersions(profileId: string, enabled: boolean) {
   const { listVersions } = useUseCases();
   return useQuery({ queryKey: ['versions', profileId], queryFn: () => listVersions.execute(profileId), enabled });

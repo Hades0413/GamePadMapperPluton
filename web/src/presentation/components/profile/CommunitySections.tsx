@@ -19,6 +19,7 @@ import { Avatar } from '../ui/Avatar';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
 import { SignInButton } from '../auth/SignInButton';
+import { ReportButton } from './ReportDialog';
 
 /** Etiquetas del perfil como pastillas. */
 export function TagChips({ tags, max }: { tags: readonly ProfileTag[]; max?: number }) {
@@ -165,6 +166,7 @@ export function CommentsSection({ profileId, profileAuthorId }: { profileId: str
                 {canDelete(c.author?.id) && (
                   <button type="button" className="ml-2 text-danger hover:underline" onClick={() => remove.mutate(c.id)}>{t('Borrar')}</button>
                 )}
+                {account?.id !== c.author?.id && <ReportButton id={c.id} kind="comment" />}
               </p>
               <p className="text-sm break-words whitespace-pre-line">{c.body}</p>
             </div>

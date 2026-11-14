@@ -67,6 +67,37 @@ export const reportedRow = z.object({
   created_at: z.string(),
 });
 
+export const reportedCommentRow = z.object({
+  id: z.uuid(),
+  profile_id: z.uuid(),
+  profile_title: z.string(),
+  author_id: z.uuid(),
+  username: z.string(),
+  body: z.string(),
+  is_hidden: z.boolean(),
+  report_count: z.number().int(),
+  reasons: z.array(z.string()),
+  created_at: z.string(),
+});
+
+export const moderationLogRow = z.object({
+  id: z.number().int(),
+  admin_name: z.string(),
+  action: z.string(),
+  target_type: z.enum(['profile', 'author', 'game', 'comment', 'mapping', 'diagnostic']),
+  target_id: z.string(),
+  target_label: z.string(),
+  reason: z.string(),
+  created_at: z.string(),
+});
+
+export const bannedRow = z.object({
+  id: z.uuid(),
+  username: z.string(),
+  is_banned: z.boolean(),
+  banned_until: z.string().nullable(),
+});
+
 export const commentRow = z.object({
   id: z.uuid(),
   profile_id: z.uuid(),

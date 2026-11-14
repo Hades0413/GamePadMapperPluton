@@ -2,12 +2,15 @@ import type {
   Diagnostic, GameChanges, ImportedGame, ModerationRepository, PlayScreenshot, ReportedProfile,
 } from '@application/ports/ModerationRepository';
 import type { GameImageFile, GameImageKind } from '@domain/game/GameImage';
+import {
+  isModerationAction, type BanDays, type BannedAuthor, type CommentAction, type ModerationLogEntry, type ReportedComment,
+} from '@domain/moderation/Moderation';
 import { AppError } from '@domain/shared/AppError';
 import type { ProfileStatus } from '@domain/profile/GameProfile';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import { parse, toAppError, unwrap } from './errors';
-import { diagnosticRow, reportedRow } from './rows';
+import { bannedRow, diagnosticRow, moderationLogRow, reportedCommentRow, reportedRow } from './rows';
 
 export class SupabaseModerationRepository implements ModerationRepository {
   readonly #db: SupabaseClient;
@@ -47,8 +50,40 @@ export class SupabaseModerationRepository implements ModerationRepository {
     unwrap(await this.#db.rpc('admin_set_profile_status', { p_id: id, p_status: status, p_clear_reports: clearReports }));
   }
 
-  async setAuthorBanned(authorId: string, banned: boolean): Promise<void> {
-    unwrap(await this.#db.rpc('admin_set_banned', { p_user: authorId, p_banned: banned }));
+  async banAuthor(authorId: string, days: BanDays | null, reason: string): Promise<void> {
+    unwrap(await this.#db.rpc('admin_ban_author', { p_user: authorId, p_days: days, p_reason: reason }));
+  }
+
+  async unbanAuthor(authorId: string, reason: string): Promise<void> {
+    unwrap(await this.#db.rpc('admin_unban_author', { p_user: authorId, p_reason: reason }));
+  }
+
+  async bannedAuthors(): Promise<readonly BannedAuthor[]> {
+    const rows = parse(z.array(bannedRow), unwrap(await this.#db.rpc('admin_banned_authors')));
+    return rows.map((r) => ({
+      id: r.id, username: r.username, permanent: r.is_banned,
+      bannedUntil: r.banned_until ? new Date(r.banned_until) : null,
+    }));
+  }
+
+  async reportedComments(): Promise<readonly ReportedComment[]> {
+    const rows = parse(z.array(reportedCommentRow), unwrap(await this.#db.rpc('admin_reported_comments')));
+    return rows.map((r) => ({
+      id: r.id, profileId: r.profile_id, profileTitle: r.profile_title, authorId: r.author_id, username: r.username,
+      body: r.body, hidden: r.is_hidden, reportCount: r.report_count, reasons: r.reasons, createdAt: new Date(r.created_at),
+    }));
+  }
+
+  async moderateComment(commentId: string, action: CommentAction, reason: string): Promise<void> {
+    unwrap(await this.#db.rpc('admin_moderate_comment', { p_id: commentId, p_action: action, p_reason: reason }));
+  }
+
+  async moderationLog(limit: number, before: number | null): Promise<readonly ModerationLogEntry[]> {
+    const rows = parse(z.array(moderationLogRow), unwrap(await this.#db.rpc('admin_moderation_log', { p_limit: limit, p_before: before })));
+    return rows.flatMap((r) => (isModerationAction(r.action) ? [{
+      id: r.id, adminName: r.admin_name, action: r.action, targetType: r.target_type, targetId: r.target_id,
+      targetLabel: r.target_label, reason: r.reason, createdAt: new Date(r.created_at),
+    }] : []));
   }
 
   async updateGame(packageName: string, changes: GameChanges): Promise<void> {

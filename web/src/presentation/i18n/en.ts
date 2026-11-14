@@ -586,4 +586,41 @@ export const EN: Readonly<Record<string, string>> = {
   'Pala 3': 'Paddle 3',
   'Pala 4': 'Paddle 4',
   'Panel táctil': 'Touchpad',
+
+  // Avisos
+  'Avisos': 'Notifications',
+  'Avisos: {n} sin leer': 'Notifications: {n} unread',
+  'sin título': 'untitled',
+  'Mando': 'Controller',
+  'Alguien': 'Someone',
+  '{actor} comentó en tu perfil «{title}»': '{actor} commented on your profile "{title}"',
+  'Se aprobó tu mando «{name}» ({platform})': 'Your controller "{name}" ({platform}) was approved',
+  'No se aprobó tu mando «{name}» ({platform})': 'Your controller "{name}" ({platform}) was not approved',
+  'La moderación ha ocultado tu perfil «{title}»': 'Moderators have hidden your profile "{title}"',
+  'sin leer': 'unread',
+  '{n} sin leer': '{n} unread',
+  'Todo leído': 'All read',
+  'No tienes avisos': 'You have no notifications',
+  'Aquí verás cuándo alguien comenta en tus perfiles, cuándo se revisan tus mandos y si la moderación oculta algo tuyo.':
+    'Here you will see when someone comments on your profiles, when your controllers are reviewed and if moderators hide something of yours.',
+  'Marcar todo como leído': 'Mark all as read',
+  'Los avisos se borran solos a los 90 días.': 'Notifications are deleted automatically after 90 days.',
+  'Inicia sesión para ver tus avisos.': 'Sign in to see your notifications.',
+
+  // Busqueda global
+  'Buscar perfiles': 'Search profiles',
+  'Busca perfiles de mando en todos los juegos: por texto, etiqueta, marca, modelo o pantalla.':
+    'Search controller profiles across all games: by text, tag, brand, model or screen.',
+  'En todos los juegos: por título, descripción o nombre del juego.': 'Across all games: by title, description or game name.',
+  'Buscar perfiles o juegos…': 'Search profiles or games…',
+  'Aún no hay perfiles': 'No profiles yet',
+
+  // Reportar comentarios
+  'Reportar este comentario': 'Report this comment',
+  'Gracias. Lo revisaremos; con varios reportes el comentario se oculta automáticamente.':
+    'Thanks. We will review it; with several reports the comment is hidden automatically.',
+
+  // Web instalable
+  'Instalar la web': 'Install the web app',
+  'Instala la web en tu dispositivo para abrirla como una app.': 'Install the site on your device to open it like an app.',
 };

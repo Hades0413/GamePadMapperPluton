@@ -16,6 +16,18 @@ export function useGameProfiles(packageName: string, sort: ProfileSort, filters:
   });
 }
 
+/** Busqueda en todos los juegos (/buscar). */
+export function useSearchProfiles(sort: ProfileSort, filters: ProfileFilters) {
+  const { searchProfiles } = useUseCases();
+  return useInfiniteQuery({
+    queryKey: [...keys.searchProfiles(sort), filters.search, filters.brand, filters.model, filters.ratio?.toFixed(3) ?? '', filters.tag ?? ''],
+    queryFn: ({ pageParam }) => searchProfiles.execute({ sort, ...filters, page: pageParam }),
+    initialPageParam: 0,
+    getNextPageParam: (last, pages) => (last.hasMore ? pages.length : undefined),
+    placeholderData: keepPreviousData,
+  });
+}
+
 export function useDeviceModels(packageName: string) {
   const { listDeviceModels } = useUseCases();
   return useQuery({

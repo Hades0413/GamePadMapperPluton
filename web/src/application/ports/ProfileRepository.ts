@@ -26,8 +26,10 @@ export type ScreenRatio = number;
 
 export interface ProfileRepository {
   listByGame(packageName: string, sort: ProfileSort, page: PageRequest, filters: ProfileFilters): Promise<Page<GameProfileSummary>>;
-  /** Modelos de telefono con perfiles de este juego (para los filtros de marca y modelo). */
-  listDeviceModels(packageName: string): Promise<readonly string[]>;
+  /** Perfiles de todos los juegos (busqueda global); el texto busca tambien en el nombre del juego. */
+  search(sort: ProfileSort, page: PageRequest, filters: ProfileFilters): Promise<Page<GameProfileSummary>>;
+  /** Modelos de telefono con perfiles de este juego, o de todos (null), para los filtros de marca y modelo. */
+  listDeviceModels(packageName: string | null): Promise<readonly string[]>;
   listByAuthor(authorId: string, page: PageRequest): Promise<Page<GameProfileSummary>>;
   findById(id: string): Promise<GameProfile | null>;
   publish(profile: NewProfile): Promise<string>;

@@ -1,15 +1,21 @@
+import type { ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 import { RequireAccount } from '../components/auth/RequireAccount';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { useGames } from '../queries/games';
 import { useMappingsForReview } from '../queries/controllers';
-import { useReportedProfiles } from '../queries/moderation';
+import { useReportedComments, useReportedProfiles } from '../queries/moderation';
+import { BansPanel } from './admin/BansPanel';
+import { CommentsPanel } from './admin/CommentsPanel';
 import { ControllersPanel } from './admin/ControllersPanel';
 import { DiagnosticsPanel } from './admin/DiagnosticsPanel';
 import { GamesPanel } from './admin/GamesPanel';
+import { HistoryPanel } from './admin/HistoryPanel';
 import { ReportsPanel } from './admin/ReportsPanel';
 
-type Tab = 'juegos' | 'reportes' | 'mandos' | 'diagnosticos';
+const TABS = ['juegos', 'reportes', 'comentarios', 'mandos', 'bloqueos', 'historial', 'diagnosticos'] as const;
+type Tab = (typeof TABS)[number];
+const isTab = (v: string | null): v is Tab => (TABS as readonly (string | null)[]).includes(v);
 
 function Tabs({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
   const reported = useReportedProfiles();
@@ -18,10 +24,15 @@ function Tabs({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
   const pending = reported.data?.length ?? 0;
   const mappings = useMappingsForReview('pending');
   const pendingMappings = mappings.data?.length ?? 0;
+  const comments = useReportedComments();
+  const pendingComments = comments.data?.length ?? 0;
   const items: [Tab, string, number, string][] = [
     ['juegos', 'Juegos', toFix, 'bg-warning/20 text-warning'],
     ['reportes', 'Reportes', pending, 'bg-danger/20 text-danger'],
+    ['comentarios', 'Comentarios', pendingComments, 'bg-danger/20 text-danger'],
     ['mandos', 'Mandos', pendingMappings, 'bg-warning/20 text-warning'],
+    ['bloqueos', 'Bloqueos', 0, ''],
+    ['historial', 'Historial', 0, ''],
     ['diagnosticos', 'Diagnósticos', 0, ''],
   ];
   return (
@@ -42,17 +53,26 @@ export default function AdminPage() {
   useDocumentTitle('Moderación');
   const [params, setParams] = useSearchParams();
   const raw = params.get('tab');
-  const tab: Tab = raw === 'reportes' || raw === 'mandos' || raw === 'diagnosticos' ? raw : 'juegos';
+  const tab: Tab = isTab(raw) ? raw : 'juegos';
+  const panels: Record<Tab, () => ReactNode> = {
+    juegos: () => <GamesPanel />,
+    reportes: () => <ReportsPanel />,
+    comentarios: () => <CommentsPanel />,
+    mandos: () => <ControllersPanel />,
+    bloqueos: () => <BansPanel />,
+    historial: () => <HistoryPanel />,
+    diagnosticos: () => <DiagnosticsPanel />,
+  };
   return (
     <RequireAccount admin reason="Inicia sesión como administrador.">
       {() => (
         <div className="space-y-6">
           <div>
             <h1 className="text-3xl font-bold">Moderación</h1>
-            <p className="mt-1 text-muted">Completa los juegos (icono y captura), revisa los perfiles reportados y aprueba los mandos enviados.</p>
+            <p className="mt-1 text-muted">Completa los juegos (icono y captura), revisa perfiles y comentarios reportados, aprueba los mandos enviados y consulta el historial.</p>
           </div>
           <Tabs tab={tab} onChange={(t) => setParams(t === 'juegos' ? {} : { tab: t }, { replace: true })} />
-          {tab === 'juegos' ? <GamesPanel /> : tab === 'reportes' ? <ReportsPanel /> : tab === 'mandos' ? <ControllersPanel /> : <DiagnosticsPanel />}
+          {panels[tab]()}
         </div>
       )}
     </RequireAccount>

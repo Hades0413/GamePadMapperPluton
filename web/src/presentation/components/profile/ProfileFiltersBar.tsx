@@ -22,13 +22,16 @@ export interface FilterState {
 
 /** Barra de busqueda y filtros de los perfiles de un juego. */
 export function ProfileFiltersBar({
-  value, onChange, models, myScreenLabel,
+  value, onChange, models, myScreenLabel, placeholder, autoFocus = false,
 }: {
   value: FilterState;
   onChange: (patch: Partial<FilterState>) => void;
   models: readonly string[];
   /** «20:9» si se conoce la pantalla del visitante (movil); null si no. */
   myScreenLabel: string | null;
+  /** Texto del buscador (ya traducido). */
+  placeholder?: string;
+  autoFocus?: boolean;
 }) {
   const t = useT();
   const brands = useMemo(() => [...new Set(models.map(brandOf).filter(Boolean))].sort((a, b) => a.localeCompare(b)), [models]);
@@ -43,7 +46,7 @@ export function ProfileFiltersBar({
     <div className="card space-y-3 p-3">
       <div className="relative">
         <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted" />
-        <input type="search" className="input pl-9" placeholder={t('Buscar en títulos y descripciones…')} maxLength={40}
+        <input type="search" className="input pl-9" placeholder={placeholder ?? t('Buscar en títulos y descripciones…')} maxLength={40} autoFocus={autoFocus}
           value={value.search} onChange={(e) => onChange({ search: e.target.value })} aria-label={t('Buscar perfil')} />
       </div>
       <div className="flex flex-wrap items-center gap-2">

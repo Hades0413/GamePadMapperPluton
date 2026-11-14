@@ -1,7 +1,8 @@
-import { REPORT_DETAILS_MAX, REPORT_REASONS, type ReportReason } from '@domain/report/ReportReason';
+import { COMMENT_REPORT_REASONS, REPORT_DETAILS_MAX, REPORT_REASONS, type ReportReason } from '@domain/report/ReportReason';
 import { useState } from 'react';
 import { useT } from '../../i18n/I18nContext';
 import { useAccount } from '../../queries/account';
+import { useReportComment } from '../../queries/community';
 import { useReportProfile } from '../../queries/profiles';
 import { REPORT_REASON_LABEL } from '../../lib/labels';
 import { SignInButton } from '../auth/SignInButton';
@@ -11,24 +12,35 @@ import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
 import { FlagIcon } from '../ui/icons';
 
-export function ReportButton({ id }: { id: string }) {
+type ReportKind = 'profile' | 'comment';
+
+/** Reportar un perfil o un comentario (hace falta sesion: evita reportes falsos). */
+export function ReportButton({ id, kind = 'profile' }: { id: string; kind?: ReportKind }) {
   const t = useT();
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button variant="ghost" size="sm" icon={<FlagIcon />} onClick={() => setOpen(true)}>{t('Reportar')}</Button>
-      <Dialog open={open} onClose={() => setOpen(false)} title={t('Reportar este perfil')}>
-        {open && <ReportForm id={id} onDone={() => setOpen(false)} />}
+      {kind === 'comment' ? (
+        <button type="button" className="ml-2 text-muted hover:text-ink hover:underline" onClick={() => setOpen(true)}>
+          {t('Reportar')}
+        </button>
+      ) : (
+        <Button variant="ghost" size="sm" icon={<FlagIcon />} onClick={() => setOpen(true)}>{t('Reportar')}</Button>
+      )}
+      <Dialog open={open} onClose={() => setOpen(false)} title={kind === 'comment' ? t('Reportar este comentario') : t('Reportar este perfil')}>
+        {open && <ReportForm id={id} kind={kind} onDone={() => setOpen(false)} />}
       </Dialog>
     </>
   );
 }
 
-function ReportForm({ id, onDone }: { id: string; onDone: () => void }) {
+function ReportForm({ id, kind, onDone }: { id: string; kind: ReportKind; onDone: () => void }) {
   const t = useT();
   const { data: account } = useAccount();
-  const report = useReportProfile();
-  const [reason, setReason] = useState<ReportReason>('broken');
+  const reportProfile = useReportProfile();
+  const reportComment = useReportComment();
+  const report = kind === 'comment' ? reportComment : reportProfile;
+  const [reason, setReason] = useState<ReportReason>(kind === 'comment' ? 'spam' : 'broken');
   const [details, setDetails] = useState('');
 
   if (!account) {
@@ -42,7 +54,11 @@ function ReportForm({ id, onDone }: { id: string; onDone: () => void }) {
   if (report.isSuccess) {
     return (
       <div className="space-y-4">
-        <Alert tone="success">{t('Gracias. Lo revisaremos; con varios reportes el perfil se oculta automáticamente.')}</Alert>
+        <Alert tone="success">
+          {kind === 'comment'
+            ? t('Gracias. Lo revisaremos; con varios reportes el comentario se oculta automáticamente.')
+            : t('Gracias. Lo revisaremos; con varios reportes el perfil se oculta automáticamente.')}
+        </Alert>
         <Button onClick={onDone}>{t('Cerrar')}</Button>
       </div>
     );
@@ -54,9 +70,9 @@ function ReportForm({ id, onDone }: { id: string; onDone: () => void }) {
     }}>
       <fieldset className="space-y-2">
         <legend className="mb-2 text-sm text-muted">{t('Motivo')}</legend>
-        {REPORT_REASONS.map((r) => (
+        {(kind === 'comment' ? COMMENT_REPORT_REASONS : REPORT_REASONS).map((r) => (
           <label key={r} className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-surface-2">
-            <input type="radio" name="reason" value={r} checked={reason === r} onChange={() => setReason(r)}
+            <input type="radio" name={`reason-${id}`} value={r} checked={reason === r} onChange={() => setReason(r)}
               className="accent-primary-strong" />
             <span className="text-sm">{t(REPORT_REASON_LABEL[r])}</span>
           </label>

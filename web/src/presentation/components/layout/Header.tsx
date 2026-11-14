@@ -6,6 +6,7 @@ import { paths } from '../../routes/paths';
 import { SignInButton } from '../auth/SignInButton';
 import { Avatar } from '../ui/Avatar';
 import { UploadIcon } from '../ui/icons';
+import { NotificationBell, SearchLink } from './HeaderActions';
 import { LanguageSwitcher } from './LanguageSwitcher';
 
 const navClass = ({ isActive }: { isActive: boolean }) =>
@@ -59,6 +60,9 @@ function AccountMenu() {
           </Link>
           <Link role="menuitem" to={paths.author(account.username)} className="block rounded-lg px-3 py-2 text-sm hover:bg-surface-2">
             {t('Mi página pública')}
+          </Link>
+          <Link role="menuitem" to={paths.notifications} className="block rounded-lg px-3 py-2 text-sm hover:bg-surface-2">
+            {t('Avisos')}
           </Link>
           {account.isAdmin && (
             <Link role="menuitem" to={paths.admin} className="block rounded-lg px-3 py-2 text-sm hover:bg-surface-2">
@@ -118,6 +122,8 @@ export function Header() {
             <NavLinks />
           </nav>
           <div className="ml-2 hidden lg:block"><LanguageSwitcher /></div>
+          <SearchLink />
+          <NotificationBell />
           <div className="ml-1 lg:ml-2"><AccountMenu /></div>
           <button ref={buttonRef} type="button" aria-expanded={open} aria-controls="menu-movil"
             aria-label={open ? t('Cerrar menú') : t('Abrir menú')}

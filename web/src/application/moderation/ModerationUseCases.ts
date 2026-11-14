@@ -1,5 +1,10 @@
+import {
+  isBanDays, isCommentAction, MODERATION_REASON_MAX, type BanDays, type BannedAuthor, type CommentAction,
+  type ModerationLogEntry, type ReportedComment,
+} from '@domain/moderation/Moderation';
 import type { ProfileStatus } from '@domain/profile/GameProfile';
 import { AppError } from '@domain/shared/AppError';
+import { cleanLine } from '@domain/shared/text';
 import {
   GAME_IMAGE_MAX_BYTES, isGameImageType, type GameImageFile, type GameImageKind,
 } from '@domain/game/GameImage';
@@ -33,6 +38,9 @@ export class ModerateProfile {
   }
 }
 
+/** Motivo opcional del admin: una linea, sin < > (la base de datos vuelve a comprobarlo). */
+const cleanReason = (reason: string | undefined) => cleanLine(reason ?? '', 0, MODERATION_REASON_MAX, 'motivo');
+
 export class BanAuthor {
   readonly #moderation: ModerationRepository;
 
@@ -40,8 +48,72 @@ export class BanAuthor {
     this.#moderation = moderation;
   }
 
-  execute(input: { authorId: string; banned: boolean }): Promise<void> {
-    return this.#moderation.setAuthorBanned(requireId(input.authorId), input.banned);
+  /** days null = para siempre; 1, 7 o 30 = temporal. */
+  execute(input: { authorId: string; days: BanDays | null; reason?: string }): Promise<void> {
+    if (input.days !== null && !isBanDays(input.days)) throw new AppError('INVALID_INPUT', 'Duración no válida.');
+    return this.#moderation.banAuthor(requireId(input.authorId), input.days, cleanReason(input.reason));
+  }
+}
+
+export class UnbanAuthor {
+  readonly #moderation: ModerationRepository;
+
+  constructor(moderation: ModerationRepository) {
+    this.#moderation = moderation;
+  }
+
+  execute(input: { authorId: string; reason?: string }): Promise<void> {
+    return this.#moderation.unbanAuthor(requireId(input.authorId), cleanReason(input.reason));
+  }
+}
+
+export class ListBannedAuthors {
+  readonly #moderation: ModerationRepository;
+
+  constructor(moderation: ModerationRepository) {
+    this.#moderation = moderation;
+  }
+
+  execute(): Promise<readonly BannedAuthor[]> {
+    return this.#moderation.bannedAuthors();
+  }
+}
+
+export class ListReportedComments {
+  readonly #moderation: ModerationRepository;
+
+  constructor(moderation: ModerationRepository) {
+    this.#moderation = moderation;
+  }
+
+  execute(): Promise<readonly ReportedComment[]> {
+    return this.#moderation.reportedComments();
+  }
+}
+
+export class ModerateComment {
+  readonly #moderation: ModerationRepository;
+
+  constructor(moderation: ModerationRepository) {
+    this.#moderation = moderation;
+  }
+
+  execute(input: { commentId: string; action: CommentAction; reason?: string }): Promise<void> {
+    if (!isCommentAction(input.action)) throw new AppError('INVALID_INPUT', 'Acción no válida.');
+    return this.#moderation.moderateComment(requireId(input.commentId), input.action, cleanReason(input.reason));
+  }
+}
+
+export class ListModerationLog {
+  readonly #moderation: ModerationRepository;
+
+  constructor(moderation: ModerationRepository) {
+    this.#moderation = moderation;
+  }
+
+  execute(input: { before?: number | null; limit?: number } = {}): Promise<readonly ModerationLogEntry[]> {
+    const before = Number.isSafeInteger(input.before) && (input.before ?? 0) > 0 ? (input.before ?? null) : null;
+    return this.#moderation.moderationLog(Math.max(1, Math.min(200, Math.trunc(input.limit ?? 50))), before);
   }
 }
 

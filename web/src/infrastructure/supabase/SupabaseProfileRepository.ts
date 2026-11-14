@@ -1,4 +1,5 @@
 import type { NewProfile, ProfileChanges, ProfileRepository } from '@application/ports/ProfileRepository';
+import { isValidPackage } from '@domain/game/Game';
 import type {
   GameProfile, GameProfileSummary, LikeResult, ProfileFilters, ProfileSort,
 } from '@domain/profile/GameProfile';
@@ -14,6 +15,28 @@ import { PROFILE_COLUMNS, PROFILE_SUMMARY_COLUMNS, profileRow, profileSummaryRow
 
 const summaries = z.array(profileSummaryRow);
 
+/** Perfiles publicados (la politica de la base de datos quita tambien los de juegos ocultos). */
+const publishedProfiles = (db: SupabaseClient) =>
+  db.from('game_profiles').select(PROFILE_SUMMARY_COLUMNS).eq('status', 'published');
+type ProfileQuery = ReturnType<typeof publishedProfiles>;
+
+/**
+ * Filtros comunes. Llegan ya saneados (sin comodines ni sintaxis de PostgREST): el texto solo
+ * tiene letras, numeros y espacios, y el modelo los caracteres que admite la base de datos.
+ */
+function withFilters(request: ProfileQuery, filters: ProfileFilters, textFilter: string): ProfileQuery {
+  let q = request;
+  if (textFilter) q = q.or(textFilter);
+  if (filters.model) q = q.ilike('device_model', filters.model.replace(/[\\%_]/g, '\\$&'));
+  else if (filters.brand) q = q.ilike('device_model', `${filters.brand.replace(/[\\%_]/g, '\\$&')} %`);
+  if (filters.tag) q = q.contains('tags', [filters.tag]);
+  // Misma proporcion de pantalla (2 % de margen): estos perfiles encajan tal cual.
+  if (filters.ratio) {
+    q = q.gte('screen_ratio', +(filters.ratio * 0.98).toFixed(3)).lte('screen_ratio', +(filters.ratio * 1.02).toFixed(3));
+  }
+  return q;
+}
+
 export class SupabaseProfileRepository implements ProfileRepository {
   readonly #db: SupabaseClient;
 
@@ -24,21 +47,26 @@ export class SupabaseProfileRepository implements ProfileRepository {
   async listByGame(
     packageName: string, sort: ProfileSort, page: PageRequest, filters: ProfileFilters,
   ): Promise<Page<GameProfileSummary>> {
-    const [from, to] = rangeOf(page);
-    let request = this.#db
-      .from('game_profiles')
-      .select(PROFILE_SUMMARY_COLUMNS)
-      .eq('package', packageName)
-      .eq('status', 'published');
-    // Los filtros llegan ya saneados (sin comodines ni sintaxis de PostgREST).
-    if (filters.search) request = request.or(`title.ilike.*${filters.search}*,description.ilike.*${filters.search}*`);
-    if (filters.model) request = request.ilike('device_model', filters.model.replace(/[\\%_]/g, '\\$&'));
-    else if (filters.brand) request = request.ilike('device_model', `${filters.brand.replace(/[\\%_]/g, '\\$&')} %`);
-    if (filters.tag) request = request.contains('tags', [filters.tag]);
-    // Misma proporcion de pantalla (2 % de margen): estos perfiles encajan tal cual.
-    if (filters.ratio) {
-      request = request.gte('screen_ratio', +(filters.ratio * 0.98).toFixed(3)).lte('screen_ratio', +(filters.ratio * 1.02).toFixed(3));
+    const request = withFilters(publishedProfiles(this.#db).eq('package', packageName), filters,
+      filters.search ? `title.ilike.*${filters.search}*,description.ilike.*${filters.search}*` : '');
+    return this.#page(request, sort, page);
+  }
+
+  async search(sort: ProfileSort, page: PageRequest, filters: ProfileFilters): Promise<Page<GameProfileSummary>> {
+    let text = '';
+    if (filters.search) {
+      // Juegos cuyo nombre coincide: sus perfiles tambien salen (paquetes validados antes de usarlos).
+      const games = await this.#db.from('games').select('package').ilike('name', `%${filters.search}%`).limit(20);
+      const packages = parse(z.array(z.object({ package: z.string() })), unwrap(games))
+        .map((g) => g.package).filter(isValidPackage);
+      text = `title.ilike.*${filters.search}*,description.ilike.*${filters.search}*`
+        + (packages.length ? `,package.in.(${packages.map((p) => `"${p}"`).join(',')})` : '');
     }
+    return this.#page(withFilters(publishedProfiles(this.#db), filters, text), sort, page);
+  }
+
+  async #page(request: ProfileQuery, sort: ProfileSort, page: PageRequest): Promise<Page<GameProfileSummary>> {
+    const [from, to] = rangeOf(page);
     if (sort === 'popular') request = request.order('like_count', { ascending: false });
     if (sort === 'installs') request = request.order('install_count', { ascending: false });
     if (sort === 'rating') request = request.order('works_yes', { ascending: false }).order('works_no', { ascending: true });
@@ -46,14 +74,14 @@ export class SupabaseProfileRepository implements ProfileRepository {
     return toPage(rows.map(toProfileSummary), page);
   }
 
-  async listDeviceModels(packageName: string): Promise<readonly string[]> {
-    const result = await this.#db
+  async listDeviceModels(packageName: string | null): Promise<readonly string[]> {
+    let request = this.#db
       .from('game_profiles')
       .select('device_model')
-      .eq('package', packageName)
       .eq('status', 'published')
-      .not('device_model', 'is', null)
-      .limit(100);
+      .not('device_model', 'is', null);
+    if (packageName !== null) request = request.eq('package', packageName);
+    const result = await request.order('created_at', { ascending: false }).limit(packageName === null ? 300 : 100);
     const rows = parse(z.array(z.object({ device_model: z.string() })), unwrap(result));
     return [...new Set(rows.map((r) => r.device_model))].sort((a, b) => a.localeCompare(b));
   }
