@@ -208,6 +208,10 @@ public class OverlayService extends Service {
     private void writeRotation() {
         try {
             Mapper.writeRotation(wm.getDefaultDisplay().getRotation());
+            android.graphics.Point pt = new android.graphics.Point();
+            //noinspection deprecation
+            wm.getDefaultDisplay().getRealSize(pt);
+            Mapper.writeDisplay(pt.x, pt.y);
         } catch (Exception ignored) {
         }
     }
@@ -1077,17 +1081,17 @@ public class OverlayService extends Service {
             getLocationOnScreen(loc);
             int[] s = screenSize();
             // Las coordenadas del perfil son de la pantalla tal como se ve con tamano sw x sh.
-            float kx = s[0] / p.sw, ky = s[1] / p.sh, kr = Math.min(kx, ky);
+            final float W = s[0], H = s[1], kr = Profile.fitScale(p.sw, p.sh, W, H);
             for (Profile.Binding b : p.bindings.values()) {
                 String lbl = Profile.label(b.key);
                 if (Profile.STICK.equals(b.type)) {
-                    float x = b.x * kx - loc[0], y = b.y * ky - loc[1], r = b.r * kr;
+                    float x = Profile.fitX(b.x, p.sw, p.sh, W, H) - loc[0], y = Profile.fitY(b.y, p.sw, p.sh, W, H) - loc[1], r = b.r * kr;
                     dash.setColor(0xCC4CAF50);
                     c.drawCircle(x, y, r, dash);
                     if (b.dpad) drawDpadArrows(c, x, y, r, fill);
                     badge(c, x, y, dp(20), lbl, 0xFF4CAF50);
                 } else if (Profile.LOOK.equals(b.type)) {
-                    float x = b.x * kx - loc[0], y = b.y * ky - loc[1];
+                    float x = Profile.fitX(b.x, p.sw, p.sh, W, H) - loc[0], y = Profile.fitY(b.y, p.sw, p.sh, W, H) - loc[1];
                     dash.setColor(0xCCFF9800);
                     c.drawCircle(x, y, dp(38), dash);
                     badge(c, x, y, dp(20), lbl, 0xFFFF9800);
@@ -1096,11 +1100,11 @@ public class OverlayService extends Service {
                 } else if (Profile.MACRO.equals(b.type)) {
                     for (int i = 0; i < b.steps.size(); i++) {
                         Profile.Step st = b.steps.get(i);
-                        badge(c, st.x * kx - loc[0], st.y * ky - loc[1], dp(i == 0 ? 18 : 14),
+                        badge(c, Profile.fitX(st.x, p.sw, p.sh, W, H) - loc[0], Profile.fitY(st.y, p.sw, p.sh, W, H) - loc[1], dp(i == 0 ? 18 : 14),
                                 b.steps.size() > 1 ? lbl + (i + 1) : lbl, 0xFF8E24AA);
                     }
                 } else if (Profile.SWIPE.equals(b.type)) {
-                    float x1 = b.x * kx - loc[0], y1 = b.y * ky - loc[1], x2 = b.x2 * kx - loc[0], y2 = b.y2 * ky - loc[1];
+                    float x1 = Profile.fitX(b.x, p.sw, p.sh, W, H) - loc[0], y1 = Profile.fitY(b.y, p.sw, p.sh, W, H) - loc[1], x2 = Profile.fitX(b.x2, p.sw, p.sh, W, H) - loc[0], y2 = Profile.fitY(b.y2, p.sw, p.sh, W, H) - loc[1];
                     int col = typeColor(b.type);
                     ring.setColor(col);
                     c.drawLine(x1, y1, x2, y2, ring);
@@ -1109,7 +1113,7 @@ public class OverlayService extends Service {
                     c.drawLine(x2, y2, (float) (x2 - h * Math.cos(ang + 0.5)), (float) (y2 - h * Math.sin(ang + 0.5)), ring);
                     badge(c, x1, y1, dp(18), lbl, col);
                 } else {
-                    float x = b.x * kx - loc[0], y = b.y * ky - loc[1];
+                    float x = Profile.fitX(b.x, p.sw, p.sh, W, H) - loc[0], y = Profile.fitY(b.y, p.sw, p.sh, W, H) - loc[1];
                     badge(c, x, y, dp(18), lbl, typeColor(b.type));
                     String tag = Profile.TURBO.equals(b.type) ? "turbo" : Profile.TOGGLE.equals(b.type) ? "interruptor"
                             : Profile.QUICK.equals(b.type) ? L.t("rápido")

@@ -1,6 +1,6 @@
 id=gamepad_mapper
 name=Gamepad Mapper Plutón (root)
-version=v4
-versionCode=4
+version=v5
+versionCode=5
 author=Hades0413
 description=Convierte cualquier mando (modo gamepad, Home+X) en toques de pantalla con perfiles por juego (se crean y editan desde la app Gamepad Mapper Plutón). Varios perfiles por juego (SELECT+L1/R1 cambia en partida), macros con tiempos y deteccion de botones desde la app. SELECT+START (1 s) pausa/reanuda.
