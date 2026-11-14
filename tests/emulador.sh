@@ -41,7 +41,7 @@ tap_text() {
 }
 
 adb install -r -g "$apk" >/dev/null && ok "instalar" || { bad "instalar"; exit 1; }
-adb logcat -c
+adb logcat -c 2>/dev/null || true   # Android 8 a veces no deja vaciarlo
 adb shell input keyevent KEYCODE_WAKEUP || true
 adb shell wm dismiss-keyguard 2>/dev/null || true
 
@@ -54,12 +54,16 @@ if tap_text "Saltar|Skip"; then shot 01-inicio 3; ok "saltar la bienvenida"; fi
 
 # 2. Un perfil de prueba en la carpeta de la app y volver a abrir
 base="/sdcard/Android/data/$pkg/files"
-adb shell mkdir -p "$base/profiles"
-adb push "$here/fixture.conf" "$base/profiles/com.ejemplo.juego.conf" >/dev/null
-adb shell am force-stop "$pkg"
-adb shell am start -W -n "$pkg/.MainActivity" >/dev/null
-shot 02-con-perfil 4
-alive && ok "abre con un perfil (todas las opciones nuevas)" || bad "abre con un perfil"
+# (En Android 11 el shell no puede crear la carpeta de la app si la app aun no la creo.)
+if adb shell mkdir -p "$base/profiles" 2>/dev/null \
+   && adb push "$here/fixture.conf" "$base/profiles/com.ejemplo.juego.conf" >/dev/null 2>&1; then
+    adb shell am force-stop "$pkg"
+    adb shell am start -W -n "$pkg/.MainActivity" >/dev/null
+    shot 02-con-perfil 4
+    alive && ok "abre con un perfil (todas las opciones nuevas)" || bad "abre con un perfil"
+else
+    echo "  --    perfil de prueba omitido (sin acceso a la carpeta de la app en esta versión)"
+fi
 
 # 3. Enlaces de la web
 adb shell am start -W -a android.intent.action.VIEW -d "gpmapper://juego/com.supercell.brawlstars" "$pkg" >/dev/null
@@ -114,5 +118,5 @@ else
     ok "sin errores fatales en el registro"
 fi
 
-adb shell rm -f "$base/profiles/com.ejemplo.juego.conf"
+adb shell rm -f "$base/profiles/com.ejemplo.juego.conf" 2>/dev/null || true
 if [ "$fails" -eq 0 ]; then echo "EMULADOR (API $api): TODO CORRECTO"; else echo "EMULADOR (API $api): $fails fallo(s)" >&2; exit 1; fi
