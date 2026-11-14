@@ -2,7 +2,7 @@
 
 Convierte cualquier mando en toques de pantalla en juegos de Android, **sin root ni PC**
 (servicio de accesibilidad), con un modo root opcional más rápido (módulo Magisk).
-Versión **1.7** · Creado por **Hades0413**.
+Versión **1.7.1** · Creado por **Hades0413**.
 
 **Descargar:** el APK y los módulos de Magisk están en
 [Releases](https://github.com/Hades0413/GamePadMapperPluton/releases/latest).
@@ -35,7 +35,7 @@ juegos Android que se ven en el ordenador (scrcpy, Waydroid, un emulador). Ver
    (adb) y el APK de [Releases](https://github.com/Hades0413/GamePadMapperPluton/releases/latest).
 3. Conecta el teléfono por cable, acepta *¿Permitir depuración USB?* y ejecuta en la carpeta de adb:
    ```
-   adb install --no-incremental -r GamepadMapperPluton-1.7.apk
+   adb install --no-incremental -r GamepadMapperPluton-1.7.1.apk
    ```
    Si el teléfono pregunta si quieres instalar, toca **Instalar** enseguida (el aviso se cierra solo).
    En Xiaomi, si rechazas o dejas cerrar ese aviso varias veces, se bloquea la instalación por
@@ -305,6 +305,13 @@ fusiónala en `develop` por pull request, abre el pull request `develop` → `ma
 cumple: `targetSdk 36` (obligatorio desde el 31/08/2026), AAB firmado con tu clave de subida, y el
 binario `gpmapper` alineado a páginas de 16 KB. La app no tiene librerías nativas (`.so`), así que
 funciona en cualquier procesador; el modo root/Shizuku es solo ARM64.
+
+**R8 (código reducido y ofuscado):** `app/build.sh` pasa el código por R8 (viene en las
+build-tools, `lib/d8.jar`) con las reglas de `app/proguard-rules.pro`. El mapping queda en
+`dist/GamepadMapper-<versión>-mapping.txt` y va también dentro del AAB, así que Play Console traduce
+solo las trazas de los errores. Si añades un componente al manifest, una clase que se busque por su
+nombre (reflexión, `Parcelable` que llega de otro proceso...) o código nativo, revisa las reglas.
+`NO_R8=1 ./app/build.sh` compila como antes, sin R8 (para depurar).
 
 Saltos de línea: `.gitattributes` y `.editorconfig` los fijan (LF en todo; CRLF solo en `.ps1`/`.bat`),
 así que da igual el sistema o el editor con que trabajes.

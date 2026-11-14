@@ -1,5 +1,6 @@
 import { recentlyBroken, worksShare, type GameProfileSummary } from '@domain/profile/GameProfile';
 import { TagChips } from './CommunitySections';
+import { ControllerBadge } from './ControllerBadge';
 import { Link } from 'react-router';
 import { sameRatio, type Screen } from '@domain/profile/conf/fit';
 import { ratioLabel } from '../../lib/device';
@@ -38,6 +39,7 @@ export function ProfileCard({
         <span className="rounded-md bg-surface-2 px-2 py-0.5 text-muted">
           {profile.deviceModel ? `${profile.deviceModel} · ` : ''}{ratioLabel(profile.screen)}
         </span>
+        <ControllerBadge model={profile.controllerModel} type={profile.controllerType} />
         {fits && <span className="rounded-md bg-success/15 px-2 py-0.5 font-medium text-success">{t('Encaja con tu pantalla')}</span>}
         {profile.featuredAt && <span className="rounded-md bg-warning/20 px-2 py-0.5 font-medium text-warning">★ {t('Destacado')}</span>}
         {recentlyBroken(profile) && (

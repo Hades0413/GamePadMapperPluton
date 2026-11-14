@@ -1,6 +1,9 @@
 //! Mandos virtuales en memoria: las pruebas ven lo que se envia y simulan la vibracion del juego.
 
-use super::{Disponibilidad, ErrorSalida, EstadoPad, FabricaSalidas, SalidaVirtual, Teclado, TipoSalida};
+use super::{
+    Disponibilidad, ErrorSalida, EstadoPad, FabricaSalidas, PantallaToques, SalidaVirtual, Teclado, TipoSalida,
+    ToquePixel,
+};
 use std::sync::{Arc, Mutex, MutexGuard};
 
 #[derive(Default)]
@@ -11,6 +14,9 @@ struct Interno {
     vibracion: Option<(f32, f32)>,
     teclas: Vec<(usize, bool)>,
     sin_permiso: bool,
+    /// Pantallas de toques vivas y todo lo que se les ha enviado.
+    pantallas: usize,
+    toques: Vec<ToquePixel>,
 }
 
 fn bloquear(m: &Mutex<Interno>) -> MutexGuard<'_, Interno> {
@@ -50,6 +56,16 @@ impl FabricaSimulada {
 
     pub fn teclas(&self) -> Vec<(usize, bool)> {
         bloquear(&self.interno).teclas.clone()
+    }
+
+    /// Pantallas de toques vivas.
+    pub fn pantallas(&self) -> usize {
+        bloquear(&self.interno).pantallas
+    }
+
+    /// Toques enviados a las pantallas (y los vacia).
+    pub fn toques(&self) -> Vec<ToquePixel> {
+        std::mem::take(&mut bloquear(&self.interno).toques)
     }
 
     /// Simula un sistema sin permiso para crear mandos virtuales.
@@ -103,11 +119,40 @@ impl Teclado for TecladoSimulado {
     }
 }
 
+/// Escritorio de las pantallas de toques simuladas.
+pub const ESCRITORIO_SIMULADO: (u32, u32) = (1920, 1080);
+
+struct PantallaSimulada {
+    interno: Arc<Mutex<Interno>>,
+}
+
+impl PantallaToques for PantallaSimulada {
+    fn enviar(&mut self, ops: &[ToquePixel]) -> std::io::Result<()> {
+        bloquear(&self.interno).toques.extend_from_slice(ops);
+        Ok(())
+    }
+
+    fn escritorio(&self) -> (u32, u32) {
+        ESCRITORIO_SIMULADO
+    }
+
+    fn descripcion(&self) -> String {
+        "pantalla simulada".into()
+    }
+}
+
+impl Drop for PantallaSimulada {
+    fn drop(&mut self) {
+        bloquear(&self.interno).pantallas -= 1;
+    }
+}
+
 impl FabricaSalidas for FabricaSimulada {
     fn disponibilidad(&self) -> Vec<Disponibilidad> {
         let sin = bloquear(&self.interno).sin_permiso;
         TipoSalida::VIRTUALES
             .into_iter()
+            .chain([TipoSalida::Toques])
             .map(|tipo| Disponibilidad {
                 tipo,
                 disponible: !sin,
@@ -121,7 +166,7 @@ impl FabricaSalidas for FabricaSimulada {
         if s.sin_permiso {
             return Err(ErrorSalida::SinPermisoUinput);
         }
-        if tipo == TipoSalida::Ninguna {
+        if !tipo.es_mando() {
             return Err(ErrorSalida::NoDisponible);
         }
         s.creados.push(tipo);
@@ -132,5 +177,14 @@ impl FabricaSalidas for FabricaSimulada {
 
     fn teclado(&mut self) -> Result<Box<dyn Teclado>, ErrorSalida> {
         Ok(Box::new(TecladoSimulado { interno: Arc::clone(&self.interno) }))
+    }
+
+    fn pantalla_toques(&mut self) -> Result<Box<dyn PantallaToques>, ErrorSalida> {
+        let mut s = bloquear(&self.interno);
+        if s.sin_permiso {
+            return Err(ErrorSalida::SinPermisoUinput);
+        }
+        s.pantallas += 1;
+        Ok(Box::new(PantallaSimulada { interno: Arc::clone(&self.interno) }))
     }
 }

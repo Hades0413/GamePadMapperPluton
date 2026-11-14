@@ -11,7 +11,11 @@ use nucleo::mapeo::validar::{ErrorValidacion, MAX_BYTES_PRESET};
 use nucleo::mapeo::MapeoMando;
 use nucleo::opciones::Opciones;
 use nucleo::salida::Disponibilidad;
-use nucleo::servicio::{EstadoMapeo, Instantanea, VistaSalida};
+use nucleo::servicio::{EstadoMapeo, Instantanea, VistaSalida, VistaToques};
+use nucleo::toques::android::DispositivoAdb;
+use nucleo::toques::config::ConfigToques;
+use nucleo::toques::perfiles::{PerfilComunidad, PerfilLocal, VistaPerfil};
+use nucleo::toques::ventanas::VentanaAbierta;
 use serde::Serialize;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
@@ -529,8 +533,111 @@ pub fn abrir_enlace(app: tauri::AppHandle, cual: String) -> Resultado<()> {
         "web" => "https://hades0413.github.io/GamePadMapperPluton/",
         "repositorio" => "https://github.com/Hades0413/GamePadMapperPluton",
         "versiones" => "https://github.com/Hades0413/GamePadMapperPluton/releases/tag/escritorio-latest",
-        "licencia" => "https://polyformproject.org/licenses/noncommercial/1.0.0/",
+        // El texto que rige el proyecto (la URL de PolyForm con barra final daba 404).
+        "licencia" => "https://github.com/Hades0413/GamePadMapperPluton/blob/main/LICENSE",
+        // adb para detectar el juego Android (paquete oficial de Google).
+        "platform_tools" => "https://developer.android.com/tools/releases/platform-tools",
         _ => return Err(ErrorValidacion::Nombre.to_string()),
     };
     app.opener().open_url(url, None::<&str>).map_err(texto)
+}
+
+// ---------------------------------------------------------------- toques
+
+/// Tamano maximo de un perfil importado de archivo (se valida a 16 KB en el nucleo; esto evita
+/// copiar textos enormes).
+const MAX_IMPORTAR_PERFIL: usize = 64 * 1024;
+
+/// Ventanas abiertas para elegir el destino de los toques (None: no se pueden listar aqui).
+#[tauri::command]
+pub async fn listar_ventanas() -> Option<Vec<VentanaAbierta>> {
+    tauri::async_runtime::spawn_blocking(nucleo::toques::ventanas::listar).await.ok().flatten()
+}
+
+#[tauri::command]
+pub fn estado_toques(estado: Estado) -> VistaToques {
+    estado.toques_mirados.store(estado.ms(), Ordering::Release);
+    estado.servicio().estado_toques()
+}
+
+#[tauri::command]
+pub fn pausar_toques(estado: Estado, pausa: bool) -> VistaToques {
+    let mut s = estado.servicio();
+    s.pausar_toques(pausa);
+    s.estado_toques()
+}
+
+#[tauri::command]
+pub fn config_toques(estado: Estado) -> ConfigToques {
+    estado.servicio().config_toques()
+}
+
+#[tauri::command]
+pub fn guardar_config_toques(estado: Estado, config: ConfigToques) -> Resultado<ConfigToques> {
+    estado.servicio().guardar_config_toques(config).map_err(texto)
+}
+
+#[tauri::command]
+pub fn perfiles_toques(estado: Estado) -> Vec<PerfilLocal> {
+    estado.servicio().perfiles_toques()
+}
+
+#[tauri::command]
+pub fn ver_perfil_toques(estado: Estado, id: String) -> Resultado<VistaPerfil> {
+    estado.servicio().ver_perfil_toques(&id).map_err(texto)
+}
+
+/// Guarda un perfil (de archivo o de la comunidad): el nucleo lo valida entero.
+#[tauri::command]
+pub fn importar_perfil_toques(estado: Estado, texto: String) -> Resultado<PerfilLocal> {
+    if texto.len() > MAX_IMPORTAR_PERFIL {
+        return Err(nucleo::toques::perfiles::ErrorPerfil::Grande.to_string());
+    }
+    estado.servicio().importar_perfil_toques(&texto).map_err(self::texto)
+}
+
+#[tauri::command]
+pub fn borrar_perfil_toques(estado: Estado, id: String) -> Resultado<Vec<PerfilLocal>> {
+    estado.servicio().borrar_perfil_toques(&id).map_err(texto)
+}
+
+/// Perfiles publicados de un juego en la comunidad (direccion fija con el paquete validado,
+/// HTTPS, tiempo maximo y tope de tamano; cada perfil se valida antes de devolverlo).
+#[tauri::command]
+pub async fn buscar_comunidad_toques(paquete: String) -> Resultado<Vec<PerfilComunidad>> {
+    use nucleo::toques::perfiles::{leer_comunidad, url_comunidad, ErrorPerfil, CLAVE_PUBLICA, MAX_BYTES_COMUNIDAD};
+    let url = url_comunidad(&paquete).ok_or_else(|| ErrorPerfil::Paquete.to_string())?;
+    let json = tauri::async_runtime::spawn_blocking(move || -> Resultado<String> {
+        use std::io::Read;
+        const SIN_CONEXION: &str = "No se pudieron consultar los perfiles de la comunidad.";
+        let respuesta =
+            ureq::get(&url).set("apikey", CLAVE_PUBLICA).timeout(std::time::Duration::from_secs(15)).call().map_err(
+                |e| {
+                    log::warn!("perfiles de la comunidad: {e}");
+                    SIN_CONEXION.to_string()
+                },
+            )?;
+        let mut json = String::new();
+        respuesta
+            .into_reader()
+            .take(MAX_BYTES_COMUNIDAD + 1)
+            .read_to_string(&mut json)
+            .map_err(|_| SIN_CONEXION.to_string())?;
+        Ok(json)
+    })
+    .await
+    .map_err(texto)??;
+    leer_comunidad(&json, &paquete).map_err(texto)
+}
+
+/// Dispositivos Android conectados por adb.
+#[tauri::command]
+pub async fn dispositivos_adb() -> Resultado<Vec<DispositivoAdb>> {
+    tauri::async_runtime::spawn_blocking(|| {
+        let adb = nucleo::toques::android::buscar_adb().ok_or(nucleo::toques::android::ErrorAdb::SinAdb)?;
+        nucleo::toques::android::dispositivos(&adb)
+    })
+    .await
+    .map_err(texto)?
+    .map_err(texto)
 }

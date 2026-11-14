@@ -2112,7 +2112,10 @@ public class MainActivity extends Activity {
     }
 
     // ------------------------------------------------------------------ compartir por QR
-    /** Texto del perfil sin comentarios ni lineas vacias (QR mas pequeno y facil de leer). */
+    /**
+     * Texto del perfil sin comentarios ni lineas vacias (QR mas pequeno y facil de leer). Luego se
+     * le ponen delante solo los datos del perfil (modelo, mando y pantalla, ver ProfileMeta).
+     */
     private static String compactConf(File f) throws java.io.IOException {
         StringBuilder sb = new StringBuilder();
         try (BufferedReader r = new BufferedReader(new InputStreamReader(new FileInputStream(f), StandardCharsets.UTF_8))) {
@@ -2131,6 +2134,7 @@ public class MainActivity extends Activity {
         String text;
         try {
             text = compactConf(p.file);
+            text = ProfileMeta.header(text, Community.deviceModel(), CurrentPad.get(this)) + text;
         } catch (Exception e) {
             Toast.makeText(this, L.t("No se pudo leer el perfil"), Toast.LENGTH_SHORT).show();
             return;
@@ -2235,7 +2239,8 @@ public class MainActivity extends Activity {
 
     private void uploadToCommunity(Profile p) {
         try (FileInputStream in = new FileInputStream(p.file)) {
-            String conf = Library.readLimited(in);
+            String pad = CurrentPad.get(this);
+            String conf = ProfileMeta.add(Library.readLimited(in), Community.deviceModel(), pad);
             Library.validate(conf);
             if (conf.getBytes(StandardCharsets.UTF_8).length > 16384) {
                 Toast.makeText(this, L.t("El perfil es demasiado grande para la web (máximo 16 KB)"), Toast.LENGTH_LONG).show();
@@ -2244,7 +2249,7 @@ public class MainActivity extends Activity {
             // Si ya lo publico el usuario, se abre su edicion; si no, «Subir». La web devuelve el id
             // con gpmapper://subido/<id> para enlazar este archivo con el perfil publicado.
             CommunityLinks.Link own = CommunityLinks.get(this, p.file.getName());
-            String url = own != null && own.mine ? Community.editUrl(own.id, conf) : Community.uploadUrl(conf);
+            String url = own != null && own.mine ? Community.editUrl(own.id, conf, pad) : Community.uploadUrl(conf, pad);
             CommunityLinks.setPendingUpload(this, p.file);
             startActivity(new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)));
         } catch (android.content.ActivityNotFoundException e) {
@@ -2558,7 +2563,8 @@ public class MainActivity extends Activity {
             try (java.io.OutputStream os = getContentResolver().openOutputStream(uri);
                  FileInputStream in = new FileInputStream(pendingExport)) {
                 if (os == null) throw new java.io.IOException(L.t("No se pudo crear el archivo"));
-                os.write(Library.readBytes(in, 1 << 20));
+                String conf = new String(Library.readBytes(in, 1 << 20), StandardCharsets.UTF_8);
+                os.write(CurrentPad.add(this, conf).getBytes(StandardCharsets.UTF_8));
                 Toast.makeText(this, L.t("Perfil exportado"), Toast.LENGTH_SHORT).show();
             } catch (Exception e) {
                 Toast.makeText(this, L.t("No se pudo exportar: ") + e.getMessage(), Toast.LENGTH_LONG).show();
@@ -2648,7 +2654,7 @@ public class MainActivity extends Activity {
 
     private void share(File f, Profile p) {
         try (FileInputStream in = new FileInputStream(f)) {
-            String conf = Library.readLimited(in);
+            String conf = CurrentPad.add(this, Library.readLimited(in));
             Intent send = new Intent(Intent.ACTION_SEND).setType("text/plain")
                     .putExtra(Intent.EXTRA_SUBJECT, L.t("Perfil Gamepad Mapper Plutón: ") + p.pkg)
                     .putExtra(Intent.EXTRA_TEXT, conf);

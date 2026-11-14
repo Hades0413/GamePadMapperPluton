@@ -1,6 +1,6 @@
 import { isValidPackage } from '@domain/game/Game';
 import {
-  isProfileTag, PROFILE_SORTS, type GameProfileSummary, type ProfileFilters, type ProfileSort,
+  isControllerType, isProfileTag, PROFILE_SORTS, type GameProfileSummary, type ProfileFilters, type ProfileSort,
 } from '@domain/profile/GameProfile';
 import { normalizePage, type Page, type PageRequest } from '@domain/shared/Page';
 import type { ProfileRepository } from '../ports/ProfileRepository';
@@ -30,7 +30,7 @@ export class ListGameProfiles {
 export const cleanSort = (sort: ProfileSort | undefined): ProfileSort =>
   (sort && PROFILE_SORTS.includes(sort) ? sort : 'popular');
 
-/** Filtros saneados: texto sin sintaxis, modelo con los caracteres permitidos, etiqueta de la lista. */
+/** Filtros saneados: texto sin sintaxis, modelo con los caracteres permitidos, etiqueta y tipo de mando de la lista. */
 export function cleanFilters(input: Partial<ProfileFilters>): ProfileFilters {
   const ratio = input.ratio && Number.isFinite(input.ratio) && input.ratio >= 1 && input.ratio <= 4 ? input.ratio : null;
   return {
@@ -39,6 +39,7 @@ export function cleanFilters(input: Partial<ProfileFilters>): ProfileFilters {
     model: cleanDevice(input.model),
     ratio,
     tag: input.tag && isProfileTag(input.tag) ? input.tag : '',
+    controllerType: input.controllerType && isControllerType(input.controllerType) ? input.controllerType : '',
   };
 }
 

@@ -1,5 +1,5 @@
 import type { BindingType } from '@domain/profile/conf/ProfileConfig';
-import type { ProfileTag } from '@domain/profile/GameProfile';
+import type { ControllerType, ProfileTag } from '@domain/profile/GameProfile';
 import type { ReportReason } from '@domain/report/ReportReason';
 import { interpolate, type TFunction } from '../i18n/translate';
 
@@ -47,6 +47,16 @@ export const TAG_LABEL: Record<ProfileTag, string> = {
   'teclado-raton': 'Teclado y ratón',
   xbox: 'Mando Xbox',
   playstation: 'Mando PlayStation',
+};
+
+/** Tipos de mando (los calcula la base de datos a partir del mando de cada perfil). */
+export const CONTROLLER_TYPE_LABEL: Record<ControllerType, string> = {
+  xbox: 'Xbox',
+  playstation: 'PlayStation',
+  nintendo: 'Nintendo',
+  '8bitdo': '8BitDo',
+  generico: 'Genérico',
+  otro: 'Otro',
 };
 
 const spanish: TFunction = interpolate;

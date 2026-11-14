@@ -1,6 +1,9 @@
 //! Servicio de la app: une la fuente de mandos, los mapeos (guardados, automaticos o editados), el
 //! asistente, los mandos virtuales (con su motor: turbo, macros, capas...), las teclas y los
-//! juegos. La interfaz (Tauri o pruebas) solo habla con esto.
+//! juegos, y los toques ([`toques`]). La interfaz (Tauri o pruebas) solo habla con esto.
+
+mod toques;
+pub use toques::{OrigenPerfil, VistaToques};
 
 use crate::asistente::{Asistente, ConfigAsistente, Fase, VistaAsistente};
 use crate::dispositivos::{ErrorMandos, EstadoCrudo, Evento, FuenteMandos, IdMando, InfoMando};
@@ -106,6 +109,10 @@ pub enum ErrorServicio {
     Validacion(#[from] ErrorValidacion),
     #[error(transparent)]
     Juegos(#[from] ErrorJuegos),
+    #[error(transparent)]
+    Perfil(crate::toques::perfiles::ErrorPerfil),
+    #[error(transparent)]
+    ConfigToques(#[from] crate::toques::config::ErrorConfigToques),
 }
 
 /// Configuracion efectiva (prestando solo los campos que hacen falta, para poder mover el motor a
@@ -147,6 +154,7 @@ pub struct Servicio {
     almacen_juegos: Option<AlmacenJuegos>,
     juegos: Vec<Juego>,
     juego_activo: Option<usize>,
+    toques: toques::Toques,
 }
 
 impl Servicio {
@@ -173,6 +181,7 @@ impl Servicio {
             almacen_juegos: None,
             juegos: Vec::new(),
             juego_activo: None,
+            toques: toques::Toques::default(),
         };
         for info in s.fuente.mandos() {
             let estado = s.mapeo_inicial(&info);
@@ -230,6 +239,9 @@ impl Servicio {
                     self.sincronizar_salida(info.id);
                 }
                 Evento::Desconectado { id } => {
+                    if self.toques.sesion.as_ref().is_some_and(|s| s.id == *id) {
+                        self.terminar_toques();
+                    }
                     self.mapeos.remove(id);
                     self.activas.remove(id);
                     self.errores_salida.remove(id);
@@ -270,6 +282,7 @@ impl Servicio {
             let vibracion = m.vibracion;
             teclas |= salida.teclas;
             self.ultimas.insert(id, salida);
+            self.paso_toques(id, &salida.pad);
             let Some(activa) = self.activas.get_mut(&id) else { continue };
             if activa.ultimo != Some(salida.pad) {
                 if let Err(e) = activa.dispositivo.enviar(&salida.pad) {
@@ -359,6 +372,14 @@ impl Servicio {
         } else {
             self.efectivo(id).map_or(TipoSalida::Ninguna, |m| m.salida)
         };
+        if deseado == TipoSalida::Toques && self.mapeos.contains_key(&id) {
+            self.quitar_salida(id);
+            self.empezar_toques(id);
+            return;
+        }
+        if self.toques.sesion.as_ref().is_some_and(|s| s.id == id) {
+            self.terminar_toques();
+        }
         let actual = self.activas.get(&id).map(|a| a.dispositivo.tipo());
         if actual == Some(deseado) {
             return;
@@ -391,9 +412,19 @@ impl Servicio {
         for id in ids {
             self.sincronizar_salida(id);
         }
+        self.actualizar_perfil_toques();
+        self.recalcular_toques();
     }
 
     pub fn vista_salida(&self, id: IdMando) -> VistaSalida {
+        if let Some(s) = self.toques.sesion.as_ref().filter(|s| s.id == id) {
+            return VistaSalida {
+                tipo: TipoSalida::Toques,
+                activa: true,
+                descripcion: Some(s.descripcion()),
+                error: self.errores_salida.get(&id).cloned(),
+            };
+        }
         let activa = self.activas.get(&id);
         VistaSalida {
             tipo: self.efectivo(id).map_or(TipoSalida::Ninguna, |m| m.salida),
@@ -660,6 +691,7 @@ impl Servicio {
         let a = Asistente::con_config(&estado, self.ms(), self.config_asistente);
         let vista = a.vista();
         self.asistente = Some((id, a));
+        self.recalcular_toques();
         Ok(vista)
     }
 
@@ -683,6 +715,7 @@ impl Servicio {
     pub fn asistente_cancelar(&mut self, id: IdMando) -> Result<(), ErrorServicio> {
         self.asistente_de(id)?.cancelar();
         self.asistente = None;
+        self.recalcular_toques();
         Ok(())
     }
 
@@ -694,6 +727,7 @@ impl Servicio {
         }
         let asignaciones = a.asignaciones().clone();
         self.asistente = None;
+        self.recalcular_toques();
         let mut mapeo = self.mapeo(id)?.mapeo;
         mapeo.asignaciones = asignaciones;
         self.poner(id, mapeo, OrigenMapeo::Asistente)
@@ -708,6 +742,7 @@ impl Drop for Servicio {
         for id in ids {
             self.quitar_salida(id);
         }
+        self.terminar_toques();
     }
 }
 
@@ -812,7 +847,39 @@ mod pruebas {
             ErrorJuegos::Demasiados.to_string(),
             ErrorJuegos::NoExiste.to_string(),
             crate::opciones::ErrorOpciones::Atajo.to_string(),
+            ErrorSalida::SinEscritorio.to_string(),
+            crate::toques::ErrorToques::Ocupado.to_string(),
+            crate::toques::ErrorToques::Perfil.to_string(),
+            crate::toques::config::ErrorConfigToques::NoValida.to_string(),
         ];
+        use crate::toques::android::ErrorAdb as A;
+        for e in [A::SinAdb, A::Tiempo, A::Fallo, A::SinDispositivo] {
+            textos.push(e.to_string());
+        }
+        use crate::toques::perfiles::ErrorPerfil as P;
+        for e in [
+            P::Vacio,
+            P::Grande,
+            P::Caracteres,
+            P::Lineas,
+            P::FaltaIgual,
+            P::BotonNoValido,
+            P::BotonRepetido,
+            P::Accion,
+            P::Ajuste,
+            P::SinPaquete,
+            P::Paquete,
+            P::OtroPaquete,
+            P::SinPantalla,
+            P::SinBotones,
+            P::DemasiadosBotones,
+            P::FueraDePantalla,
+            P::NoExiste,
+            P::Demasiados,
+            P::Respuesta,
+        ] {
+            textos.push(e.to_string());
+        }
         use ErrorValidacion as V;
         for v in [
             V::Guid,
@@ -826,6 +893,7 @@ mod pruebas {
             V::Version,
             V::Grande,
             V::Json,
+            V::Toques,
         ] {
             textos.push(v.to_string());
         }
@@ -953,6 +1021,7 @@ mod pruebas {
             nombre: "Celeste".into(),
             coincidencia: "Celeste.exe".into(),
             mapeos: Default::default(),
+            perfil_toques: None,
         };
         s.guardar_juego(juego).unwrap();
         // La configuracion del juego: Switch Pro.

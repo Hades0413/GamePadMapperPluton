@@ -470,6 +470,9 @@ pub struct MapeoMando {
     pub vibracion: AjusteVibracion,
     #[serde(default)]
     pub direccion: AjusteDireccion,
+    /// Donde caen los toques (salida «Toques»).
+    #[serde(default)]
+    pub toques: crate::toques::config::AjusteToques,
 }
 
 impl MapeoMando {
@@ -490,6 +493,7 @@ impl MapeoMando {
             macros: Vec::new(),
             vibracion: AjusteVibracion::default(),
             direccion: AjusteDireccion::default(),
+            toques: Default::default(),
         }
     }
 

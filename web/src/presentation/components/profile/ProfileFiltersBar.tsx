@@ -1,5 +1,7 @@
-import { brandOf, PROFILE_SORTS, PROFILE_TAGS, type ProfileSort } from '@domain/profile/GameProfile';
-import { TAG_LABEL } from '../../lib/labels';
+import {
+  brandOf, CONTROLLER_TYPES, isControllerType, PROFILE_SORTS, PROFILE_TAGS, type ControllerType, type ProfileSort,
+} from '@domain/profile/GameProfile';
+import { CONTROLLER_TYPE_LABEL, TAG_LABEL } from '../../lib/labels';
 import { useMemo } from 'react';
 import { useT } from '../../i18n/I18nContext';
 import { SearchIcon } from '../ui/icons';
@@ -18,6 +20,8 @@ export interface FilterState {
   model: string;
   onlyMine: boolean;
   tag: string;
+  /** Tipo de mando ('' = todos). */
+  controllerType: ControllerType | '';
 }
 
 /** Barra de busqueda y filtros de los perfiles de un juego. */
@@ -39,7 +43,7 @@ export function ProfileFiltersBar({
     () => (value.brand ? models.filter((m) => brandOf(m).toLowerCase() === value.brand.toLowerCase()) : models),
     [models, value.brand],
   );
-  const active = value.search || value.brand || value.model || value.onlyMine || value.tag;
+  const active = value.search || value.brand || value.model || value.onlyMine || value.tag || value.controllerType;
   const select = 'input w-auto min-w-0 py-1.5 text-sm';
 
   return (
@@ -70,6 +74,11 @@ export function ProfileFiltersBar({
           <option value="">{t('Todas las etiquetas')}</option>
           {PROFILE_TAGS.map((tag) => <option key={tag} value={tag}>{t(TAG_LABEL[tag])}</option>)}
         </select>
+        <select className={select} value={value.controllerType} aria-label={t('Tipo de mando')}
+          onChange={(e) => onChange({ controllerType: isControllerType(e.target.value) ? e.target.value : '' })}>
+          <option value="">{t('Todos los mandos')}</option>
+          {CONTROLLER_TYPES.map((c) => <option key={c} value={c}>{t(CONTROLLER_TYPE_LABEL[c])}</option>)}
+        </select>
         {myScreenLabel && (
           <label className="inline-flex cursor-pointer items-center gap-2 text-sm">
             <input type="checkbox" className="accent-primary-strong" checked={value.onlyMine}
@@ -79,7 +88,7 @@ export function ProfileFiltersBar({
         )}
         {active && (
           <button type="button" className="ml-auto text-sm text-primary hover:underline"
-            onClick={() => onChange({ search: '', brand: '', model: '', onlyMine: false, tag: '' })}>
+            onClick={() => onChange({ search: '', brand: '', model: '', onlyMine: false, tag: '', controllerType: '' })}>
             {t('Quitar filtros')}
           </button>
         )}

@@ -1,6 +1,6 @@
 import type { ProfileChanges, ProfileRepository } from '../ports/ProfileRepository';
 import { requireId } from '../shared/guards';
-import { checkConf, checkDescription, checkDeviceModel, checkTitle } from './profileInput';
+import { checkConf, checkControllerModel, checkDescription, checkDeviceModel, checkTitle } from './profileInput';
 
 export class UpdateProfile {
   readonly #profiles: ProfileRepository;
@@ -15,6 +15,7 @@ export class UpdateProfile {
       description: checkDescription(input.description),
       conf: checkConf(input.conf, input.packageName),
       deviceModel: checkDeviceModel(input.deviceModel),
+      controllerModel: checkControllerModel(input.controllerModel),
     });
   }
 }

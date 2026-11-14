@@ -452,7 +452,7 @@ impl FabricaVigem {
 impl FabricaSalidas for FabricaVigem {
     fn disponibilidad(&self) -> Vec<Disponibilidad> {
         let fallo = if !bus_instalado() { Some(ErrorSalida::SinVigem) } else { self.cliente().err() };
-        TipoSalida::VIRTUALES
+        let mut lista: Vec<Disponibilidad> = TipoSalida::VIRTUALES
             .into_iter()
             .map(|tipo| {
                 let motivo = if tipo == TipoSalida::Switchpro {
@@ -462,7 +462,10 @@ impl FabricaSalidas for FabricaVigem {
                 };
                 Disponibilidad { tipo, disponible: motivo.is_none(), motivo }
             })
-            .collect()
+            .collect();
+        // Los toques no necesitan ViGEmBus (InjectTouchInput, Windows 8 o posterior).
+        lista.push(Disponibilidad { tipo: TipoSalida::Toques, disponible: true, motivo: None });
+        lista
     }
 
     fn crear(&mut self, tipo: TipoSalida) -> Result<Box<dyn SalidaVirtual>, ErrorSalida> {
@@ -474,5 +477,9 @@ impl FabricaSalidas for FabricaVigem {
 
     fn teclado(&mut self) -> Result<Box<dyn Teclado>, ErrorSalida> {
         Ok(Box::new(TecladoWindows))
+    }
+
+    fn pantalla_toques(&mut self) -> Result<Box<dyn super::PantallaToques>, ErrorSalida> {
+        Ok(Box::new(super::pantalla_windows::PantallaWindows::crear()?))
     }
 }

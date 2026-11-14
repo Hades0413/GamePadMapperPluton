@@ -57,6 +57,10 @@
 // 2 = toque rapido, rafaga, joystick + cruceta (v1.1).
 // 3 = carpeta de la app (Android/data/com.gamepadmapper.app/files) (v1.2).
 // 7 = traduccion del mando con <base>/mando.map (mandos de la comunidad / SDL GameControllerDB).
+// Version de la app (la pone mapper/build.sh desde app/AndroidManifest.xml; "dev" si no).
+#ifndef GPM_VERSION
+#define GPM_VERSION "dev"
+#endif
 #define GPM_BUILD 7
 
 #define logf_ gpm_log
@@ -568,7 +572,7 @@ static void write_status(int enabled) {
     snprintf(tmp, sizeof tmp, "%s.tmp", status_file);
     FILE *f = fopen(tmp, "w");
     if (!f) return;
-    fprintf(f, "time=%lld\nuid=%d\nversion=gpmapper 1.6\nbuild=%d\ngamepad=%s\ntouch=%s\nprofile=%s\npackage=%s\nenabled=%d\nrotate=%d\nrotation=%d\nmap=%s\n",
+    fprintf(f, "time=%lld\nuid=%d\nversion=gpmapper " GPM_VERSION "\nbuild=%d\ngamepad=%s\ntouch=%s\nprofile=%s\npackage=%s\nenabled=%d\nrotate=%d\nrotation=%d\nmap=%s\n",
             (long long)time(NULL), (int)getuid(), GPM_BUILD, gfd >= 0 ? gname : "", tfd >= 0 ? tname : "",
             cur ? profile_label(cur) : "", cur ? cur->pkg : "", enabled, rot_mode, cur_rot,
             gfd >= 0 && gpm_mapa() ? (pad_map.nombre[0] ? pad_map.nombre : "?") : "");
@@ -703,7 +707,7 @@ int main(int argc, char **argv) {
     signal(SIGTERM, on_signal);
     signal(SIGINT, on_signal);
 
-    logf_("gpmapper 1.4 iniciado (uid %d), perfiles en %s%s%s", (int)getuid(), prof_dir,
+    logf_("gpmapper " GPM_VERSION " (compilacion %d) iniciado (uid %d), perfiles en %s%s%s", GPM_BUILD, (int)getuid(), prof_dir,
           rot_mode ? ", girando segun la rotacion" : "", touch_fwd ? ", reenvio de modo tactil" : "");
     unlink(learn_flag);  // no arrancar en modo aprender por un archivo viejo
     read_rotation();

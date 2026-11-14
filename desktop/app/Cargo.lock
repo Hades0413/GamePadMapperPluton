@@ -1466,7 +1466,7 @@ dependencies = [
 
 [[package]]
 name = "gpm-escritorio-app"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "gpm-nucleo",
  "log",
@@ -1483,8 +1483,9 @@ dependencies = [
 
 [[package]]
 name = "gpm-nucleo"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
+ "cc",
  "evdev",
  "libc",
  "log",

@@ -23,7 +23,9 @@ rm -f "$bin"
 set +e
 # max-page-size=16384: segmentos alineados a 16 KB, para que arranque en los telefonos con paginas
 # de 16 KB (requisito de Google Play desde Android 15).
-out="$("$ZIG" cc -target aarch64-linux-musl -static -O2 -Wall -Wextra -Wl,-z,max-page-size=16384 -o "$bin" "${src[@]}" -lm 2>&1)"
+# Version visible del motor = la de la app (estado y registro dicen la misma que la app).
+version="$(sed -n 's/.*android:versionName="\([^"]*\)".*/\1/p' "$here/../app/AndroidManifest.xml")"
+out="$("$ZIG" cc -target aarch64-linux-musl -static -O2 -Wall -Wextra -Wl,-z,max-page-size=16384 -DGPM_VERSION="\"${version:-dev}\"" -o "$bin" "${src[@]}" -lm 2>&1)"
 code=$?
 set -e
 grep -E '(gpmapper|gpm_[a-z]+)\.[ch]' <<<"$out" || true

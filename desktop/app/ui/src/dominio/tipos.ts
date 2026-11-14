@@ -72,8 +72,8 @@ export interface AjusteVibracion {
   debil: number;
 }
 
-/** Mando virtual que produce un mando (salida/mod.rs: TipoSalida). */
-export type TipoSalida = 'ninguna' | 'xbox360' | 'dualshock4' | 'switchpro';
+/** Mando virtual que produce un mando (salida/mod.rs: TipoSalida); «toques»: juegos Android. */
+export type TipoSalida = 'ninguna' | 'xbox360' | 'dualshock4' | 'switchpro' | 'toques';
 
 /** Controles del mando virtual (mapeo/acciones.rs: SalidaPad), en el orden de sus bits. */
 export const SALIDAS = [
@@ -138,6 +138,7 @@ export interface MapeoMando {
   macros: Macro[];
   vibracion: AjusteVibracion;
   direccion: AjusteDireccion;
+  toques: AjusteToques;
 }
 
 export type OrigenMapeo = 'guardado' | 'basedatos' | 'heuristica' | 'asistente' | 'manual';
@@ -236,6 +237,8 @@ export interface Juego {
   nombre: string;
   coincidencia: string;
   mapeos: Record<string, MapeoMando>;
+  /** Perfil de toques de este juego (juegos Android en una ventana, sin adb). */
+  perfil_toques?: string | null;
 }
 
 export interface JuegoActivo {
@@ -269,4 +272,104 @@ export interface InfoActualizacion {
 }
 
 /** Enlaces que puede abrir la interfaz (lista cerrada en src-tauri/src/comandos.rs). */
-export type Enlace = 'vigembus' | 'vigemclient' | 'web' | 'repositorio' | 'versiones' | 'licencia';
+export type Enlace = 'vigembus' | 'vigemclient' | 'web' | 'repositorio' | 'versiones' | 'licencia' | 'platform_tools';
+
+// ---------------------------------------------------------------- toques (nucleo/src/toques)
+
+/** Rectangulo en pixeles del escritorio. */
+export interface Rect {
+  x: number;
+  y: number;
+  ancho: number;
+  alto: number;
+}
+
+export interface ObjetivoVentana {
+  titulo: string;
+  clase: string;
+}
+
+/** Donde caen los toques (toques/config.rs: DestinoToques). */
+export type DestinoToques =
+  | { tipo: 'pantalla_completa' }
+  | ({ tipo: 'ventana' } & ObjetivoVentana)
+  | ({ tipo: 'rectangulo' } & Rect);
+
+export interface AjusteToques {
+  destino: DestinoToques;
+  solo_con_foco: boolean;
+}
+
+export interface VentanaAbierta {
+  id: number;
+  titulo: string;
+  clase: string;
+  rect: Rect;
+  activa: boolean;
+}
+
+export interface PerfilLocal {
+  id: string;
+  paquete: string;
+  nombre: string | null;
+  pantalla: [number, number];
+  botones: number;
+}
+
+/** Un boton del perfil para dibujarlo (toques/perfiles.rs: BotonVista). */
+export interface BotonVista {
+  tecla: string;
+  boton: string;
+  modificador: string | null;
+  tipo: string;
+  x: number;
+  y: number;
+  hasta: [number, number] | null;
+  radio: number | null;
+  pasos: [number, number][];
+}
+
+export interface VistaPerfil extends PerfilLocal {
+  lista: BotonVista[];
+}
+
+export interface PerfilComunidad {
+  id: string;
+  titulo: string;
+  me_gusta: number;
+  conf: string;
+  paquete: string;
+  pantalla: [number, number];
+  lista: BotonVista[];
+}
+
+export interface DispositivoAdb {
+  serie: string;
+  estado: string;
+  modelo: string | null;
+}
+
+export type OrigenPerfil = 'fijo' | 'juego' | 'detectado';
+
+export interface VistaToques {
+  mando: IdMando | null;
+  perfil: PerfilLocal | null;
+  origen: OrigenPerfil | null;
+  error_perfil: string | null;
+  paquete: string | null;
+  dispositivo: DispositivoAdb | null;
+  error_adb: string | null;
+  destino: Rect | null;
+  ventana: string | null;
+  foco: boolean | null;
+  mapeando: boolean;
+  pausado: boolean;
+  escritorio: [number, number] | null;
+}
+
+export interface ConfigToques {
+  adb: boolean;
+  dispositivo: string | null;
+  fijo: string | null;
+  elegidos: Record<string, string>;
+}

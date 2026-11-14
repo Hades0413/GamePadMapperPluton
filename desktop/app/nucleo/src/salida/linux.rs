@@ -38,7 +38,7 @@ fn propios() -> std::sync::MutexGuard<'static, BTreeSet<String>> {
 }
 
 /// Apunta un dispositivo recien creado en el registro y devuelve su nombre en sysfs.
-fn registrar(dev: &mut VirtualDevice) -> Option<String> {
+pub(crate) fn registrar(dev: &mut VirtualDevice) -> Option<String> {
     let nombre = dev.get_syspath().ok()?.file_name()?.to_string_lossy().into_owned();
     propios().insert(nombre.clone());
     Some(nombre)
@@ -58,7 +58,7 @@ pub fn es_propio(nodo: &Path) -> bool {
 }
 
 /// Quita el dispositivo del registro al destruirlo.
-struct Registro(Option<String>);
+pub(crate) struct Registro(pub(crate) Option<String>);
 
 impl Drop for Registro {
     fn drop(&mut self) {
@@ -161,7 +161,7 @@ fn disposicion(tipo: TipoSalida) -> Option<&'static Disposicion> {
         TipoSalida::Xbox360 => Some(&XBOX360),
         TipoSalida::Dualshock4 => Some(&DUALSHOCK4),
         TipoSalida::Switchpro => Some(&SWITCHPRO),
-        TipoSalida::Ninguna => None,
+        TipoSalida::Ninguna | TipoSalida::Toques => None,
     }
 }
 
@@ -178,7 +178,7 @@ fn no_bloqueante(fd: i32) -> io::Result<()> {
     Ok(())
 }
 
-fn error_creacion(e: io::Error) -> ErrorSalida {
+pub(crate) fn error_creacion(e: io::Error) -> ErrorSalida {
     if matches!(e.kind(), io::ErrorKind::PermissionDenied | io::ErrorKind::NotFound) {
         ErrorSalida::SinPermisoUinput
     } else {
@@ -455,6 +455,7 @@ impl FabricaSalidas for FabricaUinput {
         let ok = uinput_accesible();
         TipoSalida::VIRTUALES
             .into_iter()
+            .chain([TipoSalida::Toques])
             .map(|tipo| Disponibilidad {
                 tipo,
                 disponible: ok,
@@ -469,5 +470,10 @@ impl FabricaSalidas for FabricaUinput {
 
     fn teclado(&mut self) -> Result<Box<dyn Teclado>, ErrorSalida> {
         Ok(Box::new(TecladoUinput::crear()?))
+    }
+
+    fn pantalla_toques(&mut self) -> Result<Box<dyn super::PantallaToques>, ErrorSalida> {
+        let (ancho, alto) = crate::toques::ventanas::escritorio().ok_or(ErrorSalida::SinEscritorio)?;
+        Ok(Box::new(super::pantalla_linux::PantallaUinput::crear(super::pantalla_linux::NOMBRE, ancho, alto)?))
     }
 }

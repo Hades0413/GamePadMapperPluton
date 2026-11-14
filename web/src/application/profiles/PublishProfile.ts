@@ -1,5 +1,5 @@
 import type { NewProfile, ProfileRepository } from '../ports/ProfileRepository';
-import { checkConf, checkDescription, checkDeviceModel, checkGameName, checkPackage, checkTitle } from './profileInput';
+import { checkConf, checkControllerModel, checkDescription, checkDeviceModel, checkGameName, checkPackage, checkTitle } from './profileInput';
 
 export class PublishProfile {
   readonly #profiles: ProfileRepository;
@@ -18,6 +18,7 @@ export class PublishProfile {
       description: checkDescription(input.description),
       conf: checkConf(input.conf, packageName),
       deviceModel: checkDeviceModel(input.deviceModel),
+      controllerModel: checkControllerModel(input.controllerModel),
     });
   }
 }

@@ -7,6 +7,7 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { PageSpinner } from '../components/ui/Spinner';
 import { cameFromApp, readAppLink, setFromApp, type PublishedState } from '../lib/appLink';
 import { loadDraft, saveDraft } from '../lib/sessionDraft';
+import { readConfMeta } from '@domain/profile/conf/confMeta';
 import { useT } from '../i18n/I18nContext';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { useProfile, useUpdateProfile } from '../queries/profiles';
@@ -14,15 +15,18 @@ import { paths } from '../routes/paths';
 import NotFoundPage from './NotFoundPage';
 
 const draftKey = (id: string) => `gpm.editFromApp.${id}`;
-const EMPTY = { conf: '', model: '' };
+const EMPTY = { conf: '', model: '', controller: '' };
 
 /**
  * Version del perfil que envia la app con «Actualizar en la comunidad»
  * (/perfil/<id>/editar#conf=...). Se guarda en la pestana para no perderla al iniciar sesion.
  */
-function appVersion(id: string): { conf: string; model: string } | null {
+function appVersion(id: string): { conf: string; model: string; controller: string } | null {
   const link = readAppLink();
-  if (link.conf) saveDraft(draftKey(id), { conf: link.conf, model: link.model ?? '' });
+  if (link.conf) {
+    const meta = readConfMeta(link.conf);
+    saveDraft(draftKey(id), { conf: link.conf, model: link.model ?? meta.model ?? '', controller: link.controller ?? meta.controller ?? '' });
+  }
   const saved = loadDraft(draftKey(id), EMPTY);
   return saved.conf ? saved : null;
 }
@@ -62,9 +66,10 @@ export default function EditProfilePage() {
               <ProfileForm mode="edit" pending={update.isPending} error={update.error}
                 initial={{ conf: appConf?.conf ?? profile.conf, packageName: profile.packageName, gameName: profile.gameName ?? '',
                   title: profile.title, description: profile.description,
-                  deviceModel: appConf?.model || profile.deviceModel || '' }}
+                  deviceModel: appConf?.model || profile.deviceModel || '',
+                  controllerModel: appConf?.controller || profile.controllerModel || '' }}
                 onSubmit={(v) => update.mutate({ id: profile.id, packageName: profile.packageName, title: v.title,
-                  description: v.description, conf: v.conf, deviceModel: v.deviceModel }, {
+                  description: v.description, conf: v.conf, deviceModel: v.deviceModel, controllerModel: v.controllerModel }, {
                   onSuccess: () => {
                     const state: PublishedState = { published: 'updated', fromApp: !!appConf && cameFromApp() };
                     saveDraft(draftKey(profile.id), null);

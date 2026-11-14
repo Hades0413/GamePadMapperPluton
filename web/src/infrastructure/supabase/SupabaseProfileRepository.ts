@@ -11,13 +11,15 @@ import { z } from 'zod';
 import { parse, unwrap } from './errors';
 import { toProfile, toProfileSummary } from './mappers';
 import { rangeOf, toPage } from './pagination';
-import { PROFILE_COLUMNS, PROFILE_SUMMARY_COLUMNS, profileRow, profileSummaryRow } from './rows';
+import {
+  hasControllerColumns, profileColumns, profileRow, profileSummaryRow, readProfiles, summaryColumns,
+} from './rows';
 
 const summaries = z.array(profileSummaryRow);
 
 /** Perfiles publicados (la politica de la base de datos quita tambien los de juegos ocultos). */
 const publishedProfiles = (db: SupabaseClient) =>
-  db.from('game_profiles').select(PROFILE_SUMMARY_COLUMNS).eq('status', 'published');
+  db.from('game_profiles').select(summaryColumns()).eq('status', 'published');
 type ProfileQuery = ReturnType<typeof publishedProfiles>;
 
 /**
@@ -30,6 +32,7 @@ function withFilters(request: ProfileQuery, filters: ProfileFilters, textFilter:
   if (filters.model) q = q.ilike('device_model', filters.model.replace(/[\\%_]/g, '\\$&'));
   else if (filters.brand) q = q.ilike('device_model', `${filters.brand.replace(/[\\%_]/g, '\\$&')} %`);
   if (filters.tag) q = q.contains('tags', [filters.tag]);
+  if (filters.controllerType && hasControllerColumns()) q = q.eq('controller_type', filters.controllerType);
   // Misma proporcion de pantalla (2 % de margen): estos perfiles encajan tal cual.
   if (filters.ratio) {
     q = q.gte('screen_ratio', +(filters.ratio * 0.98).toFixed(3)).lte('screen_ratio', +(filters.ratio * 1.02).toFixed(3));
@@ -47,9 +50,8 @@ export class SupabaseProfileRepository implements ProfileRepository {
   async listByGame(
     packageName: string, sort: ProfileSort, page: PageRequest, filters: ProfileFilters,
   ): Promise<Page<GameProfileSummary>> {
-    const request = withFilters(publishedProfiles(this.#db).eq('package', packageName), filters,
-      filters.search ? `title.ilike.*${filters.search}*,description.ilike.*${filters.search}*` : '');
-    return this.#page(request, sort, page);
+    return this.#page(() => withFilters(publishedProfiles(this.#db).eq('package', packageName), filters,
+      filters.search ? `title.ilike.*${filters.search}*,description.ilike.*${filters.search}*` : ''), sort, page);
   }
 
   async search(sort: ProfileSort, page: PageRequest, filters: ProfileFilters): Promise<Page<GameProfileSummary>> {
@@ -62,15 +64,20 @@ export class SupabaseProfileRepository implements ProfileRepository {
       text = `title.ilike.*${filters.search}*,description.ilike.*${filters.search}*`
         + (packages.length ? `,package.in.(${packages.map((p) => `"${p}"`).join(',')})` : '');
     }
-    return this.#page(withFilters(publishedProfiles(this.#db), filters, text), sort, page);
+    return this.#page(() => withFilters(publishedProfiles(this.#db), filters, text), sort, page);
   }
 
-  async #page(request: ProfileQuery, sort: ProfileSort, page: PageRequest): Promise<Page<GameProfileSummary>> {
+  /** build: la consulta se crea de nuevo si hay que repetirla sin las columnas del mando. */
+  async #page(build: () => ProfileQuery, sort: ProfileSort, page: PageRequest): Promise<Page<GameProfileSummary>> {
     const [from, to] = rangeOf(page);
-    if (sort === 'popular') request = request.order('like_count', { ascending: false });
-    if (sort === 'installs') request = request.order('install_count', { ascending: false });
-    if (sort === 'rating') request = request.order('works_yes', { ascending: false }).order('works_no', { ascending: true });
-    const rows = parse(summaries, unwrap(await request.order('created_at', { ascending: false }).range(from, to)));
+    const ordered = () => {
+      let request = build();
+      if (sort === 'popular') request = request.order('like_count', { ascending: false });
+      if (sort === 'installs') request = request.order('install_count', { ascending: false });
+      if (sort === 'rating') request = request.order('works_yes', { ascending: false }).order('works_no', { ascending: true });
+      return request.order('created_at', { ascending: false }).range(from, to);
+    };
+    const rows = parse(summaries, unwrap(await readProfiles(ordered)));
     return toPage(rows.map(toProfileSummary), page);
   }
 
@@ -89,17 +96,17 @@ export class SupabaseProfileRepository implements ProfileRepository {
   async listByAuthor(authorId: string, page: PageRequest): Promise<Page<GameProfileSummary>> {
     const [from, to] = rangeOf(page);
     // Sin filtrar por estado: las reglas de la base de datos solo dejan ver los ocultos a su autor.
-    const result = await this.#db
+    const result = await readProfiles(() => this.#db
       .from('game_profiles')
-      .select(PROFILE_SUMMARY_COLUMNS)
+      .select(summaryColumns())
       .eq('author_id', authorId)
       .order('created_at', { ascending: false })
-      .range(from, to);
+      .range(from, to));
     return toPage(parse(summaries, unwrap(result)).map(toProfileSummary), page);
   }
 
   async findById(id: string): Promise<GameProfile | null> {
-    const row = unwrap(await this.#db.from('game_profiles').select(PROFILE_COLUMNS).eq('id', id).maybeSingle());
+    const row = unwrap(await readProfiles(() => this.#db.from('game_profiles').select(profileColumns()).eq('id', id).maybeSingle()));
     return row ? toProfile(parse(profileRow, row)) : null;
   }
 
@@ -111,6 +118,8 @@ export class SupabaseProfileRepository implements ProfileRepository {
       p_description: profile.description,
       p_conf: profile.conf,
       p_device: profile.deviceModel,
+      // Sin mando no se envia: asi publicar funciona igual con la base de datos anterior.
+      ...(profile.controllerModel ? { p_controller_model: profile.controllerModel } : {}),
     });
     return parse(z.uuid(), unwrap(result));
   }
@@ -122,6 +131,8 @@ export class SupabaseProfileRepository implements ProfileRepository {
       p_description: changes.description,
       p_conf: changes.conf,
       p_device: changes.deviceModel,
+      // '' = quitar el mando
+      p_controller_model: changes.controllerModel,
     }));
   }
 

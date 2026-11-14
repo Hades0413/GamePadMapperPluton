@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router';
 import { RequireAccount } from '../components/auth/RequireAccount';
 import { Alert } from '../components/ui/Alert';
 import { ProfileForm, type ProfileFormValues } from '../components/profile/ProfileForm';
+import { readConfMeta } from '@domain/profile/conf/confMeta';
 import { guessDeviceModel } from '../lib/device';
 import { cameFromApp, readAppLink, setFromApp, type PublishedState } from '../lib/appLink';
 import { PageSpinner } from '../components/ui/Spinner';
@@ -14,15 +15,22 @@ import { usePublishProfile } from '../queries/profiles';
 import { paths } from '../routes/paths';
 
 const DRAFT_KEY = UPLOAD_DRAFT_KEY;
-const EMPTY: ProfileFormValues = { conf: '', packageName: '', gameName: '', title: '', description: '', deviceModel: '' };
+const EMPTY: ProfileFormValues = {
+  conf: '', packageName: '', gameName: '', title: '', description: '', deviceModel: '', controllerModel: '',
+};
 
 /** Valores iniciales: borrador guardado + perfil que llega desde la app en el enlace. */
 function initialValues(packageParam: string | null): { values: ProfileFormValues; fromLink: boolean } {
   const values = loadDraft(DRAFT_KEY, EMPTY);
   const link = readAppLink();
   if (link.model) values.deviceModel = link.model;
+  if (link.controller) values.controllerModel = link.controller;
   if (link.conf) {
     values.conf = link.conf;
+    // Sin &modelo= / &mando= en el enlace: los comentarios que pone la app en el perfil.
+    const meta = readConfMeta(link.conf);
+    if (!values.deviceModel && meta.model) values.deviceModel = meta.model;
+    if (!values.controllerModel && meta.controller) values.controllerModel = meta.controller;
     values.packageName = /^\s*package\s*=\s*(\S+)/m.exec(link.conf)?.[1] ?? values.packageName;
     saveDraft(DRAFT_KEY, values);
   }

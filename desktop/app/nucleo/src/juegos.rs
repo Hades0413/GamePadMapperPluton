@@ -38,6 +38,9 @@ pub struct Juego {
     /// Configuracion por GUID de mando.
     #[serde(default)]
     pub mapeos: BTreeMap<String, MapeoMando>,
+    /// Perfil de toques de este juego (para juegos Android en una ventana sin adb).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub perfil_toques: Option<String>,
 }
 
 impl Juego {
@@ -87,6 +90,7 @@ pub fn validar_juego(j: &mut Juego) -> Result<(), ErrorJuegos> {
         || j.coincidencia.is_empty()
         || !nombre_valido(&j.coincidencia, 128)
         || j.coincidencia.contains(['/', '\\'])
+        || j.perfil_toques.as_deref().is_some_and(|p| !crate::toques::perfiles::id_valido(p))
     {
         return Err(ErrorJuegos::NoValido);
     }
@@ -156,7 +160,13 @@ mod pruebas {
     use super::*;
 
     fn juego(id: &str, coincidencia: &str) -> Juego {
-        Juego { id: id.into(), nombre: "Juego".into(), coincidencia: coincidencia.into(), mapeos: BTreeMap::new() }
+        Juego {
+            id: id.into(),
+            nombre: "Juego".into(),
+            coincidencia: coincidencia.into(),
+            mapeos: BTreeMap::new(),
+            perfil_toques: None,
+        }
     }
 
     #[test]

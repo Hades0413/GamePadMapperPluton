@@ -54,6 +54,8 @@ public class PadService extends AccessibilityService {
     /** Estado para la app (pantalla principal). */
     static volatile boolean running = false;
     static volatile String lastPad = "", lastProfile = "";
+    /** Ids del ultimo mando (para los datos del perfil al compartirlo; ver ProfileMeta). */
+    static volatile int lastPadVendor, lastPadProduct;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private WindowManager wm;
@@ -757,6 +759,8 @@ public class PadService extends AccessibilityService {
         if (pad && ev.getDevice() != null) {
             lastDevice = ev.getDevice();
             lastPad = lastDevice.getName();
+            lastPadVendor = lastDevice.getVendorId();
+            lastPadProduct = lastDevice.getProductId();
         }
         if (!active()) return false;
         if (ev.getAction() != KeyEvent.ACTION_DOWN && ev.getAction() != KeyEvent.ACTION_UP) return false;
@@ -788,6 +792,8 @@ public class PadService extends AccessibilityService {
         if (ev.getDevice() != null) {
             lastDevice = ev.getDevice();
             lastPad = lastDevice.getName();
+            lastPadVendor = lastDevice.getVendorId();
+            lastPadProduct = lastDevice.getProductId();
         }
         // Cada mando guarda sus propios ejes; manda el mas inclinado (dos mandos no se mezclan).
         float[] arr = devAxes.get(ev.getDeviceId());
