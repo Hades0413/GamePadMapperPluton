@@ -63,6 +63,8 @@ public final class Community {
 
     public static final class Item {
         public String id, pkg, gameName, title, description, author;
+        /** Modelo del telefono con el que se hizo ("" si no se indico). */
+        public String deviceModel = "";
         /** Icono y captura del juego (o null). */
         public String gameIcon, gameBackground;
         public int likes, buttons, screenW, screenH;
@@ -116,14 +118,20 @@ public final class Community {
     }
 
     /** Una pagina de perfiles de un juego (page desde 0). */
-    public static List<Item> profiles(Context c, String pkg, boolean recent, int page) throws IOException {
+    /**
+     * Una pagina de perfiles de un juego (page desde 0). ratio > 0: solo los hechos en pantallas de
+     * esa proporcion (lado largo / corto, con un 2 % de margen).
+     */
+    public static List<Item> profiles(Context c, String pkg, boolean recent, int page, float ratio) throws IOException {
         if (!PACKAGE.matcher(pkg).matches()) return Collections.emptyList();
         String order = recent ? "created_at.desc" : "like_count.desc,created_at.desc";
-        String cacheKey = "game-" + pkg + (recent ? "-r" : "-p") + "-" + page;
+        String filter = ratio > 0 ? String.format(java.util.Locale.ROOT, "&screen_ratio=gte.%.3f&screen_ratio=lte.%.3f",
+                ratio * 0.98f, ratio * 1.02f) : "";
+        String cacheKey = "game-" + pkg + (recent ? "-r" : "-p") + (ratio > 0 ? "-mia" : "") + "-" + page;
         String json;
         try {
             json = get("game_profiles?select=" + SUMMARY + "&status=eq.published&package=eq." + enc(pkg)
-                    + "&order=" + order, page * PAGE, page * PAGE + PAGE - 1);
+                    + filter + "&order=" + order, page * PAGE, page * PAGE + PAGE - 1);
             saveCache(c, cacheKey, json);
         } catch (IOException e) {
             json = loadCache(c, cacheKey);
@@ -148,7 +156,7 @@ public final class Community {
         return list.isEmpty() ? null : list.get(0);
     }
 
-    private static final String SUMMARY = "id,package,title,description,screen_w,screen_h,binding_count,"
+    private static final String SUMMARY = "id,package,title,description,screen_w,screen_h,device_model,binding_count,"
             + "like_count,created_at,author:authors!game_profiles_author_id_fkey(username),game:games(name,icon_url,background_url)";
 
     // ---------------------------------------------------------------- enlaces a la web
@@ -164,8 +172,42 @@ public final class Community {
     /** Abre /subir con el perfil ya cargado. Va en el "#": nunca se envia a ningun servidor. */
     public static String uploadUrl(String conf) {
         byte[] b = conf.replace("\r\n", "\n").getBytes(StandardCharsets.UTF_8);
-        return SITE + "/subir#conf=" + android.util.Base64.encodeToString(b,
+        String model = deviceModel();
+        String url = SITE + "/subir#conf=" + android.util.Base64.encodeToString(b,
                 android.util.Base64.URL_SAFE | android.util.Base64.NO_WRAP | android.util.Base64.NO_PADDING);
+        try {
+            if (!model.isEmpty()) url += "&modelo=" + URLEncoder.encode(model, "UTF-8").replace("+", "%20");
+        } catch (java.io.UnsupportedEncodingException ignored) {
+            // UTF-8 siempre existe
+        }
+        return url;
+    }
+
+    /** Modelo del telefono para mostrar ("Redmi Note 9"), solo con los caracteres que admite la web. */
+    public static String deviceModel() {
+        String maker = android.os.Build.MANUFACTURER == null ? "" : android.os.Build.MANUFACTURER.trim();
+        String model = android.os.Build.MODEL == null ? "" : android.os.Build.MODEL.trim();
+        String full = !maker.isEmpty() && !model.toLowerCase(java.util.Locale.ROOT).startsWith(maker.toLowerCase(java.util.Locale.ROOT))
+                ? maker.substring(0, 1).toUpperCase(java.util.Locale.ROOT) + maker.substring(1) + " " + model : model;
+        full = full.replaceAll("[^A-Za-z0-9 ._()+/-]", "").replaceAll("\\s+", " ").trim();
+        if (full.length() > 60) full = full.substring(0, 60).trim();
+        return full.length() >= 2 && Character.isLetterOrDigit(full.charAt(0)) ? full : "";
+    }
+
+    /** Proporcion de la pantalla de este telefono (lado largo / corto). */
+    public static float screenRatio(Context c) {
+        android.util.DisplayMetrics m = new android.util.DisplayMetrics();
+        android.view.WindowManager wm = (android.view.WindowManager) c.getSystemService(Context.WINDOW_SERVICE);
+        //noinspection deprecation
+        wm.getDefaultDisplay().getRealMetrics(m);
+        return Math.max(m.widthPixels, m.heightPixels) / (float) Math.max(1, Math.min(m.widthPixels, m.heightPixels));
+    }
+
+    /** Misma proporcion de pantalla (2 % de margen): el perfil encaja tal cual. */
+    public static boolean fitsScreen(Item it, float ratio) {
+        if (it.screenW <= 0 || it.screenH <= 0 || ratio <= 0) return false;
+        float r = Math.max(it.screenW, it.screenH) / (float) Math.min(it.screenW, it.screenH);
+        return Math.abs(r - ratio) / ratio < 0.02f;
     }
 
     // ---------------------------------------------------------------- HTTP
@@ -231,6 +273,7 @@ public final class Community {
                 it.screenH = o.optInt("screen_h", 0);
                 it.buttons = Math.max(0, o.optInt("binding_count", 0));
                 it.likes = Math.max(0, o.optInt("like_count", 0));
+                it.deviceModel = o.isNull("device_model") ? "" : clean(o.optString("device_model", ""), 60);
                 it.createdAt = parseDate(o.optString("created_at", ""));
                 JSONObject au = o.optJSONObject("author");
                 it.author = au != null ? clean(au.optString("username", ""), 39) : "";

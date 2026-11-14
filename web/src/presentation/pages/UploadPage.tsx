@@ -1,10 +1,12 @@
 import { CONF_MAX_BYTES } from '@domain/profile/conf/ProfileConfig';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { RequireAccount } from '../components/auth/RequireAccount';
 import { Alert } from '../components/ui/Alert';
 import { ProfileForm, type ProfileFormValues } from '../components/profile/ProfileForm';
+import { guessDeviceModel } from '../lib/device';
 import { decodeBase64Url } from '../lib/files';
+import { PageSpinner } from '../components/ui/Spinner';
 import { loadDraft, saveDraft } from '../lib/sessionDraft';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { useFillGameImages } from '../queries/games';
@@ -12,7 +14,7 @@ import { usePublishProfile } from '../queries/profiles';
 import { paths } from '../routes/paths';
 
 const DRAFT_KEY = 'gpm.uploadDraft';
-const EMPTY: ProfileFormValues = { conf: '', packageName: '', gameName: '', title: '', description: '' };
+const EMPTY: ProfileFormValues = { conf: '', packageName: '', gameName: '', title: '', description: '', deviceModel: '' };
 
 /**
  * Valores iniciales: borrador guardado + perfil que llega desde la app en el enlace
@@ -22,7 +24,16 @@ function initialValues(packageParam: string | null): { values: ProfileFormValues
   const values = loadDraft(DRAFT_KEY, EMPTY);
   const match = /(?:^#|&)conf=([^&]+)/.exec(window.location.hash);
   const fromApp = match?.[1] ? decodeBase64Url(match[1], CONF_MAX_BYTES) : null;
+  // La app tambien envia el modelo del telefono: #conf=...&modelo=Redmi%20Note%209
+  const model = /(?:^#|&)modelo=([^&]{1,180})/.exec(window.location.hash)?.[1];
   if (match) history.replaceState(null, '', window.location.pathname + window.location.search);
+  if (model) {
+    try {
+      values.deviceModel = decodeURIComponent(model).slice(0, 60);
+    } catch {
+      // modelo mal codificado: se ignora
+    }
+  }
   if (fromApp) {
     values.conf = fromApp;
     values.packageName = /^\s*package\s*=\s*(\S+)/m.exec(fromApp)?.[1] ?? values.packageName;
@@ -36,6 +47,14 @@ export default function UploadPage() {
   useDocumentTitle('Subir perfil');
   const [params] = useSearchParams();
   const [{ values: initial, fromLink }] = useState(() => initialValues(params.get('juego')));
+  // Sin modelo: lo pregunta al navegador (Chrome en Android lo sabe) y rellena el formulario.
+  const [model, setModel] = useState<string | null>(initial.deviceModel ? initial.deviceModel : null);
+  useEffect(() => {
+    if (model !== null) return;
+    let alive = true;
+    void guessDeviceModel().then((m) => alive && setModel(m));
+    return () => { alive = false; };
+  }, [model]);
   const publish = usePublishProfile();
   const fill = useFillGameImages();
   const navigate = useNavigate();
@@ -54,7 +73,7 @@ export default function UploadPage() {
       )}
       <RequireAccount reason="Para subir un perfil y que aparezca tu nombre, inicia sesión con GitHub.">
         {() => (
-          <ProfileForm mode="create" initial={initial} pending={publish.isPending} error={publish.error}
+          model === null ? <PageSpinner /> : <ProfileForm mode="create" initial={{ ...initial, deviceModel: initial.deviceModel || model }} pending={publish.isPending} error={publish.error}
             onChange={(v) => saveDraft(DRAFT_KEY, v)}
             onSubmit={(v) => publish.mutate(v, {
               onSuccess: (id) => {

@@ -11,10 +11,11 @@ export class ListGameProfiles {
   }
 
   async execute(
-    input: { packageName: string; sort?: ProfileSort } & Partial<PageRequest>,
+    input: { packageName: string; sort?: ProfileSort; ratio?: number | null } & Partial<PageRequest>,
   ): Promise<Page<GameProfileSummary>> {
     if (!isValidPackage(input.packageName)) return { items: [], hasMore: false };
     const sort: ProfileSort = input.sort === 'recent' ? 'recent' : 'popular';
-    return this.#profiles.listByGame(input.packageName, sort, normalizePage(input));
+    const ratio = input.ratio && Number.isFinite(input.ratio) && input.ratio >= 1 && input.ratio <= 4 ? input.ratio : null;
+    return this.#profiles.listByGame(input.packageName, sort, normalizePage(input), ratio);
   }
 }

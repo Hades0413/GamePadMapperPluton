@@ -83,6 +83,7 @@ export default function ProfilePage() {
             Publicado el {formatDate(profile.createdAt)}
             {profile.updatedAt.getTime() - profile.createdAt.getTime() > 60_000 && ` · actualizado el ${formatDate(profile.updatedAt)}`}
             {' · '}pantalla {profile.screen.width}×{profile.screen.height}
+            {profile.deviceModel && ` · ${profile.deviceModel}`}
           </p>
         </div>
         <LikeButton id={profile.id} count={profile.likeCount} />

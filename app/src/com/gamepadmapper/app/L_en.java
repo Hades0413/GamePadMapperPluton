@@ -664,5 +664,8 @@ final class L_en {
         m.put(" · la captura del juego es orientativa", " · the game screenshot is approximate");
         m.put("Los nombres e iconos de los juegos pertenecen a sus dueños.", "Game names and icons belong to their owners.");
         m.put("Entra en una partida con los controles a la vista. Al tocar Empezar, juega 10 segundos ", "Start a match with the on-screen controls visible. After tapping Start, play for 10 seconds ");
+        m.put("Solo los que encajan con mi pantalla", "Only those that fit my screen");
+        m.put("No hay perfiles hechos con tu proporción de pantalla. Los demás también sirven: se adaptan solos.", "No profiles made with your screen ratio. The others work too: they adapt automatically.");
+        m.put("Encaja", "Fits");
     }
 }

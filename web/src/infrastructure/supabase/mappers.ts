@@ -34,6 +34,7 @@ export const toProfileSummary = (row: ProfileSummaryRow): GameProfileSummary => 
   description: row.description,
   author: row.author ? toAuthor(row.author) : null,
   screen: { width: row.screen_w, height: row.screen_h },
+  deviceModel: row.device_model,
   bindingCount: row.binding_count,
   likeCount: row.like_count,
   status: row.status,

@@ -41,7 +41,10 @@ export default function PrivacyPage() {
           guardamos tu <strong>identificador, nombre de usuario y avatar públicos de GitHub</strong>, y el correo que
           GitHub comparte al iniciar sesión. El correo no se muestra a nadie ni se usa para escribirte.
         </li>
-        <li>Lo que publicas (perfiles, título y descripción) es <strong>público</strong> junto con tu nombre de usuario.</li>
+        <li>
+          Lo que publicas (perfiles, título, descripción y, si lo indicas, el modelo de tu teléfono) es{' '}
+          <strong>público</strong> junto con tu nombre de usuario. El modelo es opcional y no te identifica.
+        </li>
         <li>
           Los iconos y capturas de los juegos se toman de la ficha pública de cada juego en Google Play (o los
           sube la moderación) y se guardan en nuestros servidores: la web y la app no cargan imágenes de otros

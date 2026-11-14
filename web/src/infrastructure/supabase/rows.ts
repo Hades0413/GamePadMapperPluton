@@ -20,7 +20,7 @@ export const gameRow = z.object({
 });
 
 export const PROFILE_SUMMARY_COLUMNS =
-  'id,package,title,description,screen_w,screen_h,binding_count,like_count,status,created_at,updated_at,' +
+  'id,package,title,description,screen_w,screen_h,device_model,binding_count,like_count,status,created_at,updated_at,' +
   // Se nombra la relacion: perfiles y autores tambien se unen por los me gusta y los reportes.
   'author:authors!game_profiles_author_id_fkey(id,username,avatar_url),game:games(name)';
 export const PROFILE_COLUMNS = `${PROFILE_SUMMARY_COLUMNS},conf`;
@@ -34,6 +34,7 @@ export const profileSummaryRow = z.object({
   description: z.string(),
   screen_w: z.number().int(),
   screen_h: z.number().int(),
+  device_model: z.string().nullable(),
   binding_count: z.number().int(),
   like_count: z.number().int(),
   status: z.enum(['published', 'hidden']),

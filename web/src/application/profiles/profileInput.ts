@@ -1,5 +1,5 @@
 import { GAME_NAME_MAX, GAME_NAME_MIN, isSensitivePackage, isValidPackage } from '@domain/game/Game';
-import { DESCRIPTION_MAX, TITLE_MAX, TITLE_MIN } from '@domain/profile/GameProfile';
+import { DESCRIPTION_MAX, isValidDeviceModel, TITLE_MAX, TITLE_MIN } from '@domain/profile/GameProfile';
 import { validateConf } from '@domain/profile/conf/validateConf';
 import { AppError } from '@domain/shared/AppError';
 import { cleanLine, cleanText } from '@domain/shared/text';
@@ -32,4 +32,13 @@ export function checkConf(conf: string, packageName?: string): string {
   const result = validateConf(conf, packageName);
   if (!result.ok) throw new AppError('INVALID_INPUT', result.error);
   return result.normalized;
+}
+
+/** Modelo del telefono: opcional ('' = sin indicar). */
+export function checkDeviceModel(model: string): string {
+  const value = model.replace(/\s+/g, ' ').trim();
+  if (value !== '' && !isValidDeviceModel(value)) {
+    throw new AppError('INVALID_INPUT', 'El modelo del teléfono solo admite letras, números y . _ ( ) + / - (2 a 60 caracteres).');
+  }
+  return value;
 }
