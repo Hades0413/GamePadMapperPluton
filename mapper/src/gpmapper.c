@@ -133,8 +133,12 @@ static char prof_dir[256] = APP_PROFILES;
 static char debug_flag[300], learn_flag[300], learn_result[300], active_file[300];
 /* <base>/paused: lo crea/borra el boton de Ajustes rapidos de la app (pausar el mando). */
 static char paused_flag[300];
+// Repeticion (-r): eventos de un guion con reloj virtual; los toques se escriben en stdout.
+static int replay = 0;
+static long long replay_us = 0;
 
 static long long now_ms(void) {
+    if (replay) return replay_us / 1000;
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (long long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
@@ -142,6 +146,14 @@ static long long now_ms(void) {
 
 static void logf_(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 static void logf_(const char *fmt, ...) {
+    if (replay) {   // en la repeticion, stdout es solo para los toques
+        va_list ap;
+        va_start(ap, fmt);
+        vfprintf(stderr, fmt, ap);
+        va_end(ap);
+        fputc('\n', stderr);
+        return;
+    }
     time_t t = time(NULL);
     struct tm tm;
     gmtime_r(&t, &tm);
@@ -530,7 +542,12 @@ static const char *profile_label(const profile_t *p) {
 }
 
 // Aviso en la barra de notificaciones (sin esperar al proceso).
+// Hora de la repeticion en ms desde el inicio (el reloj virtual empieza en 1 s: el motor usa 0 como "sin hora").
+#define RP_T0 1000000LL
+static void rp_time(void) { printf("%6lld.%03lld ", (replay_us - RP_T0) / 1000, (replay_us - RP_T0) % 1000); }
+
 static void notify(const char *msg) {
+    if (replay) { rp_time(); printf("aviso %s\n", msg); return; }
     pid_t pid = fork();
     if (pid == 0) {
         int nul = open("/dev/null", O_RDWR);
@@ -695,6 +712,15 @@ static int create_vdev(void) {
     return 0;
 }
 
+static void target_size(double *w, double *h);
+// Repeticion: el toque en pixeles del destino (u * (ancho - 1)).
+static void rp_touch(const char *op, int s, double u, double v) {
+    double w, h;
+    target_size(&w, &h);
+    rp_time();
+    printf("%s s=%d x=%.2f y=%.2f\n", op, s, u * (w - 1), v * (h - 1));
+}
+
 // Toque en coordenadas normalizadas de la pantalla visible (0..1).
 static int t_down_n(double u, double v) {
     int s = -1;
@@ -704,6 +730,7 @@ static int t_down_n(double u, double v) {
     if (++tracking_id > 65535) tracking_id = 1;
     int rx, ry;
     map_point(u, v, &rx, &ry);
+    if (replay) { rp_touch("abajo", s, u, v); dirty = 1; return s; }
     emit(EV_ABS, ABS_MT_SLOT, s);
     emit(EV_ABS, ABS_MT_TRACKING_ID, tracking_id);
     emit(EV_ABS, ABS_MT_POSITION_X, rx);
@@ -718,6 +745,7 @@ static void t_move_n(int s, double u, double v) {
     if (s < 0) return;
     int rx, ry;
     map_point(u, v, &rx, &ry);
+    if (replay) { rp_touch("mover", s, u, v); dirty = 1; return; }
     emit(EV_ABS, ABS_MT_SLOT, s);
     emit(EV_ABS, ABS_MT_POSITION_X, rx);
     emit(EV_ABS, ABS_MT_POSITION_Y, ry);
@@ -797,6 +825,7 @@ static void t_move_off(int s, double x, double y, double dx, double dy) {
 static void t_up(int s) {
     if (s < 0 || !slot_used[s]) return;
     slot_used[s] = 0;
+    if (replay) { rp_time(); printf("arriba s=%d\n", s); dirty = 1; return; }
     emit(EV_ABS, ABS_MT_SLOT, s);
     emit(EV_ABS, ABS_MT_TRACKING_ID, -1);
     dirty = 1;
@@ -806,6 +835,7 @@ static void t_sync(void) {
     if (!dirty) return;
     int any = 0;
     for (int i = 0; i < NSLOTS; i++) any |= slot_used[i];
+    if (replay) { rp_time(); printf("sync tocando=%d\n", any); touch_state = any; dirty = 0; return; }
     if (any != touch_state) { emit(EV_KEY, BTN_TOUCH, any); touch_state = any; }
     emit(EV_SYN, SYN_REPORT, 0);
     dirty = 0;
@@ -822,6 +852,7 @@ typedef struct {
 static mstep_t mq[MAX_QUEUE];
 
 static long long now_us(void) {
+    if (replay) return replay_us;
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (long long)ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
@@ -924,7 +955,7 @@ static int nswipes = 0;
 
 static void release_all(void) {
     // No usa 'cur': se llama tambien cuando el perfil ya se libero.
-    if (ufd < 0) return;
+    if (ufd < 0 && !replay) return;
     macro_clear();
     for (int c = 0; c < NCODES; c++)
         if (rt[c].active) { t_up(rt[c].slot); rt[c].active = 0; rt[c].b = NULL; }
@@ -1026,6 +1057,7 @@ static void scan_gamepad(void) {
 }
 
 static void set_grab(int want) {
+    if (replay) { grabbed = want; return; }
     if (gfd < 0 || want == grabbed) return;
     if (ioctl(gfd, EVIOCGRAB, (void *)(long)want) == 0) {
         grabbed = want;
@@ -1085,6 +1117,7 @@ static const binding_t *resolve(int kind, int code, int axis, int dir) {
 
 // Vibracion corta del mando al pulsar (si el perfil la pide y el mando la admite).
 static void rumble_pulse(void) {
+    if (replay && cur && cur->rumble > 0) { rp_time(); printf("vibrar %.2f\n", cur->rumble); return; }
     if (!cur || cur->rumble <= 0 || gfd < 0 || ff_id == -2) return;
     if (ff_id < 0 || ff_level != cur->rumble) {
         struct ff_effect e;
@@ -1542,6 +1575,192 @@ static int check_profile(const char *path) {
     return 0;
 }
 
+// ------------------------------------------------------------ repeticion (-r)
+// Prueba del motor sin mando ni pantalla: lee un guion de eventos del mando, ejecuta la logica
+// real con un reloj virtual (lo avanza el guion) y escribe en stdout cada toque. Ver tests/engine/.
+//   pantalla 2560x1080          pantalla real (como <base>/display)
+//   rango EJE MIN MAX [VALOR]   recorrido de un eje del mando virtual (antes del primer evento)
+//   quitar EJE                  el mando virtual no tiene ese eje
+//   boton NOMBRE 0|1            evento EV_KEY (A, L2, DPAD_UP, BTN_13A...)
+//   eje EJE VALOR               evento EV_ABS (X, Y, Z, RX, RY, RZ, GAS, BRAKE, HAT0X, HAT0Y o hex)
+//   syn                         fin del grupo de eventos (SYN_REPORT)
+//   pulsa NOMBRE / suelta NOMBRE    boton 1 / 0 seguido de syn
+//   espera MS                   avanza el reloj (el bucle despierta como el de verdad: turbo, macros...)
+static const struct { const char *name; int code; } rp_axes[] = {
+    {"X", ABS_X}, {"Y", ABS_Y}, {"Z", ABS_Z}, {"RX", ABS_RX}, {"RY", ABS_RY}, {"RZ", ABS_RZ},
+    {"THROTTLE", ABS_THROTTLE}, {"RUDDER", ABS_RUDDER}, {"WHEEL", ABS_WHEEL}, {"GAS", ABS_GAS},
+    {"BRAKE", ABS_BRAKE}, {"HAT0X", ABS_HAT0X}, {"HAT0Y", ABS_HAT0Y},
+};
+
+static int rp_axis(const char *name) {
+    for (size_t i = 0; i < sizeof rp_axes / sizeof rp_axes[0]; i++)
+        if (!strcasecmp(rp_axes[i].name, name)) return rp_axes[i].code;
+    char *end;
+    long v = strtol(name, &end, 16);
+    return end != name && *end == 0 && v >= 0 && v < ABS_CNT ? (int)v : -1;
+}
+
+static int rp_enabled = 1, rp_combo_fired = 0;
+static long long rp_combo_since = 0, rp_macro_due = -1, rp_last_tick = 0;
+
+// Una vuelta del bucle principal tras leer los eventos (o al vencer el plazo).
+static void rp_tail(void) {
+    if (!learning && pressed(BTN_SELECT) && pressed(BTN_START)) {
+        if (!rp_combo_since) rp_combo_since = now_ms();
+        else if (!rp_combo_fired && now_ms() - rp_combo_since >= 1000) {
+            rp_combo_fired = 1;
+            rp_enabled = !rp_enabled;
+            release_all();
+            set_grab(rp_enabled && cur != NULL);
+            rp_time();
+            printf(rp_enabled ? "mapeo reanudado\n" : "mapeo pausado\n");
+        }
+    } else { rp_combo_since = 0; rp_combo_fired = 0; }
+    if (switch_req && cur) {
+        char msg[160];
+        switch_req = 0;
+        snprintf(msg, sizeof msg, "Este juego solo tiene un perfil (%s)", profile_label(cur));
+        notify(msg);
+    }
+    rp_macro_due = (grabbed && cur && !learning) ? macro_process() : -1;
+    long long t = now_ms();
+    if (grabbed && cur && !learning && needs_ticks()) {
+        double dt = (t - rp_last_tick) / 16.0;
+        if (dt > 4) dt = 4;
+        look_tick(CODE_LS, dt);
+        look_tick(CODE_RS, dt);
+        timed_actions();
+        t_sync();
+    }
+    rp_last_tick = t;
+}
+
+static int replay_run(const char *conf, const char *script) {
+    replay = 1;
+    replay_us = RP_T0;
+    FILE *f = fopen(script, "r");
+    if (!f) { fprintf(stderr, "no se puede abrir %s\n", script); return 1; }
+    if (load_profile(conf, &profiles[0]) != 0) { fprintf(stderr, "no se pudo leer %s\n", conf); fclose(f); return 1; }
+    nprofiles = 1;
+    cur = &profiles[0];
+    // Mando virtual por defecto: sticks X/Y y RX/RY, gatillos Z/RZ (0..255) y cruceta HAT0X/HAT0Y.
+    struct input_absinfo pad[ABS_CNT];
+    int has[ABS_CNT];
+    memset(pad, 0, sizeof pad);
+    memset(has, 0, sizeof has);
+    static const int sticks[] = {ABS_X, ABS_Y, ABS_RX, ABS_RY};
+    for (int i = 0; i < 4; i++) { has[sticks[i]] = 1; pad[sticks[i]].minimum = -32768; pad[sticks[i]].maximum = 32767; }
+    has[ABS_Z] = has[ABS_RZ] = 1;
+    pad[ABS_Z].maximum = pad[ABS_RZ].maximum = 255;
+    has[ABS_HAT0X] = has[ABS_HAT0Y] = 1;
+    pad[ABS_HAT0X].minimum = pad[ABS_HAT0Y].minimum = -1;
+    pad[ABS_HAT0X].maximum = pad[ABS_HAT0Y].maximum = 1;
+
+    int connected = 0, ln = 0, err = 0;
+    char line[256];
+    while (!err && fgets(line, sizeof line, f)) {
+        ln++;
+        char *hash = strchr(line, '#');
+        if (hash) *hash = 0;
+        char cmd[32] = "", a1[64] = "", a2[32] = "", a3[32] = "", a4[32] = "";
+        int n = sscanf(line, "%31s %63s %31s %31s %31s", cmd, a1, a2, a3, a4);
+        if (n < 1) continue;
+        if (!strcasecmp(cmd, "pantalla")) {
+            double w = 0, h = 0;
+            if (sscanf(a1, "%lfx%lf", &w, &h) == 2 && w >= 100 && h >= 100) {
+                disp_long = w > h ? w : h;
+                disp_short = w > h ? h : w;
+            } else err = 1;
+            continue;
+        }
+        if (!strcasecmp(cmd, "rango") || !strcasecmp(cmd, "quitar")) {
+            int a = rp_axis(a1);
+            if (connected || a < 0) { err = 1; continue; }
+            if (!strcasecmp(cmd, "quitar")) { has[a] = 0; continue; }
+            if (n < 4) { err = 1; continue; }
+            has[a] = 1;
+            pad[a].minimum = atoi(a2);
+            pad[a].maximum = atoi(a3);
+            pad[a].value = n >= 5 ? atoi(a4) : 0;
+            continue;
+        }
+        if (!connected) {   // el mando "se conecta" con el primer evento
+            connected = 1;
+            memset(keyp, 0, sizeof keyp);
+            memset(virt, 0, sizeof virt);
+            memset(axdown, 0, sizeof axdown);
+            memset(learn_prev, 0, sizeof learn_prev);
+            memset(has_abs, 0, sizeof has_abs);
+            for (int a = 0; a < ABS_CNT; a++) {
+                if (!has[a]) continue;
+                ai[a] = pad[a];
+                has_abs[a] = 1;
+                axraw[a] = axrest[a] = ai[a].value;
+                int mid = (ai[a].minimum + ai[a].maximum) / 2, span = ai[a].maximum - ai[a].minimum;
+                if (abs(ai[a].value - mid) < span / 8) axrest[a] = mid;
+            }
+            if (has_abs[ABS_RX] && has_abs[ABS_RY]) { def_rs_x = ABS_RX; def_rs_y = ABS_RY; trig_l = ABS_Z; trig_r = ABS_RZ; }
+            else { def_rs_x = ABS_Z; def_rs_y = ABS_RZ; trig_l = ABS_BRAKE; trig_r = ABS_GAS; }
+            grabbed = 1;
+            rp_last_tick = now_ms();
+            double w, h;
+            target_size(&w, &h);
+            rp_time();
+            printf("perfil %s %gx%g -> destino %gx%g\n", cur->pkg, cur->sw, cur->sh, w, h);
+        }
+        struct input_event ev;
+        memset(&ev, 0, sizeof ev);
+        if (!strcasecmp(cmd, "boton") || !strcasecmp(cmd, "pulsa") || !strcasecmp(cmd, "suelta")) {
+            int code = -1, axis = -1, dir = 0;
+            if (parse_token(a1, &code, &axis, &dir) != 0 || code == CODE_LS || code == CODE_RS) { err = 1; continue; }
+            ev.type = EV_KEY;
+            ev.code = code;
+            ev.value = !strcasecmp(cmd, "boton") ? atoi(a2) : !strcasecmp(cmd, "pulsa");
+            handle_event(&ev);
+            if (strcasecmp(cmd, "boton")) {
+                memset(&ev, 0, sizeof ev);
+                ev.type = EV_SYN;
+                ev.code = SYN_REPORT;
+                handle_event(&ev);
+                rp_tail();
+            }
+        } else if (!strcasecmp(cmd, "eje")) {
+            int a = rp_axis(a1);
+            if (a < 0 || n < 3) { err = 1; continue; }
+            ev.type = EV_ABS;
+            ev.code = a;
+            ev.value = atoi(a2);
+            handle_event(&ev);
+        } else if (!strcasecmp(cmd, "syn")) {
+            ev.type = EV_SYN;
+            ev.code = SYN_REPORT;
+            handle_event(&ev);
+            rp_tail();
+        } else if (!strcasecmp(cmd, "espera")) {
+            long long target = replay_us + (long long)(atof(a1) * 1000.0);
+            for (int guard = 0; guard < 1000000; guard++) {
+                // Mismo plazo que el bucle principal: si vence antes que el siguiente evento, una vuelta sin eventos.
+                int timeout = grabbed && !learning && needs_ticks() ? (nswipes ? 8 : 10) : 150;
+                long long tmo_us = (long long)timeout * 1000;
+                if (rp_macro_due >= 0) {
+                    long long d = rp_macro_due - replay_us;
+                    if (d < tmo_us) tmo_us = d < 0 ? 0 : d;
+                }
+                if (replay_us + tmo_us >= target) break;
+                replay_us += tmo_us;
+                rp_tail();
+            }
+            replay_us = target;
+        } else err = 1;
+    }
+    fclose(f);
+    if (err) { fprintf(stderr, "%s:%d: linea no valida\n", script, ln); return 1; }
+    release_all();
+    rp_time();
+    printf("fin\n");
+    return 0;
+}
+
 // ------------------------------------------------------------ main
 static volatile sig_atomic_t stop = 0;
 static void on_signal(int s) { (void)s; stop = 1; }
@@ -1549,8 +1768,12 @@ static void on_signal(int s) { (void)s; stop = 1; }
 int main(int argc, char **argv) {
     int c;
     double tap_u = -1, tap_v = -1;
-    while ((c = getopt(argc, argv, "d:vRtp:T:g:c:F:")) != -1) {
+    while ((c = getopt(argc, argv, "d:vRtp:T:g:c:F:r:")) != -1) {
         if (c == 'c') return check_profile(optarg);
+        else if (c == 'r') {   // pruebas: -r perfil.conf eventos.txt
+            if (optind >= argc) return 2;
+            return replay_run(optarg, argv[optind]);
+        }
         else if (c == 'F') {   // pruebas: -F sw,sh,w,h,x,y -> punto adaptado (como Profile.fitX/fitY)
             double a[6];
             if (sscanf(optarg, "%lf,%lf,%lf,%lf,%lf,%lf", &a[0], &a[1], &a[2], &a[3], &a[4], &a[5]) != 6) return 2;
@@ -1573,7 +1796,8 @@ int main(int argc, char **argv) {
                     "  -t  reenviar mandos en modo tactil (raton/lapiz) como toques\n"
                     "  -p  id de producto de la pantalla virtual (7a01 usa el IDC del modulo)\n"
                     "  -T  prueba: toca el punto u,v (0..1 de la pantalla visible) y sale\n"
-                    "  -c  comprobar un perfil: muestra como se entiende cada linea y sale\n",
+                    "  -c  comprobar un perfil: muestra como se entiende cada linea y sale\n"
+                    "  -r  prueba: -r perfil.conf eventos.txt repite un guion de eventos y escribe los toques\n",
                     argv[0]);
             return 2;
         }

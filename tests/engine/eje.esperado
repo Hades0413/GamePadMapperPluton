@@ -1,0 +1,15 @@
+     0.000 perfil com.prueba.ejes 2400x1080 -> destino 2400x1080
+     0.000 vibrar 0.50
+     0.000 abajo s=0 x=800.00 y=800.00
+     0.000 vibrar 0.50
+     0.000 abajo s=1 x=372.00 y=398.00
+     0.000 sync tocando=1
+    60.000 arriba s=0
+    60.000 arriba s=1
+    60.000 sync tocando=0
+    90.000 vibrar 0.50
+    90.000 abajo s=0 x=100.00 y=100.00
+    90.000 sync tocando=1
+   150.000 arriba s=0
+   150.000 sync tocando=0
+   180.000 fin
