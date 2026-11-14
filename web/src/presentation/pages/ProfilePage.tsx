@@ -1,9 +1,12 @@
-import { worksShare, type GameProfileSummary } from '@domain/profile/GameProfile';
+import { recentlyBroken, worksShare, type GameProfileSummary } from '@domain/profile/GameProfile';
 import { validateConf } from '@domain/profile/conf/validateConf';
 import { useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { appPublishedLink, type PublishedState } from '../lib/appLink';
 import { BindingTable } from '../components/profile/BindingTable';
+import {
+  CommentsSection, FeatureToggle, TagChips, TagEditor, VersionsSection,
+} from '../components/profile/CommunitySections';
 import { LikeButton } from '../components/profile/LikeButton';
 import { ProfileActions } from '../components/profile/ProfileActions';
 import { PreviewPanel } from '../components/profile/PreviewPanel';
@@ -99,9 +102,21 @@ export default function ProfilePage() {
             {profile.deviceModel && ` · ${profile.deviceModel}`}
           </p>
           <ProfileStats profile={profile} />
+          <div className="flex flex-wrap items-center gap-1.5">
+            {profile.featuredAt && <span className="rounded-md bg-warning/20 px-2 py-0.5 text-xs font-medium text-warning">★ Destacado</span>}
+            <TagChips tags={profile.tags} />
+            {isOwner && <TagEditor profileId={profile.id} tags={profile.tags} />}
+          </div>
         </div>
         <LikeButton id={profile.id} count={profile.likeCount} />
       </header>
+
+      {recentlyBroken(profile) && (
+        <Alert tone="warning">
+          Últimamente varios jugadores dicen que este perfil no les funciona (quizá el juego cambió sus controles).
+          {isOwner ? ' Revisa las posiciones y actualízalo.' : ' Mira otros perfiles del juego o los comentarios.'}
+        </Alert>
+      )}
 
       {profile.description && <p className="max-w-3xl whitespace-pre-line text-muted">{profile.description}</p>}
 
@@ -136,10 +151,15 @@ export default function ProfilePage() {
         </pre>
       </details>
 
+      <VersionsSection profile={profile} />
+
+      <CommentsSection profileId={profile.id} profileAuthorId={profile.author?.id ?? null} />
+
       <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
         {!isOwner ? <ReportButton id={profile.id} /> : <span />}
         {canModerate && (
           <div className="flex gap-2">
+            {account?.isAdmin && <FeatureToggle profileId={profile.id} featured={!!profile.featuredAt} />}
             {isOwner && <ButtonLink to={paths.editProfile(profile.id)} variant="secondary" size="sm">Editar</ButtonLink>}
             <DeleteButton id={profile.id} packageName={profile.packageName} />
           </div>

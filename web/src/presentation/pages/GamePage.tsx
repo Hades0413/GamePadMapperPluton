@@ -35,6 +35,7 @@ export default function GamePage() {
     brand: params.get('marca') ?? '',
     model: params.get('modelo') ?? '',
     onlyMine: params.get('pantalla') === 'mia' && myScreen !== null,
+    tag: params.get('etiqueta') ?? '',
   };
   const deferredSearch = useDeferredValue(filters.search.trim());
   const update = (patch: Partial<FilterState>) => setParams((p) => {
@@ -46,6 +47,7 @@ export default function GamePage() {
     put('marca', v.brand);
     put('modelo', v.model);
     put('pantalla', v.onlyMine ? 'mia' : '');
+    put('etiqueta', v.tag);
     return next;
   }, { replace: true });
 
@@ -56,10 +58,11 @@ export default function GamePage() {
     brand: filters.brand,
     model: filters.model,
     ratio: filters.onlyMine && myScreen ? ratioOf(myScreen) : null,
+    tag: filters.tag,
   });
   const items = profiles.data?.pages.flatMap((p) => p.items) ?? [];
   const liked = useLiked(items.map((p) => p.id));
-  const filtering = !!(filters.search || filters.brand || filters.model || filters.onlyMine);
+  const filtering = !!(filters.search || filters.brand || filters.model || filters.onlyMine || filters.tag);
   useDocumentTitle(game.data?.name, game.data ? `Perfiles de mando para ${game.data.name}.` : undefined);
 
   if (game.isPending) return <PageSpinner />;
@@ -86,7 +89,7 @@ export default function GamePage() {
         filtering ? (
           <EmptyState title="Ningún perfil coincide con esos filtros"
             action={<button type="button" className="text-primary hover:underline"
-              onClick={() => update({ search: '', brand: '', model: '', onlyMine: false })}>Quitar filtros</button>} />
+              onClick={() => update({ search: '', brand: '', model: '', onlyMine: false, tag: '' })}>Quitar filtros</button>} />
         ) : (
           <EmptyState title="Aún no hay perfiles para este juego"
             action={<ButtonLink to={paths.upload(game.data.packageName)}>Subir el primero</ButtonLink>} />

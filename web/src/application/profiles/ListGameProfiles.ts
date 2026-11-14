@@ -1,6 +1,6 @@
 import { isValidPackage } from '@domain/game/Game';
 import {
-  PROFILE_SORTS, type GameProfileSummary, type ProfileFilters, type ProfileSort,
+  isProfileTag, PROFILE_SORTS, type GameProfileSummary, type ProfileFilters, type ProfileSort,
 } from '@domain/profile/GameProfile';
 import { normalizePage, type Page, type PageRequest } from '@domain/shared/Page';
 import type { ProfileRepository } from '../ports/ProfileRepository';
@@ -30,6 +30,7 @@ export class ListGameProfiles {
       brand: cleanDevice(input.brand),
       model: cleanDevice(input.model),
       ratio,
+      tag: input.tag && isProfileTag(input.tag) ? input.tag : '',
     });
   }
 }

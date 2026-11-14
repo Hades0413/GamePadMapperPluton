@@ -14,7 +14,18 @@ export interface ProfileFilters {
   readonly model: string;
   /** Proporcion de pantalla (lado largo / corto) o null. */
   readonly ratio: number | null;
+  /** Etiqueta ('' = todas). */
+  readonly tag?: string;
 }
+
+/** Etiquetas de perfil (lista cerrada; mismas que private.valid_tags). */
+export const PROFILE_TAGS = [
+  'competitivo', 'casual', 'zurdo', 'una-mano', 'sin-gatillos', 'tablet', 'giroscopio', 'teclado-raton', 'xbox', 'playstation',
+] as const;
+export type ProfileTag = (typeof PROFILE_TAGS)[number];
+export const MAX_TAGS = 4;
+export const isProfileTag = (t: string): t is ProfileTag => (PROFILE_TAGS as readonly string[]).includes(t);
+
 
 /** Marca de un modelo: su primera palabra. */
 export function brandOf(model: string): string {
@@ -51,6 +62,12 @@ export interface GameProfileSummary {
   readonly installCount: number;
   readonly worksYes: number;
   readonly worksNo: number;
+  /** Respuestas de los ultimos 30 dias (para avisar si ha dejado de funcionar). */
+  readonly recentYes: number;
+  readonly recentNo: number;
+  readonly tags: readonly ProfileTag[];
+  /** Fecha en que un admin lo destaco (o null). */
+  readonly featuredAt: Date | null;
   readonly status: ProfileStatus;
   readonly createdAt: Date;
   readonly updatedAt: Date;
@@ -63,6 +80,11 @@ export const MIN_VOTES = 3;
 export function worksShare(p: Pick<GameProfileSummary, 'worksYes' | 'worksNo'>): number | null {
   const total = p.worksYes + p.worksNo;
   return total < MIN_VOTES ? null : Math.round((p.worksYes * 100) / total);
+}
+
+/** ¿La mayoria de los votos recientes dice que ya no funciona? (con al menos 3 votos). */
+export function recentlyBroken(p: Pick<GameProfileSummary, 'recentYes' | 'recentNo'>): boolean {
+  return p.recentNo >= MIN_VOTES && p.recentNo > p.recentYes;
 }
 
 /** Resultado de dar o quitar «me gusta»: estado final y total exacto en ese momento. */

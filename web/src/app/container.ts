@@ -7,6 +7,9 @@ import {
   DeleteAccount, GetCurrentAccount, ObserveSession, SignInWithGitHub, SignOut, TakeReturnPath,
 } from '@application/auth/AuthUseCases';
 import { GetAuthor } from '@application/authors/GetAuthor';
+import {
+  AddComment, DeleteComment, FeatureProfile, ListComments, ListFeaturedProfiles, ListVersions, SetProfileTags,
+} from '@application/community/CommunityUseCases';
 import { FillGameImages } from '@application/games/FillGameImages';
 import { GetGame } from '@application/games/GetGame';
 import { ListGames } from '@application/games/ListGames';
@@ -27,6 +30,7 @@ import type { Env } from '@infrastructure/config/env';
 import { createSupabase } from '@infrastructure/supabase/client';
 import { SupabaseAuthGateway } from '@infrastructure/supabase/SupabaseAuthGateway';
 import { SupabaseAuthorRepository } from '@infrastructure/supabase/SupabaseAuthorRepository';
+import { SupabaseCommunityRepository } from '@infrastructure/supabase/SupabaseCommunityRepository';
 import { SupabaseGameRepository } from '@infrastructure/supabase/SupabaseGameRepository';
 import { SupabaseModerationRepository } from '@infrastructure/supabase/SupabaseModerationRepository';
 import { SupabaseProfileRepository } from '@infrastructure/supabase/SupabaseProfileRepository';
@@ -41,6 +45,7 @@ export function createServices(env: Env): Services {
   // se vuelve a la pagina guardada.
   const auth = new SupabaseAuthGateway(db, `${env.siteUrl}/`);
   const moderation = new SupabaseModerationRepository(db);
+  const community = new SupabaseCommunityRepository(db);
 
   return {
     links: { playUrl: env.playUrl, repoUrl: env.repoUrl, siteUrl: env.siteUrl },
@@ -73,6 +78,13 @@ export function createServices(env: Env): Services {
       setGameImage: new SetGameImage(moderation),
       listPlayScreenshots: new ListPlayScreenshots(moderation),
       useBackgroundFromPlay: new UseBackgroundFromPlay(moderation),
+      listComments: new ListComments(community),
+      addComment: new AddComment(community),
+      deleteComment: new DeleteComment(community),
+      listVersions: new ListVersions(community),
+      setProfileTags: new SetProfileTags(community),
+      listFeaturedProfiles: new ListFeaturedProfiles(community),
+      featureProfile: new FeatureProfile(community),
     },
   };
 }

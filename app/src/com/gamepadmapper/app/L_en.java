@@ -757,5 +757,6 @@ final class L_en {
         m.put("Hay un perfil de la comunidad que te puede servir: «", "There is a community profile that may work for you: «");
         m.put("). O crea el tuyo:", "). Or make your own:");
         m.put("El asistente busca los botones del juego y te pide pulsar el del mando para cada uno.", "The wizard finds the game's buttons and asks you to press the gamepad button for each one.");
+        m.put("últimamente no funciona", "lately not working");
     }
 }

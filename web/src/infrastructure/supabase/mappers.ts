@@ -1,7 +1,8 @@
 import type { Author } from '@domain/author/Author';
 import type { Game } from '@domain/game/Game';
-import type { GameProfile, GameProfileSummary } from '@domain/profile/GameProfile';
-import type { AuthorRow, GameRow, ProfileRow, ProfileSummaryRow } from './rows';
+import type { Comment, ProfileVersion } from '@domain/community/Community';
+import { isProfileTag, type GameProfile, type GameProfileSummary } from '@domain/profile/GameProfile';
+import type { AuthorRow, CommentRow, GameRow, ProfileRow, ProfileSummaryRow, VersionRow } from './rows';
 
 /** Solo avatares de GitHub (la base de datos ya lo exige; se vuelve a comprobar aqui). */
 const safeAvatar = (url: string | null) =>
@@ -40,9 +41,28 @@ export const toProfileSummary = (row: ProfileSummaryRow): GameProfileSummary => 
   installCount: row.install_count,
   worksYes: row.works_yes,
   worksNo: row.works_no,
+  recentYes: row.recent_yes,
+  recentNo: row.recent_no,
+  tags: row.tags.filter(isProfileTag),
+  featuredAt: row.featured_at ? new Date(row.featured_at) : null,
   status: row.status,
   createdAt: new Date(row.created_at),
   updatedAt: new Date(row.updated_at),
 });
 
 export const toProfile = (row: ProfileRow): GameProfile => ({ ...toProfileSummary(row), conf: row.conf });
+
+export const toComment = (row: CommentRow): Comment => ({
+  id: row.id,
+  profileId: row.profile_id,
+  body: row.body,
+  author: row.author ? toAuthor(row.author) : null,
+  createdAt: new Date(row.created_at),
+});
+
+export const toVersion = (row: VersionRow): ProfileVersion => ({
+  version: row.version,
+  title: row.title,
+  conf: row.conf,
+  createdAt: new Date(row.created_at),
+});

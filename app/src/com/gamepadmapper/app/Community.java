@@ -70,6 +70,8 @@ public final class Community {
         public int likes, buttons, screenW, screenH;
         /** Instalaciones desde la app y respuestas «¿te funcionó?» (orientativos). */
         public int installs, worksYes, worksNo;
+        /** Votos de los ultimos 30 dias (para avisar si ha dejado de funcionar). */
+        public int recentYes, recentNo;
         public long createdAt, updatedAt;
         /** Texto .conf (solo al pedir un perfil concreto). */
         public String conf;
@@ -158,7 +160,7 @@ public final class Community {
     }
 
     private static final String SUMMARY = "id,package,title,description,screen_w,screen_h,device_model,binding_count,"
-            + "like_count,install_count,works_yes,works_no,created_at,updated_at,author:authors!game_profiles_author_id_fkey(username),game:games(name,icon_url,background_url)";
+            + "like_count,install_count,works_yes,works_no,recent_yes,recent_no,created_at,updated_at,author:authors!game_profiles_author_id_fkey(username),game:games(name,icon_url,background_url)";
 
     /**
      * Fecha de la ultima modificacion (titulo, descripcion o perfil) de los perfiles indicados que
@@ -190,7 +192,7 @@ public final class Community {
         double bestScore = -1;
         for (Item it : profiles(c, pkg, false, 0, 0)) {
             int share = worksShare(it);
-            if (share >= 0 && share < 40) continue;
+            if ((share >= 0 && share < 40) || recentlyBroken(it)) continue;
             double score = (fitsScreen(it, ratio) ? 1000 : 0) + (share >= 0 ? share : 60) * 4
                     + Math.min(it.installs, 500) * 0.2 + Math.min(it.likes, 200);
             if (score > bestScore) {
@@ -199,6 +201,11 @@ public final class Community {
             }
         }
         return best == null ? null : profile(c, best.id);
+    }
+
+    /** ¿La mayoria de los votos recientes dice que ya no funciona? (con al menos 3). */
+    public static boolean recentlyBroken(Item it) {
+        return it.recentNo >= 3 && it.recentNo > it.recentYes;
     }
 
     /** Porcentaje (0-100) que dice que le funciona, o -1 si aun hay pocos votos. */
@@ -386,6 +393,8 @@ public final class Community {
                 it.installs = Math.max(0, o.optInt("install_count", 0));
                 it.worksYes = Math.max(0, o.optInt("works_yes", 0));
                 it.worksNo = Math.max(0, o.optInt("works_no", 0));
+                it.recentYes = Math.max(0, o.optInt("recent_yes", 0));
+                it.recentNo = Math.max(0, o.optInt("recent_no", 0));
                 it.createdAt = parseDate(o.optString("created_at", ""));
                 it.updatedAt = parseDate(o.optString("updated_at", ""));
                 JSONObject au = o.optJSONObject("author");

@@ -20,7 +20,7 @@ export const gameRow = z.object({
 });
 
 export const PROFILE_SUMMARY_COLUMNS =
-  'id,package,title,description,screen_w,screen_h,device_model,binding_count,like_count,install_count,works_yes,works_no,status,created_at,updated_at,' +
+  'id,package,title,description,screen_w,screen_h,device_model,binding_count,like_count,install_count,works_yes,works_no,recent_yes,recent_no,tags,featured_at,status,created_at,updated_at,' +
   // Se nombra la relacion: perfiles y autores tambien se unen por los me gusta y los reportes.
   'author:authors!game_profiles_author_id_fkey(id,username,avatar_url),game:games(name)';
 export const PROFILE_COLUMNS = `${PROFILE_SUMMARY_COLUMNS},conf`;
@@ -40,6 +40,10 @@ export const profileSummaryRow = z.object({
   install_count: z.number().int(),
   works_yes: z.number().int(),
   works_no: z.number().int(),
+  recent_yes: z.number().int(),
+  recent_no: z.number().int(),
+  tags: z.array(z.string()),
+  featured_at: z.string().nullable(),
   status: z.enum(['published', 'hidden']),
   created_at: z.string(),
   updated_at: z.string(),
@@ -63,6 +67,24 @@ export const reportedRow = z.object({
   created_at: z.string(),
 });
 
+export const commentRow = z.object({
+  id: z.uuid(),
+  profile_id: z.uuid(),
+  body: z.string(),
+  created_at: z.string(),
+  author: authorRow.nullable(),
+});
+export const COMMENT_COLUMNS = 'id,profile_id,body,created_at,author:authors(id,username,avatar_url)';
+
+export const versionRow = z.object({
+  version: z.number().int(),
+  title: z.string(),
+  conf: z.string(),
+  created_at: z.string(),
+});
+
+export type CommentRow = z.infer<typeof commentRow>;
+export type VersionRow = z.infer<typeof versionRow>;
 export type AuthorRow = z.infer<typeof authorRow>;
 export type GameRow = z.infer<typeof gameRow>;
 export type ProfileSummaryRow = z.infer<typeof profileSummaryRow>;

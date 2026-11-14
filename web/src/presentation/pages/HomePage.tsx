@@ -3,6 +3,8 @@ import { ButtonLink, ExternalLink } from '../components/ui/Button';
 import { GamepadIcon, PlayStoreIcon } from '../components/ui/icons';
 import { PageSpinner } from '../components/ui/Spinner';
 import { GameCard } from '../components/profile/GameCard';
+import { ProfileCard } from '../components/profile/ProfileCard';
+import { useFeatured } from '../queries/community';
 import { useLinks } from '../di/ServicesContext';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { useGames } from '../queries/games';
@@ -36,6 +38,20 @@ function TopGames() {
   );
 }
 
+/** Perfiles que ha destacado un admin (la seccion no aparece si no hay). */
+function Featured() {
+  const { data } = useFeatured();
+  if (!data?.length) return null;
+  return (
+    <section aria-labelledby="featured" className="space-y-6">
+      <h2 id="featured" className="text-center text-2xl font-bold sm:text-3xl">Perfiles destacados</h2>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {data.map((p) => <ProfileCard key={p.id} profile={p} showGame />)}
+      </div>
+    </section>
+  );
+}
+
 export default function HomePage() {
   useDocumentTitle();
   const links = useLinks();
@@ -60,6 +76,8 @@ export default function HomePage() {
           <ButtonLink to={paths.games} variant="secondary" size="lg">Ver perfiles de juegos</ButtonLink>
         </div>
       </section>
+
+      <Featured />
 
       <section aria-labelledby="features" className="space-y-8">
         <h2 id="features" className="text-center text-2xl font-bold sm:text-3xl">Todo lo que necesitas</h2>

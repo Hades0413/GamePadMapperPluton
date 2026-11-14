@@ -34,6 +34,7 @@ export class SupabaseProfileRepository implements ProfileRepository {
     if (filters.search) request = request.or(`title.ilike.*${filters.search}*,description.ilike.*${filters.search}*`);
     if (filters.model) request = request.ilike('device_model', filters.model.replace(/[\\%_]/g, '\\$&'));
     else if (filters.brand) request = request.ilike('device_model', `${filters.brand.replace(/[\\%_]/g, '\\$&')} %`);
+    if (filters.tag) request = request.contains('tags', [filters.tag]);
     // Misma proporcion de pantalla (2 % de margen): estos perfiles encajan tal cual.
     if (filters.ratio) {
       request = request.gte('screen_ratio', +(filters.ratio * 0.98).toFixed(3)).lte('screen_ratio', +(filters.ratio * 1.02).toFixed(3));

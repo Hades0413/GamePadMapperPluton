@@ -1,4 +1,5 @@
-import { worksShare, type GameProfileSummary } from '@domain/profile/GameProfile';
+import { recentlyBroken, worksShare, type GameProfileSummary } from '@domain/profile/GameProfile';
+import { TagChips } from './CommunitySections';
 import { Link } from 'react-router';
 import { sameRatio, type Screen } from '@domain/profile/conf/fit';
 import { ratioLabel } from '../../lib/device';
@@ -35,6 +36,11 @@ export function ProfileCard({
           {profile.deviceModel ? `${profile.deviceModel} · ` : ''}{ratioLabel(profile.screen)}
         </span>
         {fits && <span className="rounded-md bg-success/15 px-2 py-0.5 font-medium text-success">Encaja con tu pantalla</span>}
+        {profile.featuredAt && <span className="rounded-md bg-warning/20 px-2 py-0.5 font-medium text-warning">★ Destacado</span>}
+        {recentlyBroken(profile) && (
+          <span className="rounded-md bg-danger/15 px-2 py-0.5 font-medium text-danger">Últimamente no funciona</span>
+        )}
+        <TagChips tags={profile.tags} max={2} />
         {profile.installCount > 0 && (
           <span className="inline-flex items-center gap-1 rounded-md bg-surface-2 px-2 py-0.5 text-muted"
             title={`${profile.installCount} instalaciones desde la app`}>

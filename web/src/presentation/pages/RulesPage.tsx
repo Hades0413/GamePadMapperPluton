@@ -12,6 +12,7 @@ export default function RulesPage() {
         <li>No hacer <strong>spam</strong>: ni publicidad, ni enlaces, ni el mismo perfil muchas veces.</li>
         <li>No subir como tuyo el trabajo de otra persona sin su permiso.</li>
         <li>No usar los perfiles para hacer trampas que el juego prohíba.</li>
+        <li>En los <strong>comentarios</strong>: ayuda o da tu opinión sobre el perfil; nada de insultos, spam ni datos personales.</li>
       </ul>
 
       <h2>Moderación</h2>
@@ -19,7 +20,8 @@ export default function RulesPage() {
         <li>Cualquier usuario con sesión puede <strong>reportar</strong> un perfil.</li>
         <li>Un perfil con <strong>3 reportes se oculta automáticamente</strong> hasta que lo revisa la moderación.</li>
         <li>La moderación puede ocultar o borrar perfiles y <strong>bloquear</strong> cuentas que incumplan estas normas.</li>
-        <li>Para evitar abusos hay límites: 10 perfiles nuevos al día y 100 en total por cuenta.</li>
+        <li>Para evitar abusos hay límites: 10 perfiles nuevos al día y 100 en total por cuenta, y 30 comentarios al día.</li>
+        <li>El autor de un perfil puede borrar los comentarios de su perfil; la moderación, cualquiera.</li>
       </ul>
 
       <h2>Licencia de los perfiles</h2>

@@ -2,6 +2,9 @@ import type {
   DeleteAccount, GetCurrentAccount, ObserveSession, SignInWithGitHub, SignOut, TakeReturnPath,
 } from '@application/auth/AuthUseCases';
 import type { GetAuthor } from '@application/authors/GetAuthor';
+import type {
+  AddComment, DeleteComment, FeatureProfile, ListComments, ListFeaturedProfiles, ListVersions, SetProfileTags,
+} from '@application/community/CommunityUseCases';
 import type { FillGameImages } from '@application/games/FillGameImages';
 import type { GetGame } from '@application/games/GetGame';
 import type { ListGames } from '@application/games/ListGames';
@@ -49,6 +52,13 @@ export interface UseCases {
   readonly setGameImage: SetGameImage;
   readonly listPlayScreenshots: ListPlayScreenshots;
   readonly useBackgroundFromPlay: UseBackgroundFromPlay;
+  readonly listComments: ListComments;
+  readonly addComment: AddComment;
+  readonly deleteComment: DeleteComment;
+  readonly listVersions: ListVersions;
+  readonly setProfileTags: SetProfileTags;
+  readonly listFeaturedProfiles: ListFeaturedProfiles;
+  readonly featureProfile: FeatureProfile;
 }
 
 export interface SiteLinks {

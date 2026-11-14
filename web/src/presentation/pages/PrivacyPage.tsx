@@ -31,6 +31,15 @@ export default function PrivacyPage() {
           <strong> comprobar si hay versiones nuevas</strong> en GitHub (esto último se puede desactivar en Ajustes).
           Esas peticiones no llevan datos tuyos.
         </li>
+        <li>
+          Al <strong>instalar un perfil de la comunidad</strong> o responder <strong>«¿Te funcionó?»</strong>, la app
+          envía el perfil, tu respuesta y un <strong>número de instalación aleatorio</strong> que crea la propia app
+          (no identifica tu teléfono ni a ti). Sirve solo para contar instalaciones y votos, una vez por instalación.
+        </li>
+        <li>
+          El <strong>giroscopio, el teclado y el ratón</strong> se leen solo para mover la cámara o tocar donde
+          configuras; no se guardan ni se envían.
+        </li>
       </ul>
 
       <h2>Esta web</h2>
@@ -51,6 +60,10 @@ export default function PrivacyPage() {
           sitios. Los usuarios no suben imágenes.
         </li>
         <li>Guardamos qué perfiles te gustan y los reportes que haces (estos solo los ve la moderación).</li>
+        <li>
+          Los <strong>comentarios</strong> que escribes son públicos, con tu nombre de GitHub. Puedes borrarlos cuando
+          quieras (y también el autor del perfil y la moderación). Se borran con tu cuenta.
+        </li>
         <li>
           La sesión se guarda en el almacenamiento local de tu navegador. No usamos cookies de seguimiento,
           publicidad ni analíticas.

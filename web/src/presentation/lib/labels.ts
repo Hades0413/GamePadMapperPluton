@@ -1,4 +1,5 @@
 import type { BindingType } from '@domain/profile/conf/ProfileConfig';
+import type { ProfileTag } from '@domain/profile/GameProfile';
 import type { ReportReason } from '@domain/report/ReportReason';
 
 /** Mismos nombres que usa la app. */
@@ -23,10 +24,33 @@ const BUTTON_LABEL: Record<string, string> = {
   RS: 'Stick der.',
 };
 
+const MOUSE_LABEL: Record<string, string> = {
+  MOUSE_LEFT: 'Clic izquierdo',
+  MOUSE_RIGHT: 'Clic derecho',
+  MOUSE_MIDDLE: 'Clic de la rueda',
+  MOUSE_WHEEL_UP: 'Rueda ↑',
+  MOUSE_WHEEL_DOWN: 'Rueda ↓',
+};
+
+export const TAG_LABEL: Record<ProfileTag, string> = {
+  competitivo: 'Competitivo',
+  casual: 'Casual',
+  zurdo: 'Para zurdos',
+  'una-mano': 'Una mano',
+  'sin-gatillos': 'Sin gatillos',
+  tablet: 'Tablet',
+  giroscopio: 'Giroscopio',
+  'teclado-raton': 'Teclado y ratón',
+  xbox: 'Mando Xbox',
+  playstation: 'Mando PlayStation',
+};
+
 export function buttonLabel(key: string): string {
   if (BUTTON_LABEL[key]) return BUTTON_LABEL[key];
   if (key.startsWith('AXIS_')) return `Eje ${key.slice(5)}`;
   if (key.startsWith('BTN_')) return `Botón ${key.slice(4)}`;
+  if (key.startsWith('KB_')) return `Tecla ${key.slice(3)}`;
+  if (key.startsWith('MOUSE_')) return MOUSE_LABEL[key] ?? `Ratón ${key.slice(6)}`;
   return key;
 }
 
