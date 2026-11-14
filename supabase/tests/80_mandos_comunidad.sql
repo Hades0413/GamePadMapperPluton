@@ -42,7 +42,9 @@ select t.fails($q$select * from private.canonical_sdl('hola')$q$, 'No parece una
 select set_config('test.uid', '', false);
 set role anon;
 select t.fails(format('select public.submit_controller_mapping(%L)', current_setting('test.sdl')), 'permission denied');
+select t.fails('select public.delete_controller_mapping(gen_random_uuid())', 'permission denied');
 select t.fails('select * from public.admin_controller_mappings()', 'permission denied');
+select t.fails('select public.admin_review_controller_mapping(gen_random_uuid(), true)', 'permission denied');
 select t.fails('select * from private.canonical_sdl(''x'')', 'permission denied');
 select t.fails('insert into public.controller_mappings (guid, name, platform, mapping, author_id) values (''x'', ''x'', ''Linux'', ''x'', gen_random_uuid())', 'permission denied');
 reset role;
@@ -151,6 +153,18 @@ update public.authors set is_banned = true where id = 'a0000000-0000-0000-0000-0
 select set_config('test.uid', '', false);
 set role anon;
 select t.check((select count(*) = 0 from public.controller_mappings), 'los de un bloqueado no se ven');
+reset role;
+-- Un bloqueado no envia ni borra (private.require_author), aunque tenga sesion.
+set role authenticated;
+select set_config('test.uid', 'a0000000-0000-0000-0000-000000000025', false);
+select t.fails(format('select public.submit_controller_mapping(%L)', current_setting('test.sdl')), 'BANNED');
+select t.fails(format('select public.delete_controller_mapping(%L)',
+    (select id from public.controller_mappings where status = 'pending' limit 1)), 'BANNED');
+-- Sesion sin cuenta de autor (usuario inexistente): tampoco.
+select set_config('test.uid', 'a0000000-0000-0000-0000-0000000000ff', false);
+select t.fails(format('select public.submit_controller_mapping(%L)', current_setting('test.sdl')), 'AUTH_REQUIRED');
+select set_config('test.uid', '', false);
+select t.fails(format('select public.submit_controller_mapping(%L)', current_setting('test.sdl')), 'AUTH_REQUIRED');
 reset role;
 update public.authors set is_banned = false where id = 'a0000000-0000-0000-0000-000000000025';
 
