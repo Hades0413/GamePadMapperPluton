@@ -6,7 +6,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import { parse, unwrap } from './errors';
 import { toComment, toProfileSummary, toVersion } from './mappers';
-import { COMMENT_COLUMNS, commentRow, PROFILE_SUMMARY_COLUMNS, profileSummaryRow, versionRow } from './rows';
+import { COMMENT_COLUMNS, commentRow, profileSummaryRow, readProfiles, summaryColumns, versionRow } from './rows';
 
 export class SupabaseCommunityRepository implements CommunityRepository {
   readonly #db: SupabaseClient;
@@ -44,9 +44,9 @@ export class SupabaseCommunityRepository implements CommunityRepository {
   }
 
   async listFeatured(limit: number): Promise<readonly GameProfileSummary[]> {
-    const result = await this.#db.from('game_profiles').select(PROFILE_SUMMARY_COLUMNS)
+    const result = await readProfiles(() => this.#db.from('game_profiles').select(summaryColumns())
       .eq('status', 'published').not('featured_at', 'is', null)
-      .order('featured_at', { ascending: false }).limit(limit);
+      .order('featured_at', { ascending: false }).limit(limit));
     return parse(z.array(profileSummaryRow), unwrap(result)).map(toProfileSummary);
   }
 

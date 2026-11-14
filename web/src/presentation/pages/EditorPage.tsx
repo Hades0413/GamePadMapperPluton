@@ -1,13 +1,12 @@
 import { isValidPackage } from '@domain/game/Game';
 import { profileFileName, TITLE_MAX } from '@domain/profile/GameProfile';
-import { CONF_MAX_BINDINGS, type Binding, type ProfileConfig } from '@domain/profile/conf/ProfileConfig';
-import { newBinding, nextFreeKey } from '@domain/profile/conf/editConf';
+import type { ProfileConfig } from '@domain/profile/conf/ProfileConfig';
 import { serializeConf } from '@domain/profile/conf/serializeConf';
 import { validateConf } from '@domain/profile/conf/validateConf';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { BindingPanel } from '../components/editor/BindingPanel';
-import { EditorCanvas } from '../components/editor/EditorCanvas';
+import { PlacementArea } from '../components/editor/PlacementArea';
+import { ReferenceImagePicker } from '../components/editor/ReferenceImagePicker';
 import { SettingsPanel } from '../components/editor/SettingsPanel';
 import { StartScreen } from '../components/editor/StartScreen';
 import { GameIcon } from '../components/profile/GameIcon';
@@ -17,7 +16,7 @@ import { CopyIcon, DownloadIcon, UploadIcon } from '../components/ui/icons';
 import { PageSpinner } from '../components/ui/Spinner';
 import { useT } from '../i18n/I18nContext';
 import { copyText, downloadText } from '../lib/files';
-import { buttonLabel, shortLabel } from '../lib/labels';
+import { useReferenceImage } from '../lib/referenceImage';
 import { loadDraft, saveDraft, UPLOAD_DRAFT_KEY } from '../lib/sessionDraft';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { useAccount } from '../queries/account';
@@ -80,7 +79,6 @@ function Editor({
   const [, setParams] = useSearchParams();
   const [config, setConfig] = useState<ProfileConfig | null>(initial);
   const [origin, setOrigin] = useState(originId);
-  const [selected, setSelected] = useState<number | null>(initial && initial.bindings.length > 0 ? 0 : null);
   const [overGame, setOverGame] = useState(true);
   const [copied, setCopied] = useState(false);
 
@@ -89,6 +87,8 @@ function Editor({
   const game = useGame(config && isValidPackage(config.packageName) ? config.packageName : undefined);
   const community = useProfile(origin ?? undefined);
   const { data: account } = useAccount();
+  // Imagen de referencia: solo en este navegador (no va al borrador ni se sube).
+  const reference = useReferenceImage();
 
   // Guarda el trabajo (solo si es valido) para no perderlo al recargar.
   useEffect(() => {
@@ -96,26 +96,15 @@ function Editor({
   }, [config, result, text, origin]);
 
   if (!config || !result) {
-    return <StartScreen notice={notice} onStart={(c) => { setConfig(c); setSelected(c.bindings.length > 0 ? 0 : null); }} />;
+    return <StartScreen notice={notice} onStart={setConfig} />;
   }
 
-  const background = overGame ? (game.data?.backgroundUrl ?? null) : null;
-  const sel = selected !== null ? config.bindings[selected] : undefined;
-  const setBindings = (bindings: readonly Binding[]) => setConfig({ ...config, bindings });
-  const replace = (index: number, b: Binding) => setBindings(config.bindings.map((x, i) => (i === index ? b : x)));
-  const remove = (index: number) => {
-    setBindings(config.bindings.filter((_, i) => i !== index));
-    setSelected(config.bindings.length > 1 ? Math.min(index, config.bindings.length - 2) : null);
-  };
-  const add = () => {
-    setBindings([...config.bindings, newBinding(nextFreeKey(config.bindings), config.screen)]);
-    setSelected(config.bindings.length);
-  };
+  const background = reference.url ?? (overGame ? (game.data?.backgroundUrl ?? null) : null);
   const reset = () => {
     saveDraft(DRAFT_KEY, null);
+    reference.clear();
     setConfig(null);
     setOrigin(null);
-    setSelected(null);
     setParams({}, { replace: true });
   };
 
@@ -127,13 +116,15 @@ function Editor({
     && community.data.packageName === config.packageName;
 
   const publish = () => {
-    const prev = loadDraft(UPLOAD_DRAFT_KEY, { conf: '', packageName: '', gameName: '', title: '', description: '', deviceModel: '' });
+    const prev = loadDraft(UPLOAD_DRAFT_KEY, { conf: '', packageName: '', gameName: '', title: '', description: '', deviceModel: '', controllerModel: '' });
     saveDraft(UPLOAD_DRAFT_KEY, { ...prev, conf: normalized, packageName: config.packageName, title: prev.packageName === config.packageName ? prev.title : title });
     void navigate(paths.upload(config.packageName));
   };
   const saveChanges = () => {
     if (!origin) return;
-    saveDraft(`gpm.editFromApp.${origin}`, { conf: normalized, model: community.data?.deviceModel ?? '' });
+    saveDraft(`gpm.editFromApp.${origin}`, {
+      conf: normalized, model: community.data?.deviceModel ?? '', controller: community.data?.controllerModel ?? '',
+    });
     void navigate(paths.editProfile(origin));
   };
 
@@ -150,7 +141,7 @@ function Editor({
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {game.data?.backgroundUrl && (
+          {game.data?.backgroundUrl && !reference.url && (
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" className="size-4 accent-primary" checked={overGame} onChange={(e) => setOverGame(e.target.checked)} />
               {t('Sobre el juego')}
@@ -160,35 +151,11 @@ function Editor({
         </div>
       </div>
 
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <div className="min-w-0 space-y-3">
-          <EditorCanvas config={config} background={background} selected={selected} onSelect={setSelected}
-            onChange={replace} onDelete={remove} />
-          <p className="text-xs text-muted">
-            {t('Arrastra los círculos con el ratón o el dedo. Con el teclado: flechas para mover (Mayús = pasos grandes) y Supr para borrar.')}
-            {' '}{t('Morado: botones · Amarillo: capas (mantener otro botón) · Turquesa: joystick, cámara y deslizar.')}
-            {background && ` ${t('La captura del juego es orientativa.')}`}
-          </p>
-          <div className="flex flex-wrap items-center gap-2" role="group" aria-label={t('Botones del perfil')}>
-            {config.bindings.map((b, i) => (
-              <button key={`${i}:${b.key}`} type="button" aria-pressed={i === selected} onClick={() => setSelected(i)}
-                title={buttonLabel(b.key, t)}
-                className={`rounded-lg border px-2.5 py-1 font-mono text-xs ${i === selected ? 'border-primary bg-primary/15 text-ink' : 'border-line text-muted hover:text-ink'}`}>
-                {b.modifier ? `${shortLabel(b.modifier)}+${shortLabel(b.button)}` : shortLabel(b.button)}
-              </button>
-            ))}
-            <Button size="sm" variant="secondary" onClick={add} disabled={config.bindings.length >= CONF_MAX_BINDINGS}>
-              + {t('Añadir botón')}
-            </Button>
-          </div>
-        </div>
+      <ReferenceImagePicker active={!!reference.url} problem={reference.problem}
+        onPick={(f) => void reference.pick(f)} onClear={reference.clear} />
 
-        <aside className="card p-4 lg:sticky lg:top-20" aria-label={t('Botón seleccionado')}>
-          {sel && selected !== null
-            ? <BindingPanel key={selected} binding={sel} screen={config.screen} onChange={(b) => replace(selected, b)} onDelete={() => remove(selected)} />
-            : <p className="text-sm text-muted">{t('Selecciona un botón del dibujo o de la lista, o añade uno nuevo.')}</p>}
-        </aside>
-      </div>
+      <PlacementArea config={config} background={background} onChange={setConfig}
+        backgroundNote={reference.url ? t('Imagen de referencia (solo en este navegador).') : t('La captura del juego es orientativa.')} />
 
       <section className="card space-y-3 p-4" aria-live="polite">
         <div className="flex flex-wrap items-center justify-between gap-2">

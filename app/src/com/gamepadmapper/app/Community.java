@@ -247,23 +247,26 @@ public final class Community {
     }
 
     /** Abre /subir con el perfil ya cargado. Va en el "#": nunca se envia a ningun servidor. */
-    public static String uploadUrl(String conf) {
-        return SITE + "/subir" + confFragment(conf);
+    public static String uploadUrl(String conf, String pad) {
+        return SITE + "/subir" + confFragment(conf, pad);
     }
 
     /** Abre la edicion del perfil publicado 'id' con la version de este telefono. */
-    public static String editUrl(String id, String conf) {
+    public static String editUrl(String id, String conf, String pad) {
         if (!UUID.matcher(id).matches()) throw new IllegalArgumentException("id");
-        return SITE + "/perfil/" + id + "/editar" + confFragment(conf);
+        return SITE + "/perfil/" + id + "/editar" + confFragment(conf, pad);
     }
 
-    private static String confFragment(String conf) {
+    /** #conf=...&modelo=...&mando=... (el mando ya limpio por ProfileMeta; "" = sin mando). */
+    private static String confFragment(String conf, String pad) {
         byte[] b = conf.replace("\r\n", "\n").getBytes(StandardCharsets.UTF_8);
         String model = deviceModel();
         String frag = "#conf=" + android.util.Base64.encodeToString(b,
                 android.util.Base64.URL_SAFE | android.util.Base64.NO_WRAP | android.util.Base64.NO_PADDING);
         try {
             if (!model.isEmpty()) frag += "&modelo=" + URLEncoder.encode(model, "UTF-8").replace("+", "%20");
+            String p = ProfileMeta.cleanPad(pad);
+            if (!p.isEmpty()) frag += "&mando=" + URLEncoder.encode(p, "UTF-8").replace("+", "%20");
         } catch (java.io.UnsupportedEncodingException ignored) {
             // UTF-8 siempre existe
         }

@@ -7,9 +7,9 @@ name: escritorio-app
 on:
   push:
     branches: [main, develop]
-    paths: ['desktop/app/**', '.github/workflows/escritorio-app.yml']
+    paths: ['desktop/app/**', 'mapper/src/core/**', 'tests/engine/**', '.github/workflows/escritorio-app.yml']
   pull_request:
-    paths: ['desktop/app/**', '.github/workflows/escritorio-app.yml']
+    paths: ['desktop/app/**', 'mapper/src/core/**', 'tests/engine/**', '.github/workflows/escritorio-app.yml']
   workflow_dispatch:
     inputs:
       publicar:
@@ -62,7 +62,7 @@ jobs:
         run: |
           sudo modprobe uinput
           sudo env "PATH=$PATH" CARGO_HOME="$HOME/.cargo" RUSTUP_HOME="$HOME/.rustup" \
-            cargo test -p gpm-nucleo --test uinput --test salida_uinput -- --ignored --nocapture --test-threads=1
+            cargo test -p gpm-nucleo --test uinput --test salida_uinput --test toques_uinput -- --ignored --nocapture --test-threads=1
 
   ui:
     name: Interfaz (React)

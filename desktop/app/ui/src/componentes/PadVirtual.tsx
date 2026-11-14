@@ -23,7 +23,7 @@ export function PadVirtual({ pad, salida, compacto = false }: { pad: EstadoPad |
         <span className={`flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium ${salida?.activa
           ? 'bg-success/15 text-success' : 'bg-surface-2 text-muted'}`}>
           <span className={`size-1.5 rounded-full ${salida?.activa ? 'bg-success' : 'bg-line'}`} />
-          {tipo === 'ninguna' ? t('Sin mando virtual') : `${NOMBRE_SALIDA[tipo]} · ${salida?.activa ? t('Activo') : t('Inactivo')}`}
+          {tipo === 'ninguna' ? t('Sin mando virtual') : `${tipo === 'toques' ? t('Toques') : NOMBRE_SALIDA[tipo]} · ${salida?.activa ? t('Activo') : t('Inactivo')}`}
         </span>
       </div>
       <div className={compacto ? 'mx-auto max-w-[18rem]' : 'mx-auto max-w-[26rem]'}>

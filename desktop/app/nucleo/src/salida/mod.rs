@@ -6,9 +6,9 @@
 //! - Windows: ViGEmBus ([`windows`]) si esta instalado (Xbox 360 y DualShock 4).
 //! - [`simulada`]: en memoria, para pruebas.
 //!
-//! En la fase 2B llegaran los «toques» (pantalla tactil para juegos Android) como otro destino de
-//! la misma configuracion: por eso el tipo de salida es un enum abierto y la configuracion habla de
-//! controles ([`SalidaPad`]) y no de un dispositivo concreto.
+//! Los «toques» ([`TipoSalida::Toques`]) son otro destino de la misma configuracion: el estado del
+//! mando virtual pasa por el nucleo de toques ([`crate::toques`]) y sale como dedos en una
+//! [`PantallaToques`] (pantalla tactil virtual uinput en Linux, `InjectTouchInput` en Windows).
 
 use crate::mapeo::acciones::SalidaPad;
 use serde::{Deserialize, Serialize};
@@ -16,6 +16,10 @@ use std::io;
 
 #[cfg(target_os = "linux")]
 pub mod linux;
+#[cfg(target_os = "linux")]
+pub mod pantalla_linux;
+#[cfg(windows)]
+pub mod pantalla_windows;
 pub mod simulada;
 #[cfg(windows)]
 pub mod windows;
@@ -30,10 +34,17 @@ pub enum TipoSalida {
     Xbox360,
     Dualshock4,
     Switchpro,
+    /// Toques en la ventana de un juego Android (perfiles de la app), no un mando.
+    Toques,
 }
 
 impl TipoSalida {
     pub const VIRTUALES: [TipoSalida; 3] = [TipoSalida::Xbox360, TipoSalida::Dualshock4, TipoSalida::Switchpro];
+
+    /// ¿Es un mando virtual (y no los toques ni nada)?
+    pub fn es_mando(self) -> bool {
+        Self::VIRTUALES.contains(&self)
+    }
 }
 
 /// Estado del mando virtual: botones (bits de [`SalidaPad`]), sticks (-1..1, y positivo hacia
@@ -94,6 +105,8 @@ pub enum ErrorSalida {
     SinClienteVigem,
     #[error("Este tipo de mando virtual no está disponible en este sistema.")]
     NoDisponible,
+    #[error("No se sabe el tamaño del escritorio: los toques necesitan X11 o XWayland.")]
+    SinEscritorio,
     #[error("No se pudo crear el mando virtual: {0}")]
     Io(#[from] io::Error),
 }
@@ -122,11 +135,49 @@ pub trait Teclado: Send {
     fn tecla(&mut self, indice: usize, pulsada: bool) -> io::Result<()>;
 }
 
-/// Crea mandos virtuales y el teclado virtual del sistema.
+/// Un cambio de los dedos en pixeles del escritorio (los toques ya colocados en el destino).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ToquePixel {
+    Abajo {
+        slot: usize,
+        x: i32,
+        y: i32,
+    },
+    Mover {
+        slot: usize,
+        x: i32,
+        y: i32,
+    },
+    Arriba {
+        slot: usize,
+    },
+    /// Fin de un grupo de cambios (`tocando`: queda algun dedo apoyado).
+    Sync {
+        tocando: bool,
+    },
+}
+
+/// Pantalla tactil donde caen los toques (cubre el escritorio).
+pub trait PantallaToques: Send {
+    fn enviar(&mut self, ops: &[ToquePixel]) -> io::Result<()>;
+    /// Se llama a menudo: Windows cancela los dedos quietos si no se reenvian.
+    fn mantener(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+    /// Tamano del escritorio que cubre (los toques fuera se recortan).
+    fn escritorio(&self) -> (u32, u32);
+    /// Donde esta (`/dev/input/event23`, `InjectTouchInput`...), para mostrarlo.
+    fn descripcion(&self) -> String;
+}
+
+/// Crea mandos virtuales, el teclado virtual y la pantalla de toques del sistema.
 pub trait FabricaSalidas: Send {
     fn disponibilidad(&self) -> Vec<Disponibilidad>;
     fn crear(&mut self, tipo: TipoSalida) -> Result<Box<dyn SalidaVirtual>, ErrorSalida>;
     fn teclado(&mut self) -> Result<Box<dyn Teclado>, ErrorSalida>;
+    fn pantalla_toques(&mut self) -> Result<Box<dyn PantallaToques>, ErrorSalida> {
+        Err(ErrorSalida::NoDisponible)
+    }
 }
 
 /// La fabrica del sistema en el que se compila.

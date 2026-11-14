@@ -52,6 +52,15 @@ describe('SearchProfiles', () => {
       filters: { search: 'Fútbol 2', tag: 'zurdo', ratio: 2.22, model: 'Redmi Note 9' },
     });
   });
+
+  it('tipo de mando: solo los de la lista', async () => {
+    const { repo, calls } = fakeRepo();
+    const uc = new SearchProfiles(repo);
+    await uc.execute({ controllerType: 'playstation' });
+    await uc.execute({ controllerType: '8bitdo' });
+    await uc.execute({ controllerType: 'xbox),or(id.neq.0' as 'xbox' });
+    expect(calls.map((c) => c.filters.controllerType)).toEqual(['playstation', '8bitdo', '']);
+  });
 });
 
 describe('ListDeviceModels', () => {

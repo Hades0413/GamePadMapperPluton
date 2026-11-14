@@ -1,7 +1,7 @@
 import type { Author } from '@domain/author/Author';
 import type { Game } from '@domain/game/Game';
 import type { Comment, ProfileVersion } from '@domain/community/Community';
-import { isProfileTag, type GameProfile, type GameProfileSummary } from '@domain/profile/GameProfile';
+import { isControllerType, isProfileTag, type GameProfile, type GameProfileSummary } from '@domain/profile/GameProfile';
 import type { AuthorRow, CommentRow, GameRow, ProfileRow, ProfileSummaryRow, VersionRow } from './rows';
 
 /** Solo avatares de GitHub (la base de datos ya lo exige; se vuelve a comprobar aqui). */
@@ -36,6 +36,8 @@ export const toProfileSummary = (row: ProfileSummaryRow): GameProfileSummary => 
   author: row.author ? toAuthor(row.author) : null,
   screen: { width: row.screen_w, height: row.screen_h },
   deviceModel: row.device_model,
+  controllerModel: row.controller_model ?? null,
+  controllerType: row.controller_type && isControllerType(row.controller_type) ? row.controller_type : null,
   bindingCount: row.binding_count,
   likeCount: row.like_count,
   installCount: row.install_count,

@@ -24,7 +24,7 @@ fn sin_ruta(ruta: &str) -> String {
 
 /// `WM_CLASS` son dos cadenas terminadas en 0 (instancia y clase): se usa la clase.
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
-fn leer_wm_class(bytes: &[u8]) -> String {
+pub(crate) fn leer_wm_class(bytes: &[u8]) -> String {
     let partes: Vec<&[u8]> = bytes.split(|b| *b == 0).filter(|p| !p.is_empty()).collect();
     partes.last().map(|p| String::from_utf8_lossy(p).into_owned()).unwrap_or_default()
 }

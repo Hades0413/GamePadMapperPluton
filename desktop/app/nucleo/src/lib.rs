@@ -22,3 +22,4 @@ pub mod opciones;
 pub mod salida;
 pub mod servicio;
 pub mod sistema;
+pub mod toques;

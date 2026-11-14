@@ -26,10 +26,11 @@ export default function SearchPage() {
     model: filters.model,
     ratio: filters.onlyMine && myScreen ? ratioOf(myScreen) : null,
     tag: filters.tag,
+    controllerType: filters.controllerType,
   });
   const items = profiles.data?.pages.flatMap((p) => p.items) ?? [];
   const liked = useLiked(items.map((p) => p.id));
-  const filtering = !!(filters.search || filters.brand || filters.model || filters.onlyMine || filters.tag);
+  const filtering = !!(filters.search || filters.brand || filters.model || filters.onlyMine || filters.tag || filters.controllerType);
   useDocumentTitle(t('Buscar perfiles'), t('Busca perfiles de mando en todos los juegos: por texto, etiqueta, marca, modelo o pantalla.'));
 
   return (

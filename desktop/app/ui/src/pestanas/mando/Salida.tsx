@@ -7,9 +7,11 @@ import { ERROR } from '../../dominio/errores';
 import type { Disponibilidad, InfoApp, TipoSalida } from '../../dominio/tipos';
 import { useT } from '../../i18n/contexto';
 import type { PropsSeccion } from './comun';
+import { PanelToques } from './Toques';
 
 /** Elegir el mando virtual que produce este mando (o ninguno) y ver su estado. */
-export function Salida({ backend, info, estado, vivo, editar, ejecutar }: PropsSeccion) {
+export function Salida(props: PropsSeccion) {
+  const { backend, info, estado, vivo, editar, ejecutar } = props;
   const t = useT();
   const [disponibles, setDisponibles] = useState<Disponibilidad[]>([]);
   const [app, setApp] = useState<InfoApp | null>(null);
@@ -29,8 +31,10 @@ export function Salida({ backend, info, estado, vivo, editar, ejecutar }: PropsS
     xbox360: t('El más compatible: XInput en Windows, xpad en Linux. Recomendado para casi todos los juegos.'),
     dualshock4: t('Para juegos que muestran botones de PlayStation o lo piden. En Windows, sin panel táctil ni sensores.'),
     switchpro: t('Para emuladores y juegos que esperan un mando de Nintendo (solo Linux).'),
+    toques: t('Toques en un juego Android (Waydroid, emulador, scrcpy) con los perfiles de la app y de la comunidad.'),
   };
-  const tipos: TipoSalida[] = ['ninguna', 'xbox360', 'dualshock4', 'switchpro'];
+  const tipos: TipoSalida[] = ['ninguna', 'xbox360', 'dualshock4', 'switchpro', 'toques'];
+  const nombre = (tipo: TipoSalida) => (tipo === 'ninguna' ? t('Ninguno') : tipo === 'toques' ? t('Toques') : NOMBRE_SALIDA[tipo]);
   const motivo = (tipo: TipoSalida) => disponibles.find((d) => d.tipo === tipo && !d.disponible)?.motivo ?? null;
   const faltaVigem = disponibles.some((d) => d.motivo === ERROR.sinVigem || d.motivo === ERROR.sinClienteVigem);
   const sinPermiso = disponibles.some((d) => d.motivo === ERROR.sinUinput);
@@ -49,7 +53,7 @@ export function Salida({ backend, info, estado, vivo, editar, ejecutar }: PropsS
                   className={`cursor-pointer rounded-xl border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${activo
                     ? 'border-primary/80 bg-primary/10' : 'border-line bg-surface hover:border-primary/40'}`}>
                   <span className="flex items-center justify-between gap-2">
-                    <span className="font-semibold">{tipo === 'ninguna' ? t('Ninguno') : NOMBRE_SALIDA[tipo]}</span>
+                    <span className="font-semibold">{nombre(tipo)}</span>
                     <span className={`size-3 rounded-full border-2 ${activo ? 'border-primary bg-primary' : 'border-line'}`} />
                   </span>
                   <span className="mt-1 block text-xs text-muted">{descripcion[tipo]}</span>
@@ -58,12 +62,11 @@ export function Salida({ backend, info, estado, vivo, editar, ejecutar }: PropsS
               );
             })}
           </div>
-          <p className="mt-3 rounded-xl border border-dashed border-line px-3 py-2 text-xs text-muted">
-            {t('Próximamente: «Toques» para juegos Android (Waydroid, emuladores, scrcpy) con la misma configuración.')}
-          </p>
         </Tarjeta>
 
-        <Tarjeta titulo={t('Estado')}>
+        {elegido === 'toques' && <PanelToques {...props} />}
+
+        {elegido !== 'toques' && <Tarjeta titulo={t('Estado')}>
           {elegido === 'ninguna' ? (
             <p className="text-sm text-muted">{t('Sin mando virtual.')}</p>
           ) : (
@@ -71,8 +74,8 @@ export function Salida({ backend, info, estado, vivo, editar, ejecutar }: PropsS
               <p className="flex items-center gap-2">
                 <span className={`size-2.5 rounded-full ${vista?.activa ? 'bg-success' : vista?.error ? 'bg-danger' : 'bg-line'}`} />
                 <span className="font-medium">
-                  {vista?.activa ? t('{tipo} activo', { tipo: NOMBRE_SALIDA[elegido] })
-                    : vivo?.pausado ? t('En pausa') : t('{tipo} inactivo', { tipo: NOMBRE_SALIDA[elegido] })}
+                  {vista?.activa ? t('{tipo} activo', { tipo: nombre(elegido) })
+                    : vivo?.pausado ? t('En pausa') : t('{tipo} inactivo', { tipo: nombre(elegido) })}
                 </span>
                 {vista?.descripcion && <span className="font-mono text-xs text-muted">{vista.descripcion}</span>}
               </p>
@@ -93,9 +96,18 @@ export function Salida({ backend, info, estado, vivo, editar, ejecutar }: PropsS
               )}
             </div>
           )}
-        </Tarjeta>
+        </Tarjeta>}
+        {elegido === 'toques' && vista?.error && (
+          <div className="rounded-xl border border-danger/40 bg-danger/10 p-3 text-sm text-danger">
+            <p>{t(vista.error)}</p>
+            <button type="button" className={claseBoton('secundario', 'sm', 'mt-2')}
+              onClick={() => ejecutar(() => backend.reintentarSalida(info.id), (r) => (r.activa ? t('Toques listos') : t(r.error ?? '')))}>
+              {t('Reintentar')}
+            </button>
+          </div>
+        )}
 
-        {faltaVigem && (
+        {faltaVigem && elegido !== 'toques' && (
           <Tarjeta titulo={t('ViGEmBus (Windows)')}>
             <div className="space-y-2 text-sm text-muted">
               <p>{t('Para crear mandos virtuales en Windows hace falta el driver ViGEmBus de Nefarius. La app no lo incluye: instálalo tú desde su página oficial y reinicia la app.')}</p>

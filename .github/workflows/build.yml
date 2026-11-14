@@ -85,6 +85,7 @@ jobs:
         if: always()
         run: rm -rf "$RUNNER_TEMP/keystore" "$RUNNER_TEMP/ci-key"
 
+      # El mapping de R8 ya va dentro del AAB; se guarda aparte para traducir trazas del APK.
       - name: Guardar APK y AAB (descargables desde la ejecucion)
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -94,6 +95,7 @@ jobs:
             dist/*.apk
             dist/*.aab
             dist/*.zip
+            dist/*-mapping.txt
 
   # Unico job con permiso de escritura: sube al Release lo que compilo "build" (solo en tags v*).
   release:

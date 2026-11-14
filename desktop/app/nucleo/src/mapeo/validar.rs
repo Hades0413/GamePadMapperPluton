@@ -46,6 +46,8 @@ pub enum ErrorValidacion {
     Grande,
     #[error("El texto no es una configuración de mando válida.")]
     Json,
+    #[error("El destino de los toques no es válido.")]
+    Toques,
 }
 
 pub(crate) fn nombre_valido(s: &str, max: usize) -> bool {
@@ -98,6 +100,9 @@ pub fn validar(m: &mut MapeoMando) -> Result<(), ErrorValidacion> {
     }
     if !m.extras_sdl.iter().all(|(k, v)| nombre_valido(k, 32) && nombre_valido(v, 32)) {
         return Err(ErrorValidacion::Nombre);
+    }
+    if !m.toques.valido() {
+        return Err(ErrorValidacion::Toques);
     }
 
     let mut ids = BTreeSet::new();

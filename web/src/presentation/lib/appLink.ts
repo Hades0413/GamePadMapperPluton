@@ -1,4 +1,5 @@
 import { CONF_MAX_BYTES } from '@domain/profile/conf/ProfileConfig';
+import { isValidControllerModel, isValidDeviceModel } from '@domain/profile/GameProfile';
 import { decodeBase64Url } from './files';
 
 const FROM_APP = 'gpm.fromApp';
@@ -8,10 +9,23 @@ export interface AppLink {
   readonly conf: string | null;
   /** Modelo del telefono que envio la app (o null). */
   readonly model: string | null;
+  /** Mando que envio la app («Wireless Controller (054c:05c4)») o null. */
+  readonly controller: string | null;
+}
+
+/** Valor de texto del enlace (#...&clave=valor), decodificado; null si falta o no se puede leer. */
+function hashValue(hash: string, key: string): string | null {
+  const raw = new RegExp(`(?:^#|&)${key}=([^&]{1,180})`).exec(hash)?.[1];
+  if (!raw) return null;
+  try {
+    return decodeURIComponent(raw).replace(/\s+/g, ' ').trim().slice(0, 60) || null;
+  } catch {
+    return null;   // mal codificado: se ignora
+  }
 }
 
 /**
- * Lee lo que la app envia en el enlace (#conf=<base64url>&modelo=...) y lo quita de la barra de
+ * Lee lo que la app envia en el enlace (#conf=<base64url>&modelo=...&mando=...) y lo quita de la barra de
  * direcciones. Va en el "#" para que nunca se envie a ningun servidor. Si venia un perfil, se
  * recuerda en esta pestana que el usuario vino desde la app (para ofrecerle volver al terminar,
  * aunque entre medias inicie sesion con GitHub).
@@ -20,18 +34,14 @@ export function readAppLink(): AppLink {
   const hash = window.location.hash;
   const match = /(?:^#|&)conf=([^&]+)/.exec(hash);
   const conf = match?.[1] ? decodeBase64Url(match[1], CONF_MAX_BYTES) : null;
-  const rawModel = /(?:^#|&)modelo=([^&]{1,180})/.exec(hash)?.[1];
-  let model: string | null = null;
-  if (rawModel) {
-    try {
-      model = decodeURIComponent(rawModel).slice(0, 60);
-    } catch {
-      // modelo mal codificado: se ignora
-    }
-  }
+  // Modelo y mando: solo si cumplen las reglas de la base de datos (si no, se ignoran).
+  const rawModel = hashValue(hash, 'modelo');
+  const rawController = hashValue(hash, 'mando');
+  const model = rawModel && isValidDeviceModel(rawModel) ? rawModel : null;
+  const controller = rawController && isValidControllerModel(rawController) ? rawController : null;
   if (match) history.replaceState(history.state, '', window.location.pathname + window.location.search);
   if (conf) setFromApp(true);
-  return { conf, model };
+  return { conf, model, controller };
 }
 
 export function cameFromApp(): boolean {

@@ -49,6 +49,19 @@ else
     exit 1
 fi
 
+echo "== Datos del perfil al compartirlo (# modelo, # mando, # pantalla)"
+# La app pone esos comentarios al principio al compartir/exportar/subir: la app y gpmapper
+# (tambien los antiguos) deben leer el perfil exactamente igual que sin ellos.
+"$jdk/bin/javac" -nowarn -encoding UTF-8 -cp "$jar$sep$out/cls" -sourcepath "$root/app/src" -d "$out/cls" "$here/ProfileMetaTest.java"
+"$jdk/bin/java" -cp "$out/cls$sep$jar" ProfileMetaTest "$here/fixture.conf" "$out/meta.conf"
+"$out/gpmapper" -c "$out/meta.conf" 2>/dev/null > "$out/c-meta.raw"
+if diff -u "$out/c.raw" "$out/c-meta.raw"; then
+    echo "gpmapper: los comentarios de datos no cambian nada"
+else
+    echo "gpmapper lee distinto el perfil con los datos" >&2
+    exit 1
+fi
+
 echo "== Otras pantallas (app y gpmapper adaptan igual)"
 # sw,sh,w,h,x,y: misma proporcion, mas ancha (21:9), mas estrecha (16:9), vertical, bordes y centro.
 cases="2400,1080,2400,1080,1932,960 2400,1080,1200,540,1932,960 2400,1080,2560,1080,1932,960

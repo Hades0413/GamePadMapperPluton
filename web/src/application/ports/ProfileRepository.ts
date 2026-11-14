@@ -12,6 +12,8 @@ export interface NewProfile {
   readonly conf: string;
   /** Modelo del telefono ('' = sin indicar). */
   readonly deviceModel: string;
+  /** Mando con el que se hizo ('' = sin indicar). */
+  readonly controllerModel: string;
 }
 
 export interface ProfileChanges {
@@ -19,6 +21,8 @@ export interface ProfileChanges {
   readonly description: string;
   readonly conf: string;
   readonly deviceModel: string;
+  /** Mando ('' = quitarlo). */
+  readonly controllerModel: string;
 }
 
 /** Proporcion de pantalla (lado largo / corto) para filtrar perfiles que encajan. */

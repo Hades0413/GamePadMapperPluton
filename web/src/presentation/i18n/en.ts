@@ -627,4 +627,31 @@ export const EN: Readonly<Record<string, string>> = {
   // Web instalable
   'Instalar la web': 'Install the web app',
   'Instala la web en tu dispositivo para abrirla como una app.': 'Install the site on your device to open it like an app.',
+
+  // Mando de cada perfil
+  'Mando (opcional)': 'Controller (optional)',
+  'El mando con el que lo hiciste (Xbox, DualSense, 8BitDo…). Se rellena solo si el perfil viene de la app.':
+    'The controller you made it with (Xbox, DualSense, 8BitDo…). Filled in automatically if the profile comes from the app.',
+  'Ej.: Xbox Wireless Controller': 'E.g. Xbox Wireless Controller',
+  'Mando: {name}': 'Controller: {name}',
+  'Tipo de mando': 'Controller type',
+  'Todos los mandos': 'All controllers',
+  'Xbox': 'Xbox',
+  'PlayStation': 'PlayStation',
+  'Nintendo': 'Nintendo',
+  '8BitDo': '8BitDo',
+  'Genérico': 'Generic',
+  'Otro': 'Other',
+
+  // Colocar botones visualmente (subir / editar) e imagen de referencia
+  'Colocar botones visualmente': 'Place buttons visually',
+  'Aplicar al perfil': 'Apply to profile',
+  'Usar imagen de referencia': 'Use a reference image',
+  'Cambiar imagen de referencia': 'Change reference image',
+  'Quitar imagen': 'Remove image',
+  'La imagen solo se usa aquí para colocar los botones; no se sube ni se guarda.':
+    'The image is only used here to place the buttons; it is not uploaded or saved.',
+  'La imagen pesa más de 10 MB.': 'The image is larger than 10 MB.',
+  'Elige una imagen JPG, PNG o WebP.': 'Choose a JPG, PNG or WebP image.',
+  'Imagen de referencia (solo en este navegador).': 'Reference image (only in this browser).',
 };

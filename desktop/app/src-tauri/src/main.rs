@@ -57,6 +57,9 @@ fn main() {
     if let Some(juegos) = AlmacenJuegos::por_defecto() {
         servicio = servicio.con_juegos(juegos);
     }
+    if let Some(perfiles) = nucleo::toques::perfiles::AlmacenPerfiles::por_defecto() {
+        servicio = servicio.con_toques(perfiles, nucleo::toques::config::ConfigToques::ruta());
+    }
     log::info!(
         "Gamepad Mapper Pluton {} — mapeos en {}",
         env!("CARGO_PKG_VERSION"),
@@ -134,6 +137,17 @@ fn main() {
             comandos::guardar_opciones,
             comandos::leer_registro,
             comandos::abrir_enlace,
+            comandos::listar_ventanas,
+            comandos::estado_toques,
+            comandos::pausar_toques,
+            comandos::config_toques,
+            comandos::guardar_config_toques,
+            comandos::perfiles_toques,
+            comandos::ver_perfil_toques,
+            comandos::importar_perfil_toques,
+            comandos::borrar_perfil_toques,
+            comandos::buscar_comunidad_toques,
+            comandos::dispositivos_adb,
             actualizar::buscar_actualizacion,
             actualizar::instalar_actualizacion,
         ])
