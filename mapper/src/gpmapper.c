@@ -341,8 +341,9 @@ static int load_profile(const char *path, profile_t *p) {
         if (!strcasecmp(key, "rumble")) { p->rumble = clampd(atof(val), 0, 1); continue; }
         // Solo para el modo sin root (giroscopio y raton): aqui no aplican.
         if (!strcasecmp(key, "gyro") || !strcasecmp(key, "gyro_button") || !strcasecmp(key, "gyro_invert")
-            || !strcasecmp(key, "mouse")) continue;
+            || !strcasecmp(key, "mouse") || !strcasecmp(key, "players")) continue;
 
+        if (!strncasecmp(key, "P2_", 3) || !strncasecmp(key, "KB_", 3) || !strncasecmp(key, "MOUSE_", 6)) continue;  // solo sin root
         // Capa: "MOD+BOTON" (el '+' final de AXIS_9+ no cuenta).
         int mod = -1;
         char *plus = strchr(key + 1, '+');
@@ -358,7 +359,8 @@ static int load_profile(const char *path, profile_t *p) {
         }
 
         // Teclado (KB_*) y raton (MOUSE_*): solo los usa el modo sin root.
-        if (!strncasecmp(key, "KB_", 3) || !strncasecmp(key, "MOUSE_", 6)) continue;
+        // y el jugador 2 (P2_*), que necesita distinguir mandos: solo sin root.
+        if (!strncasecmp(key, "KB_", 3) || !strncasecmp(key, "MOUSE_", 6) || !strncasecmp(key, "P2_", 3)) continue;
         int code = -1, axis = -1, dir = 0;
         int kind = parse_token(key, &code, &axis, &dir);
         if (kind < 0) { logf_("%s:%d: boton desconocido '%s'", path, ln, key); continue; }

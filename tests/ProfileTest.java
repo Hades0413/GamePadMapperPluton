@@ -48,6 +48,8 @@ public class ProfileTest {
         check(Math.abs(p.gyro - 1.2f) < 1e-4 && "L2".equals(p.gyroButton) && p.gyroInvert && Math.abs(p.mouse - 0.8f) < 1e-4,
                 "gyro / gyro_button / gyro_invert / mouse");
         check(p.bindings.containsKey("KB_W") && p.bindings.containsKey("MOUSE_LEFT"), "teclado y raton");
+        check(p.players == 2 && Profile.STICK.equals(p.bindings.get("P2_LS").type) && p.bindings.containsKey("P2_L2+P2_B"),
+                "dos jugadores");
 
         // Ida y vuelta
         p.file = new File(tmp, "a.conf");

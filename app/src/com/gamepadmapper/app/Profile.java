@@ -43,6 +43,8 @@ import java.util.Map;
  * mouse = 1.00           # opcional, solo sin root: el raton mueve la camara (0 = no)
  * KB_W = tap 300 700     # tecla de un teclado fisico (solo sin root)
  * MOUSE_LEFT = tap 1900 800   # boton del raton (solo sin root)
+ * players = 2            # opcional, solo sin root: el segundo mando es el jugador 2
+ * P2_A = tap 900 700     #   botones y sticks del jugador 2 (P2_LS, P2_RS...)
  * A  = tap 1980 895
  * B  = turbo 1700 900 12           # toques por segundo mientras se mantiene
  * X  = toggle 1500 700             # una pulsacion mantiene el toque, otra lo suelta
@@ -156,15 +158,17 @@ public class Profile {
     public float gyro = 0, mouse = 0;
     public String gyroButton = "";
     public boolean gyroInvert = false;
+    /** Solo sin root: 2 = el segundo mando es el jugador 2 (sus botones son P2_*). */
+    public int players = 1;
     public final Map<String, Binding> bindings = new LinkedHashMap<>();
 
     public float deadzoneOf(String stick) {
-        float d = "LS".equals(stick) ? lsDeadzone : rsDeadzone;
+        float d = "LS".equals(stickBase(stick)) ? lsDeadzone : rsDeadzone;
         return d >= 0 ? d : deadzone;
     }
 
     public float curveOf(String stick) {
-        return Math.max(0.3f, "LS".equals(stick) ? lsCurve : rsCurve);
+        return Math.max(0.3f, "LS".equals(stickBase(stick)) ? lsCurve : rsCurve);
     }
 
     /** Paquete de la app: su carpeta propia es Android/data/<PKG>/files. */
@@ -202,7 +206,13 @@ public class Profile {
     }
 
     public static boolean isStick(String key) {
-        return "LS".equals(key) || "RS".equals(key);
+        String k = stickBase(key);
+        return "LS".equals(k) || "RS".equals(k);
+    }
+
+    /** "P2_LS" -> "LS" (los sticks del jugador 2 usan los mismos ajustes). */
+    public static String stickBase(String key) {
+        return key != null && key.startsWith("P2_") ? key.substring(3) : key;
     }
 
     /** Nombre legible de un boton/eje del perfil ("L2+A" con capa). */
@@ -213,6 +223,7 @@ public class Profile {
     }
 
     private static String label1(String key) {
+        if (key.startsWith("P2_")) return L.t("J2 ") + label1(key.substring(3));
         if (key.startsWith("KB_")) return key.substring(3);
         if (key.startsWith("MOUSE_")) {
             switch (key) {
@@ -297,6 +308,7 @@ public class Profile {
                         case "gyro_button": p.gyroButton = cleanButton(val); break;
                         case "gyro_invert": p.gyroInvert = !"0".equals(val.trim()); break;
                         case "mouse": p.mouse = clamp(Float.parseFloat(val), 0f, 5f); break;
+                        case "players": p.players = "2".equals(val.trim()) ? 2 : 1; break;
                         default: {
                             String[] t = val.split("\\s+");
                             String type = t[0].toLowerCase(Locale.ROOT);
@@ -374,7 +386,7 @@ public class Profile {
     /** Teclas de teclado (KB_*) y raton (MOUSE_*): solo las entiende el modo sin root. */
     public static boolean isNonRootInput(String key) {
         String base = baseOf(key);
-        return base.startsWith("KB_") || base.startsWith("MOUSE_");
+        return base.startsWith("KB_") || base.startsWith("MOUSE_") || base.startsWith("P2_") || key.startsWith("P2_");
     }
 
     /** Numero sin ceros sobrantes: 1.5 -> "1.5", 40.0 -> "40". */
@@ -463,7 +475,7 @@ public class Profile {
 
     public Binding add(String key, float x, float y) {
         Binding b;
-        if ("RS".equals(key)) b = new Binding(key, LOOK, x, y, 14);       // stick derecho: camara
+        if ("RS".equals(stickBase(key))) b = new Binding(key, LOOK, x, y, 14);   // stick derecho: camara
         else if (isStick(key)) b = new Binding(key, STICK, x, y, Math.round(Math.min(sw, sh) * 0.14f));
         else b = new Binding(key, TAP, x, y, 0);
         bindings.put(key, b);
@@ -550,6 +562,7 @@ public class Profile {
                 if (gyroInvert) w.write("gyro_invert = 1\n");
             }
             if (mouse > 0) w.write(String.format(Locale.ROOT, "mouse = %.2f\n", mouse));
+            if (players == 2) w.write("players = 2\n");
             w.write("\n");
             List<String> keys = new ArrayList<>(Arrays.asList(BUTTONS));
             List<String> extra = new ArrayList<>();

@@ -772,5 +772,11 @@ final class L_en {
         m.put("Código: ", "Code: ");
         m.put("Dáselo al autor (por ejemplo en un issue de GitHub) para que encuentre tu informe.", "Give it to the author (for example in a GitHub issue) so they can find your report.");
         m.put("Copiar código", "Copy code");
+        m.put("J2 ", "P2 ");
+        m.put("Dos jugadores (solo sin root)", "Two players (no root only)");
+        m.put("✓ Dos mandos: el segundo es el jugador 2", "✓ Two gamepads: the second one is player 2");
+        m.put("Activar dos jugadores", "Turn on two players");
+        m.put("Botones del jugador 2: «+ Botón» › «Detectar» y pulsa en su mando. Sus sticks:", "Player 2 buttons: «+ Button» › «Detect» and press on their gamepad. Their sticks:");
+        m.put("Añadir ", "Add ");
     }
 }

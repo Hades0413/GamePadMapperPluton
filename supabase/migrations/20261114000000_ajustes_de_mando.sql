@@ -2,7 +2,7 @@
 --  Ajustes de mando nuevos en los perfiles (version 1.6 de la app):
 --   aim_button / aim_scale (apuntar), look_accel (aceleracion de la camara), controller
 --   (perfil segun el mando), rumble (vibracion), gyro / gyro_button / gyro_invert (giroscopio)
---   y mouse (raton como camara). Las teclas KB_* y MOUSE_* ya eran nombres de boton validos.
+--   mouse (raton como camara) y players (dos jugadores con dos mandos, botones P2_*). Las teclas KB_* y MOUSE_* ya eran nombres de boton validos.
 --  Mismas reglas que web/src/domain/profile/conf/validateConf.ts.
 -- =====================================================================================
 
@@ -87,6 +87,8 @@ begin
                 if coalesce(private.to_num(v_val) not between 0 and 1, true) then v_bad := 'debe estar entre 0 y 1'; end if;
             when 'gyro', 'mouse' then
                 if coalesce(private.to_num(v_val) not between 0 and 5, true) then v_bad := 'debe estar entre 0 y 5'; end if;
+            when 'players' then
+                if v_val not in ('1', '2') then v_bad := 'debe ser 1 o 2'; end if;
             when 'gyro_invert' then
                 if v_val not in ('0', '1') then v_bad := 'debe ser 0 o 1'; end if;
             when 'controller' then

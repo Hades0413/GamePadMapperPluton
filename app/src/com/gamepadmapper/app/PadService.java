@@ -642,6 +642,8 @@ public class PadService extends AccessibilityService {
 
                 @Override
                 public void onInputDeviceRemoved(int id) {
+                    if (id == p1Id) p1Id = -1;
+                    if (id == p2Id) p2Id = -1;
                     boolean known = devAxes.remove(id) != null
                             || (lastDevice != null && lastDevice.getId() == id);
                     if (!known) return;
@@ -717,7 +719,9 @@ public class PadService extends AccessibilityService {
     private float[] dominant(float[] current) {
         float[] best = current;
         float bestMag = deflection(current);
+        float[] p2 = twoPlayers() && p2Id >= 0 ? devAxes.get(p2Id) : null;
         for (float[] d : devAxes.values()) {
+            if (d == p2) continue;   // el jugador 2 tiene sus propios sticks
             float m = deflection(d);
             if (m > bestMag + 0.05f) {
                 best = d;
@@ -757,6 +761,7 @@ public class PadService extends AccessibilityService {
         if (!active()) return false;
         if (ev.getAction() != KeyEvent.ACTION_DOWN && ev.getAction() != KeyEvent.ACTION_UP) return false;
         String t = pad ? keyToken(ev.getKeyCode()) : kb;
+        if (pad && playerOf(ev.getDevice()) == 2) t = "P2_" + t;
         // Teclado: solo se queda las teclas que usa el perfil (o al asignar en el editor).
         if (!pad && !learning && !isBound(t)) return false;
         boolean down = ev.getAction() == KeyEvent.ACTION_DOWN;
@@ -787,10 +792,16 @@ public class PadService extends AccessibilityService {
         // Cada mando guarda sus propios ejes; manda el mas inclinado (dos mandos no se mezclan).
         float[] arr = devAxes.get(ev.getDeviceId());
         if (arr == null) devAxes.put(ev.getDeviceId(), arr = new float[64]);
+        boolean p2 = playerOf(ev.getDevice()) == 2;
         for (int a : AXES_READ) {
             float v = ev.getAxisValue(a);
             arr[a] = v;
-            if (learning) axes.put(a, v);
+            if (learning && !p2) axes.put(a, v);
+        }
+        // El mando del jugador 2 nunca manda en los sticks del jugador 1 (y su cruceta son P2_DPAD_*).
+        if (p2) {
+            update();
+            return;
         }
         axv = devAxes.size() == 1 ? arr : dominant(arr);
         if (dbgEnabled()) {
@@ -948,9 +959,10 @@ public class PadService extends AccessibilityService {
 
     // ------------------------------------------------------------------ logica (igual que gpmapper)
     private final Map<String, Inj.Ptr> rt = new HashMap<>();
-    private final float[] lookCx = new float[2], lookCy = new float[2];
+    // 0 = LS, 1 = RS, 2 = P2_LS, 3 = P2_RS
+    private final float[] lookCx = new float[4], lookCy = new float[4];
     /** Desde cuando esta cada stick de camara al tope (aceleracion), 0 = no lo esta. */
-    private final long[] lookFull = new long[2];
+    private final long[] lookFull = new long[4];
 
     private void updateDerived() {
         float hx = axis(MotionEvent.AXIS_HAT_X), hy = axis(MotionEvent.AXIS_HAT_Y);
@@ -967,6 +979,15 @@ public class PadService extends AccessibilityService {
         }
         setVirt("L2", axDown.contains("AXIS_A+"));
         setVirt("R2", axDown.contains("AXIS_9+"));
+        // Jugador 2: su cruceta (hat) y sus gatillos analogicos.
+        float[] p2 = twoPlayers() && p2Id >= 0 ? devAxes.get(p2Id) : null;
+        float px = p2 == null ? 0 : p2[MotionEvent.AXIS_HAT_X], py = p2 == null ? 0 : p2[MotionEvent.AXIS_HAT_Y];
+        setVirt("P2_DPAD_LEFT", px < -0.5f);
+        setVirt("P2_DPAD_RIGHT", px > 0.5f);
+        setVirt("P2_DPAD_UP", py < -0.5f);
+        setVirt("P2_DPAD_DOWN", py > 0.5f);
+        setVirt("P2_L2", p2 != null && Math.max(p2[MotionEvent.AXIS_BRAKE], p2[MotionEvent.AXIS_LTRIGGER]) > AX_PRESS);
+        setVirt("P2_R2", p2 != null && Math.max(p2[MotionEvent.AXIS_GAS], p2[MotionEvent.AXIS_RTRIGGER]) > AX_PRESS);
     }
 
     private void hyst(String token, float d) {
@@ -1018,6 +1039,10 @@ public class PadService extends AccessibilityService {
         }
         applyStick("LS");
         applyStick("RS");
+        if (twoPlayers()) {
+            applyStick("P2_LS");
+            applyStick("P2_RS");
+        }
         if (needsTicks()) startTicks();
     }
 
@@ -1135,6 +1160,7 @@ public class PadService extends AccessibilityService {
     }
 
     private int[] stickAxes(String which) {
+        which = Profile.stickBase(which);
         String o = "LS".equals(which) ? cur.lsAxes : cur.rsAxes;
         if (o != null && o.contains(",")) {
             try {
@@ -1154,7 +1180,33 @@ public class PadService extends AccessibilityService {
 
     private float[] stickVec(String which) {
         int[] a = stickAxes(which);
+        if (which.startsWith("P2_")) {   // jugador 2: los ejes de su propio mando
+            float[] p2 = p2Id >= 0 ? devAxes.get(p2Id) : null;
+            if (p2 == null) return new float[]{0, 0};
+            return new float[]{clamp(p2[a[0]]), clamp(p2[a[1]])};
+        }
         return new float[]{clamp(axis(a[0])), clamp(axis(a[1]))};
+    }
+
+    // ------------------------------------------------------------------ dos jugadores
+
+    /** Mando del jugador 1 y del jugador 2 (ids de dispositivo; -1 = sin asignar). */
+    private int p1Id = -1, p2Id = -1;
+    /** Mientras se edita en la burbuja: jugadores del perfil que se esta editando. */
+    static volatile int editorPlayers = 1;
+
+    private boolean twoPlayers() {
+        return learning ? editorPlayers >= 2 : cur != null && cur.players >= 2;
+    }
+
+    /** 1 o 2: el primer mando que se usa es el jugador 1 y el siguiente, el 2. */
+    private int playerOf(InputDevice d) {
+        if (d == null || !twoPlayers()) return 1;
+        int id = d.getId();
+        if (p1Id < 0 || InputDevice.getDevice(p1Id) == null) p1Id = id;
+        if (id == p1Id) return 1;
+        if (p2Id < 0 || InputDevice.getDevice(p2Id) == null) p2Id = id;
+        return id == p2Id ? 2 : 1;
     }
 
     private static float clamp(float v) {
@@ -1199,8 +1251,11 @@ public class PadService extends AccessibilityService {
         if (cur == null) return false;
         if (!swipes.isEmpty()) return true;
         for (Act a : acts.values()) if (Profile.TURBO.equals(a.b.type)) return true;
-        Profile.Binding l = cur.bindings.get("LS"), r = cur.bindings.get("RS");
-        return (l != null && Profile.LOOK.equals(l.type)) || (r != null && Profile.LOOK.equals(r.type));
+        for (String w : new String[]{"LS", "RS", "P2_LS", "P2_RS"}) {
+            Profile.Binding b = cur.bindings.get(w);
+            if (b != null && Profile.LOOK.equals(b.type)) return true;
+        }
+        return false;
     }
 
     private boolean ticking = false;
@@ -1224,6 +1279,7 @@ public class PadService extends AccessibilityService {
             float dt = Math.min(4f, (n - lastTick) / 16f);
             lastTick = n;
             boolean any = lookTick("LS", 0, dt) | lookTick("RS", 1, dt);
+            if (twoPlayers()) any |= lookTick("P2_LS", 2, dt) | lookTick("P2_RS", 3, dt);
             // Turbo: apoyar / levantar a su ritmo mientras se mantiene el boton.
             for (Act a : acts.values()) {
                 if (!Profile.TURBO.equals(a.b.type)) continue;

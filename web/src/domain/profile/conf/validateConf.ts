@@ -16,7 +16,7 @@ const CONTROL = /[\u0001-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
 const SETTINGS = new Set([
   'package', 'name', 'screen', 'deadzone', 'ls_deadzone', 'rs_deadzone',
   'ls_curve', 'rs_curve', 'look_y', 'look_invert', 'ls_axes', 'rs_axes',
-  'aim_button', 'aim_scale', 'look_accel', 'controller', 'rumble', 'gyro', 'gyro_button', 'gyro_invert', 'mouse',
+  'aim_button', 'aim_scale', 'look_accel', 'controller', 'rumble', 'gyro', 'gyro_button', 'gyro_invert', 'mouse', 'players',
 ]);
 
 class ConfError extends Error {}
@@ -122,6 +122,7 @@ function settingProblem(key: string, value: string): string | null {
     case 'rumble': return inRange(value, 0, 1) ? null : 'debe estar entre 0 y 1';
     case 'gyro': case 'mouse': return inRange(value, 0, 5) ? null : 'debe estar entre 0 y 5';
     case 'gyro_invert': return value === '0' || value === '1' ? null : 'debe ser 0 o 1';
+    case 'players': return value === '1' || value === '2' ? null : 'debe ser 1 o 2';
     case 'controller':
       return value.length <= 40 && /^[A-Za-z0-9 ._()+-]*$/.test(value)
         ? null : 'nombre de mando no válido (letras, números y . _ ( ) + -, máximo 40)';

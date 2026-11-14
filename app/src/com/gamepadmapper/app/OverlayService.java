@@ -1731,6 +1731,7 @@ public class OverlayService extends Service {
 
     // ------------------------------------------------------------------ editor
     private void openEditor() {
+        if (profile != null) PadService.editorPlayers = profile.players;
         if (profile == null || editor != null) return;
         int[] size = screenSize();
         profile.rescaleTo(size[0], size[1]);
@@ -2012,6 +2013,29 @@ public class OverlayService extends Service {
                 v -> profile.mouse = v / 100f);
         card.addView(text(L.t("Teclas y botones del ratón: «+ Botón» › «Detectar» y pulsa la tecla o el botón."),
                 11, C_TEXT2, false));
+
+        // Dos jugadores (solo sin root)
+        card.addView(text(L.t("Dos jugadores (solo sin root)"), 13, Color.WHITE, true));
+        card.addView(button(profile.players == 2 ? L.t("✓ Dos mandos: el segundo es el jugador 2") : L.t("Activar dos jugadores"),
+                profile.players == 2 ? C_OK : C_NEUTRAL, v -> {
+                    profile.players = profile.players == 2 ? 1 : 2;
+                    PadService.editorPlayers = profile.players;
+                    markDirty();
+                    reopen.run();
+                }));
+        if (profile.players == 2) {
+            card.addView(text(L.t("Botones del jugador 2: «+ Botón» › «Detectar» y pulsa en su mando. Sus sticks:"),
+                    11, C_TEXT2, false));
+            LinearLayout p2 = row();
+            for (final String k : new String[]{"P2_LS", "P2_RS"}) {
+                if (profile.bindings.containsKey(k)) continue;
+                p2.addView(button(L.t("Añadir ") + Profile.label(k), C_NEUTRAL, v -> {
+                    toggleSettings();
+                    addAtCenter(k);
+                }));
+            }
+            if (p2.getChildCount() > 0) card.addView(p2);
+        }
 
         // Mando
         card.addView(text(L.t("Mando"), 13, Color.WHITE, true));
@@ -2450,8 +2474,10 @@ public class OverlayService extends Service {
                         Profile.STICK.equals(b.type) ? C_OK : C_PRIMARY, v -> setType(b, Profile.STICK)));
                 actions.addView(button(Profile.LOOK.equals(b.type) ? L.t("✓ Cámara") : L.t("Cámara"),
                         Profile.LOOK.equals(b.type) ? C_OK : C_PRIMARY, v -> setType(b, Profile.LOOK)));
-                actions.addView(button(L.t("Detectar stick"), C_WARN, v -> learnStick(b)));
-                if (Profile.STICK.equals(b.type)) {
+                // El jugador 2 usa los mismos ejes que el 1 (en su mando) y no lleva cruceta.
+                final boolean p1 = !b.key.startsWith("P2_");
+                if (p1) actions.addView(button(L.t("Detectar stick"), C_WARN, v -> learnStick(b)));
+                if (p1 && Profile.STICK.equals(b.type)) {
                     actions.addView(button(b.dpad ? L.t("✓ + Cruceta") : L.t("+ Cruceta"), b.dpad ? C_OK : C_PRIMARY, v -> {
                         b.dpad = !b.dpad;
                         if (b.dpad) {
@@ -2605,7 +2631,7 @@ public class OverlayService extends Service {
                 LinearLayout opts = new LinearLayout(this);
                 opts.setOrientation(LinearLayout.VERTICAL);
                 opts.setPadding(dp(8), 0, 0, 0);
-                String axes = "LS".equals(b.key) ? profile.lsAxes : profile.rsAxes;
+                String axes = "LS".equals(Profile.stickBase(b.key)) ? profile.lsAxes : profile.rsAxes;
                 opts.addView(text(L.t("Ejes del mando: ") + (axes.isEmpty() ? L.t("automáticos") : axes), 12, C_TEXT2, false));
                 if (Profile.LOOK.equals(b.type)) {
                     addSlider(opts, L.t("Velocidad de cámara: %d"), 2, 60, Math.round(b.r), v -> b.r = v);
@@ -2624,7 +2650,7 @@ public class OverlayService extends Service {
                         if (selected != null) selected.layoutToBinding();
                     });
                 }
-                final boolean isLs = "LS".equals(b.key);
+                final boolean isLs = "LS".equals(Profile.stickBase(b.key));
                 addSlider(opts, L.t("Zona muerta de ") + b.key + L.t(": %d%%"), 0, 60,
                         Math.round(profile.deadzoneOf(b.key) * 100), v -> {
                             if (isLs) profile.lsDeadzone = v / 100f;
