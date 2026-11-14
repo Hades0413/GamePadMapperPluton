@@ -3,7 +3,10 @@
 #   ./app/build.sh          APK firmado  -> dist/GamepadMapper-<version>.apk   (instalar por USB)
 #   ./app/build.sh aab      App Bundle   -> dist/GamepadMapper-<version>.aab   (Google Play)
 #   ./app/build.sh all      los dos
-# aapt2 -> javac -> d8 -> (zipalign + apksigner | bundletool + jarsigner).
+# aapt2 -> javac -> R8 -> (zipalign + apksigner | bundletool + jarsigner).
+# R8 (dentro de build-tools/lib/d8.jar) reduce, optimiza y ofusca con app/proguard-rules.pro y
+# deja el mapping en dist/GamepadMapper-<version>-mapping.txt (tambien va dentro del AAB para
+# que Play traduzca las trazas). NO_R8=1 compila con d8 como antes (sin ofuscar, para depurar).
 #
 # Herramientas (las descarga "make setup"): tools/jdk, tools/android-sdk (platform $PLATFORM,
 # build-tools $BUILD_TOOLS) y tools/bundletool.jar (solo AAB). Se pueden cambiar con JDK=,
@@ -79,16 +82,32 @@ cp "$here/datos/mandos-sdl.txt" "$here/datos/LICENCIA-SDL_GameControllerDB.txt" 
 
 echo "1/5 Recursos (aapt2, $platform)..."
 run "$aapt2" compile --dir "$here/res" -o "$build/res.zip"
+# --proguard: reglas "keep" para las clases que nombra el manifest (las usa R8)
 run "$aapt2" link -I "$android_jar" --manifest "$manifest" --java "$build/gen" \
+    --proguard "$build/aapt-rules.pro" --proguard-minimal-keep-rules \
     -A "$build/assets" -o "$build/unsigned.apk" "$build/res.zip"
 
 echo "2/5 Java (javac)..."
 find "$here/src" "$build/gen" -name '*.java' > "$build/sources.txt"
 run "$javac" -encoding UTF-8 --release 11 -classpath "$android_jar" -d "$build/classes" "@$build/sources.txt"
 
-echo "3/5 Dex (d8)..."
-find "$build/classes" -name '*.class' > "$build/classes.txt"
-run "$d8" --release --min-api 26 --lib "$android_jar" --output "$build/dex" "@$build/classes.txt"
+mapping=""
+if [ "${NO_R8:-0}" = "1" ]; then
+    echo "3/5 Dex (d8, sin R8: NO_R8=1)..."
+    find "$build/classes" -name '*.class' > "$build/classes.txt"
+    run "$d8" --release --min-api 26 --lib "$android_jar" --output "$build/dex" "@$build/classes.txt"
+else
+    echo "3/5 Dex (R8: reducir, optimizar y ofuscar)..."
+    r8_jar="$bt/lib/d8.jar"   # R8 viene en el mismo jar que d8 (com.android.tools.r8.R8)
+    [ -f "$r8_jar" ] || { echo "Falta $r8_jar (ejecuta: make setup)" >&2; exit 1; }
+    run "$(tool "$jdk/bin/jar")" --create --file "$build/classes.jar" -C "$build/classes" .
+    mapping="$build/mapping.txt"
+    run "$java" -Xmx2g -cp "$r8_jar" com.android.tools.r8.R8 --release --min-api 26 --lib "$android_jar" \
+        --pg-conf "$here/proguard-rules.pro" --pg-conf "$build/aapt-rules.pro" \
+        --pg-map-output "$mapping" --output "$build/dex" "$build/classes.jar"
+fi
+[ -f "$build/dex/classes.dex" ] || { echo "No se genero classes.dex" >&2; exit 1; }
+[ ! -f "$build/dex/classes2.dex" ] || { echo "Hay mas de un dex: el empaquetado solo incluye classes.dex" >&2; exit 1; }
 
 echo "4/5 Clave de firma..."
 ks_dir=""
@@ -113,6 +132,13 @@ echo "   clave: $ks_dir/gamepad-mapper.jks"
 ks="$ks_dir/gamepad-mapper.jks"
 pw="$(tr -d '\r\n' < "$ks_dir/password.txt")"
 mkdir -p "$root/dist"
+map_out="$root/dist/GamepadMapper-$version-mapping.txt"
+if [ -n "$mapping" ]; then
+    cp "$mapping" "$map_out"
+    echo "   mapping de R8: $map_out"
+else
+    rm -f "$map_out"   # sin R8 no hay ofuscacion: que no quede un mapping viejo
+fi
 
 echo "5/5 Empaquetado y firma..."
 if [ "$mode" = apk ] || [ "$mode" = all ]; then
@@ -144,7 +170,10 @@ with zipfile.ZipFile(src) as zin, zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED
 PY
     aab="$root/dist/GamepadMapper-$version.aab"
     rm -f "$aab" "$build/unsigned.aab"
-    run "$java" -jar "$bundletool" build-bundle --modules="$build/base.zip" --output="$build/unsigned.aab"
+    # Con R8 el mapping va dentro del AAB: Play Console traduce solo las trazas de los errores
+    meta=()
+    [ -z "$mapping" ] || meta=(--metadata-file="com.android.tools.build.obfuscation/proguard.map:$mapping")
+    run "$java" -jar "$bundletool" build-bundle --modules="$build/base.zip" --output="$build/unsigned.aab" ${meta[@]+"${meta[@]}"}
     jarsigner="$(tool "$jdk/bin/jarsigner")"
     run "$jarsigner" -keystore "$ks" -storepass "$pw" -keypass "$pw" -sigalg SHA256withRSA -digestalg SHA-256 \
         -signedjar "$aab" "$build/unsigned.aab" gamepadmapper
