@@ -34,10 +34,8 @@ impl log::Log for Registro {
         if !nuestro || !self.enabled(r.metadata()) {
             return;
         }
-        let segundos = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_secs())
-            .unwrap_or(0);
+        let segundos =
+            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
         let (h, m, s) = ((segundos / 3600) % 24, (segundos / 60) % 60, segundos % 60);
         let linea = format!("{h:02}:{m:02}:{s:02} UTC [{}] {}", r.level(), r.args());
         eprintln!("{linea}");

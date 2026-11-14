@@ -84,11 +84,21 @@ app-escritorio-base: ## App de escritorio: refresca la base de mandos incluida (
 
 app-escritorio-test: ## App de escritorio: pruebas del nucleo (y con un mando virtual uinput si hay permiso)
 	@cd desktop/app && cargo test -p gpm-nucleo
-	@if [ -w /dev/uinput ]; then cd desktop/app && cargo test -p gpm-nucleo --test uinput -- --ignored; \
-		else echo "⚠️  sin permiso en /dev/uinput: se salta la prueba con mando virtual"; fi
+	@if [ -w /dev/uinput ]; then cd desktop/app && cargo test -p gpm-nucleo --test uinput --test salida_uinput -- --ignored --test-threads=1; \
+		else echo "⚠️  sin permiso en /dev/uinput: se saltan las pruebas con mandos virtuales"; fi
 
-app-escritorio: app-escritorio-ui ## App de escritorio (Tauri) -> desktop/app/target/release/bundle/
-	@cd desktop/app && ui/node_modules/.bin/tauri build $(if $(filter Windows_NT,$(OS)),--bundles nsis,--bundles deb$(comma)appimage)
+app-escritorio-check: ## App de escritorio: formato, clippy (Linux y Windows) y pruebas del nucleo
+	@cd desktop/app && cargo fmt --all -- --check
+	@cd desktop/app && cargo clippy --workspace --all-targets -- -D warnings
+	@cd desktop/app && cargo clippy -p gpm-nucleo --all-targets --target x86_64-pc-windows-gnu -- -D warnings
+	@$(MAKE) --no-print-directory app-escritorio-test
+
+# Paquetes con nombres sin espacios (gamepad-mapper-pluton_<version>_...). Con la variable
+# TAURI_SIGNING_PRIVATE_KEY (y _PASSWORD) se firman tambien para el actualizador (.sig).
+app-escritorio: app-escritorio-ui ## App de escritorio (Tauri) -> desktop/app/target/release/bundle/ (deb, AppImage | NSIS, MSI)
+	@cd desktop/app && ui/node_modules/.bin/tauri build $(if $(filter Windows_NT,$(OS)),--bundles nsis$(comma)msi,--bundles deb$(comma)appimage) \
+		$$( [ -n "$$TAURI_SIGNING_PRIVATE_KEY" ] && echo "--config src-tauri/tauri.firmado.json" )
+	@cd desktop/app && scripts/renombrar-paquetes.sh
 
 apk: module ## APK firmado para instalar por USB -> dist/GamepadMapper-<version>.apk
 	@./app/build.sh apk

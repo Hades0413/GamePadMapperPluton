@@ -3,10 +3,10 @@
 use crate::estado::{bloquear, Compartido};
 use nucleo::asistente::VistaAsistente;
 use nucleo::dispositivos::{IdMando, InfoMando};
-use nucleo::mapeo::almacen::carpeta_config;
-use nucleo::mapeo::basedatos::{fusionar, version_incluida, BaseDatosSdl};
 use nucleo::juegos::{Juego, Ventana};
 use nucleo::mapeo::acciones::PasoMacro;
+use nucleo::mapeo::almacen::carpeta_config;
+use nucleo::mapeo::basedatos::{fusionar, version_incluida, BaseDatosSdl};
 use nucleo::mapeo::validar::{ErrorValidacion, MAX_BYTES_PRESET};
 use nucleo::mapeo::MapeoMando;
 use nucleo::opciones::Opciones;
