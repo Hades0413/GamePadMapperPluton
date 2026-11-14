@@ -1,7 +1,7 @@
 //! Aplica un mapeo al estado crudo: botones estandar, sticks con zona muerta, curva e inversion,
 //! y gatillos 0..1.
 
-use super::{AjusteStick, Control, Fuente, MapeoMando, Mitad};
+use super::{AjusteGatillo, AjusteStick, Control, Fuente, MapeoMando, Mitad};
 use crate::dispositivos::EstadoCrudo;
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -58,6 +58,8 @@ pub fn ajustar_stick(x: f32, y: f32, a: &AjusteStick) -> [f32; 2] {
         let k = n / m;
         ((x * k).clamp(-1.0, 1.0), (y * k).clamp(-1.0, 1.0))
     };
+    x = a.eje_x.aplicar(x);
+    y = a.eje_y.aplicar(y);
     if a.invertir_x {
         x = -x;
     }
@@ -67,9 +69,21 @@ pub fn ajustar_stick(x: f32, y: f32, a: &AjusteStick) -> [f32; 2] {
     [x, y]
 }
 
+/// Valor 0..1 de una fuente usada como gatillo o boton (un eje completo va de -1 a 1).
+pub fn valor_gatillo(f: &Fuente, e: &EstadoCrudo) -> f32 {
+    gatillo(f, e)
+}
+
 pub fn aplicar(m: &MapeoMando, e: &EstadoCrudo) -> EstadoEstandar {
     let leer = |c: Control| m.asignaciones.get(&c).map(|f| valor(f, e)).unwrap_or(0.0);
-    let leer_gatillo = |c: Control| m.asignaciones.get(&c).map(|f| gatillo(f, e)).unwrap_or(0.0);
+    let ajuste = |c: Control| -> AjusteGatillo {
+        match c {
+            Control::L2 => m.gatillo_izquierdo.limitado(),
+            Control::R2 => m.gatillo_derecho.limitado(),
+            _ => AjusteGatillo::default(),
+        }
+    };
+    let leer_gatillo = |c: Control| m.asignaciones.get(&c).map(|f| ajuste(c).aplicar(gatillo(f, e))).unwrap_or(0.0);
     let mut s = EstadoEstandar {
         ls: ajustar_stick(leer(Control::LsX), leer(Control::LsY), &m.stick_izquierdo),
         rs: ajustar_stick(leer(Control::RsX), leer(Control::RsY), &m.stick_derecho),
@@ -109,8 +123,29 @@ mod pruebas {
     }
 
     #[test]
+    fn respuesta_por_eje_y_gatillos() {
+        use crate::mapeo::AjusteEje;
+        let eje = AjusteEje { zona_muerta: 0.2, anti_zona_muerta: 0.3, sensibilidad: 1.0, saturacion: 0.8 };
+        assert_eq!(eje.aplicar(0.1), 0.0);
+        assert!((0.3..0.32).contains(&eje.aplicar(0.21)));
+        assert!(cerca(eje.aplicar(-0.5), -0.65));
+        assert!(cerca(eje.aplicar(0.9), 1.0));
+        let a = AjusteStick { zona_muerta: 0.0, eje_x: eje, ..Default::default() };
+        let [x, y] = ajustar_stick(0.5, 0.5, &a);
+        assert!(cerca(x, 0.65) && cerca(y, 0.5));
+        let g = AjusteGatillo { zona_muerta: 0.1, anti_zona_muerta: 0.0, maximo: 0.6 }.limitado();
+        assert_eq!(g.aplicar(0.05), 0.0);
+        assert!(cerca(g.aplicar(0.35), 0.5));
+        assert_eq!(g.aplicar(0.7), 1.0);
+        // Valores imposibles: al rango.
+        let raro = AjusteEje { zona_muerta: 3.0, anti_zona_muerta: f32::NAN, sensibilidad: 99.0, saturacion: 0.0 }.limitado();
+        assert_eq!((raro.zona_muerta, raro.anti_zona_muerta, raro.sensibilidad), (0.9, 0.0, 4.0));
+        assert!(raro.saturacion > raro.zona_muerta);
+    }
+
+    #[test]
     fn inversion_y_valores_raros() {
-        let a = AjusteStick { zona_muerta: 0.0, curva: f32::NAN, invertir_x: true, invertir_y: true };
+        let a = AjusteStick { zona_muerta: 0.0, curva: f32::NAN, invertir_x: true, invertir_y: true, ..Default::default() };
         let [x, y] = ajustar_stick(0.5, -0.5, &a);
         assert!(cerca(x, -0.5) && cerca(y, 0.5));
     }

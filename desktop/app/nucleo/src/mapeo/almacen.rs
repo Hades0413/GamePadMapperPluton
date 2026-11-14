@@ -4,6 +4,7 @@
 //! Linux y `%APPDATA%\GamepadMapperPluton\mandos` en Windows.
 
 use super::sdl::guid_valido;
+use super::validar::{validar, ErrorValidacion};
 use super::{MapeoMando, VERSION_MAPEO};
 use std::io;
 use std::path::{Path, PathBuf};
@@ -16,6 +17,8 @@ pub enum ErrorAlmacen {
     VersionNueva(u32),
     #[error("Archivo de mapeo no válido: {0}")]
     Json(#[from] serde_json::Error),
+    #[error(transparent)]
+    Invalido(#[from] ErrorValidacion),
     #[error(transparent)]
     Io(#[from] io::Error),
 }
@@ -69,8 +72,7 @@ impl AlmacenMapeos {
         if m.version > VERSION_MAPEO {
             return Err(ErrorAlmacen::VersionNueva(m.version));
         }
-        m.stick_izquierdo = m.stick_izquierdo.limitado();
-        m.stick_derecho = m.stick_derecho.limitado();
+        validar(&mut m)?;
         Ok(Some(m))
     }
 
