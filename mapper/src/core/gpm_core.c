@@ -599,7 +599,7 @@ void gpm_soltar_todo(void) {
 #define release_all gpm_soltar_todo
 
 // Al conectar un mando: estado limpio y ejes (recorrido, reposo, stick derecho y gatillos).
-void gpm_mando_nuevo(const gpm_eje_t ejes[ABS_CNT]) {
+static void mando_nuevo(const gpm_eje_t ejes[ABS_CNT]) {
     memset(keyp, 0, sizeof keyp);
     memset(virt, 0, sizeof virt);
     memset(axdown, 0, sizeof axdown);
@@ -942,7 +942,7 @@ static void update_derived(void) {
     if (has_abs[trig_r]) virt[BTN_TR2] = axdown[trig_r][1];
 }
 
-void gpm_evento(int type, int code, int value, int grabbed) {
+static void evento(int type, int code, int value, int grabbed) {
     char nb[16];
     if (type == EV_ABS && code >= 0 && code < ABS_CNT) {
         axraw[code] = value;
@@ -975,6 +975,183 @@ void gpm_evento(int type, int code, int value, int grabbed) {
             t_sync();
         }
     }
+}
+
+// ------------------------------------------------------------ traduccion del mando (mando.map)
+#define MAPA_MAX_BYTES 16384
+static const gpm_mapa_t *mapa = NULL;
+static gpm_eje_t mapa_crudo[ABS_CNT];             // recorrido de los ejes crudos (invertir, medio eje)
+static unsigned char mapa_mitad[GPM_MAPA_REGLAS]; // medio eje -> boton: pulsado
+static unsigned char mapa_destino_key[NCODES];    // codigos en los que escribe alguna regla
+static unsigned char mapa_destino_abs[ABS_CNT];
+
+static const struct { const char *name; int code; } mapa_ejes[] = {
+    {"X", ABS_X}, {"Y", ABS_Y}, {"Z", ABS_Z}, {"RX", ABS_RX}, {"RY", ABS_RY}, {"RZ", ABS_RZ},
+    {"GAS", ABS_GAS}, {"BRAKE", ABS_BRAKE}, {"HAT0X", ABS_HAT0X}, {"HAT0Y", ABS_HAT0Y},
+};
+
+// "ABS_RX", "ABS_5" (hex) -> codigo; -1 si no es valido.
+static int mapa_eje(const char *s) {
+    if (gpm_strncasecmp(s, "ABS_", 4)) return -1;
+    s += 4;
+    for (size_t i = 0; i < sizeof mapa_ejes / sizeof mapa_ejes[0]; i++)
+        if (!gpm_strcasecmp(mapa_ejes[i].name, s)) return mapa_ejes[i].code;
+    char *end;
+    long v = strtol(s, &end, 16);
+    return end != s && *end == 0 && v >= 0 && v < ABS_CNT ? (int)v : -1;
+}
+
+// "BTN_13A" -> codigo; -1 si no es valido.
+static int mapa_boton(const char *s) {
+    if (gpm_strncasecmp(s, "BTN_", 4)) return -1;
+    char *end;
+    long v = strtol(s + 4, &end, 16);
+    return end != s + 4 && *end == 0 && v > 0 && v < NCODES ? (int)v : -1;
+}
+
+// Numero hexadecimal de 16 bits; "*" = cualquiera (-1); -2 si no es valido.
+static int mapa_hex(const char *s) {
+    if (!strcmp(s, "*")) return -1;
+    char *end;
+    long v = strtol(s, &end, 16);
+    return end != s && *end == 0 && v >= 0 && v <= 0xffff ? (int)v : -2;
+}
+
+// Una regla "ORIGEN = DESTINO". Devuelve 0 si es valida.
+static int mapa_regla(char *izq, char *der, gpm_regla_t *r) {
+    memset(r, 0, sizeof *r);
+    size_t li = strlen(izq), ld = strlen(der);
+    if (!li || !ld) return -1;
+    if (izq[li - 1] == '+' || izq[li - 1] == '-') { r->mitad = izq[li - 1] == '+' ? 1 : -1; izq[li - 1] = 0; }
+    if (der[ld - 1] == '~') { r->invertir = 1; der[ld - 1] = 0; }
+    int c;
+    if ((c = mapa_boton(izq)) >= 0) { r->tipo_o = EV_KEY; r->cod_o = c; }
+    else if ((c = mapa_eje(izq)) >= 0) { r->tipo_o = EV_ABS; r->cod_o = c; }
+    else return -1;
+    int ax = -1, dir = 0, code = -1;
+    if ((c = mapa_eje(der)) >= 0) { r->tipo_d = EV_ABS; r->cod_d = c; }
+    else if (gpm_leer_token(der, &code, &ax, &dir) == 0 && code > 0 && code < NCODES && code != CODE_LS
+             && code != CODE_RS) { r->tipo_d = EV_KEY; r->cod_d = code; }
+    else return -1;
+    // Combinaciones admitidas: boton -> boton, eje -> eje, medio eje -> boton.
+    if (r->tipo_o == EV_KEY && (r->mitad || r->tipo_d != EV_KEY || r->invertir)) return -1;
+    if (r->tipo_o == EV_ABS && r->tipo_d == EV_ABS && r->mitad) return -1;
+    if (r->tipo_o == EV_ABS && r->tipo_d == EV_KEY && (!r->mitad || r->invertir)) return -1;
+    return 0;
+}
+
+int gpm_mapa_leer(const char *path, gpm_mapa_t *m) {
+    memset(m, 0, sizeof *m);
+    m->bus = m->vendor = m->product = m->version = -1;
+    FILE *f = fopen(path, "r");
+    if (!f) return -1;
+    char line[256];
+    int cabecera = 0, ln = 0;
+    long leidos = 0;
+    while (fgets(line, sizeof line, f)) {
+        ln++;
+        leidos += (long)strlen(line);
+        if (leidos > MAPA_MAX_BYTES) { logf_("%s: demasiado grande", path); break; }
+        char *hash = strchr(line, '#');
+        if (hash) *hash = 0;
+        char *s = gpm_recortar(line);
+        if (!*s) continue;
+        if (!gpm_strncasecmp(s, "nombre ", 7)) {
+            snprintf(m->nombre, sizeof m->nombre, "%s", gpm_recortar(s + 7));
+            for (char *q = m->nombre; *q; q++) if ((unsigned char)*q < 0x20) *q = ' ';
+            continue;
+        }
+        if (!gpm_strncasecmp(s, "mando ", 6)) {
+            char a[8], b[8], c[8], d[8];
+            int v[4] = {-2, -2, -2, -2};
+            if (sscanf(s + 6, "%7s %7s %7s %7s", a, b, c, d) == 4) {
+                v[0] = mapa_hex(a); v[1] = mapa_hex(b); v[2] = mapa_hex(c); v[3] = mapa_hex(d);
+            }
+            if (v[0] < -1 || v[1] < -1 || v[2] < -1 || v[3] < -1) { logf_("%s:%d: linea 'mando' no valida", path, ln); continue; }
+            m->bus = v[0]; m->vendor = v[1]; m->product = v[2]; m->version = v[3];
+            cabecera = 1;
+            continue;
+        }
+        char *eq = strchr(s, '=');
+        if (!eq) { logf_("%s:%d: falta '='", path, ln); continue; }
+        *eq = 0;
+        if (m->n >= GPM_MAPA_REGLAS) { logf_("%s: demasiadas reglas", path); break; }
+        if (mapa_regla(gpm_recortar(s), gpm_recortar(eq + 1), &m->r[m->n]) == 0) m->n++;
+        else logf_("%s:%d: regla no valida", path, ln);
+    }
+    fclose(f);
+    return cabecera && m->n > 0 ? 0 : -1;
+}
+
+int gpm_mapa_para(const gpm_mapa_t *m, int bus, int vendor, int product, int version) {
+    return m && (m->bus < 0 || m->bus == bus) && (m->vendor < 0 || m->vendor == vendor)
+           && (m->product < 0 || m->product == product) && (m->version < 0 || m->version == version);
+}
+
+void gpm_usar_mapa(const gpm_mapa_t *m) {
+    mapa = m && m->n > 0 ? m : NULL;
+    memset(mapa_mitad, 0, sizeof mapa_mitad);
+    memset(mapa_destino_key, 0, sizeof mapa_destino_key);
+    memset(mapa_destino_abs, 0, sizeof mapa_destino_abs);
+    if (!mapa) return;
+    for (int i = 0; i < mapa->n; i++) {
+        if (mapa->r[i].tipo_d == EV_KEY) mapa_destino_key[mapa->r[i].cod_d] = 1;
+        else mapa_destino_abs[mapa->r[i].cod_d] = 1;
+    }
+}
+
+const gpm_mapa_t *gpm_mapa(void) { return mapa; }
+
+static int mapa_tiene_regla(int type, int code) {
+    for (int i = 0; i < mapa->n; i++)
+        if (mapa->r[i].tipo_o == type && mapa->r[i].cod_o == code) return 1;
+    return 0;
+}
+
+void gpm_mando_nuevo(const gpm_eje_t ejes[ABS_CNT]) {
+    if (!mapa) { mando_nuevo(ejes); return; }
+    memcpy(mapa_crudo, ejes, sizeof mapa_crudo);
+    memset(mapa_mitad, 0, sizeof mapa_mitad);
+    gpm_eje_t t[ABS_CNT];
+    memset(t, 0, sizeof t);
+    for (int a = 0; a < ABS_CNT; a++)   // sin regla y sin que otra regla escriba en el: tal cual
+        if (ejes[a].tiene && !mapa_destino_abs[a] && !mapa_tiene_regla(EV_ABS, a)) t[a] = ejes[a];
+    for (int i = 0; i < mapa->n; i++) {
+        const gpm_regla_t *r = &mapa->r[i];
+        if (r->tipo_o != EV_ABS || r->tipo_d != EV_ABS || !ejes[r->cod_o].tiene) continue;
+        t[r->cod_d] = ejes[r->cod_o];
+        if (r->invertir) t[r->cod_d].valor = ejes[r->cod_o].minimo + ejes[r->cod_o].maximo - ejes[r->cod_o].valor;
+    }
+    logf_("mando traducido con la tabla \"%s\" (%d reglas)", mapa->nombre[0] ? mapa->nombre : "?", mapa->n);
+    mando_nuevo(t);
+}
+
+void gpm_evento(int type, int code, int value, int grabbed) {
+    if (!mapa || (type != EV_KEY && type != EV_ABS)) { evento(type, code, value, grabbed); return; }
+    if (code < 0 || (type == EV_KEY && code >= NCODES) || (type == EV_ABS && code >= ABS_CNT)) return;
+    int con_regla = 0;
+    for (int i = 0; i < mapa->n; i++) {
+        const gpm_regla_t *r = &mapa->r[i];
+        if (r->tipo_o != type || r->cod_o != code) continue;
+        con_regla = 1;
+        if (type == EV_KEY) { evento(EV_KEY, r->cod_d, value, grabbed); continue; }
+        const gpm_eje_t *e = &mapa_crudo[code];
+        if (r->tipo_d == EV_ABS) {
+            evento(EV_ABS, r->cod_d, r->invertir ? e->minimo + e->maximo - value : value, grabbed);
+            continue;
+        }
+        // Medio eje -> boton: desviacion desde el centro del recorrido, con histeresis.
+        double mid = (e->minimo + e->maximo) / 2.0, half = (e->maximo - e->minimo) / 2.0;
+        double d = half > 0 ? (value - mid) / half * r->mitad : 0;
+        int on = mapa_mitad[i] ? d > AX_RELEASE : d > AX_PRESS;
+        if (on != mapa_mitad[i]) {
+            mapa_mitad[i] = (unsigned char)on;
+            evento(EV_KEY, r->cod_d, on, grabbed);
+        }
+    }
+    if (con_regla) return;
+    if (type == EV_KEY ? mapa_destino_key[code] : mapa_destino_abs[code]) return;   // otra regla ya escribe aqui
+    evento(type, code, value, grabbed);
 }
 
 // ------------------------------------------------------------ vuelta del bucle

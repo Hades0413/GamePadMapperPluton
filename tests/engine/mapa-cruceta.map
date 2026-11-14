@@ -1,0 +1,7 @@
+# Cruceta en el segundo hat (HAT1X/HAT1Y) y botones en el rango de joystick (BTN_TRIGGER...)
+mando * * * *
+nombre Cruceta en HAT1
+ABS_12 = ABS_HAT0X
+ABS_13 = ABS_HAT0Y
+BTN_120 = A
+BTN_121 = R1

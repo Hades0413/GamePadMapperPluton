@@ -1,0 +1,56 @@
+     0.000 mapa mapa-cruceta.map: 4 reglas
+     0.000 perfil com.prueba.motor 2400x1080 -> destino 2400x1080
+     0.000 abajo s=0 x=344.00 y=828.00
+     0.000 sync tocando=1
+     0.000 mover s=0 x=456.00 y=828.00
+     0.000 sync tocando=1
+    30.000 arriba s=0
+    30.000 sync tocando=0
+   120.000 abajo s=0 x=1932.00 y=960.00
+   120.000 sync tocando=1
+   150.000 arriba s=0
+   150.000 sync tocando=0
+   170.000 abajo s=0 x=1800.00 y=500.00
+   170.000 sync tocando=1
+   170.000 mover s=0 x=1800.00 y=500.00
+   170.000 sync tocando=1
+   178.000 mover s=0 x=1800.00 y=484.00
+   178.000 sync tocando=1
+   186.000 mover s=0 x=1800.00 y=468.00
+   186.000 sync tocando=1
+   194.000 mover s=0 x=1800.00 y=452.00
+   194.000 sync tocando=1
+   202.000 mover s=0 x=1800.00 y=436.00
+   202.000 sync tocando=1
+   210.000 mover s=0 x=1800.00 y=420.00
+   210.000 sync tocando=1
+   218.000 mover s=0 x=1800.00 y=404.00
+   218.000 sync tocando=1
+   226.000 mover s=0 x=1800.00 y=388.00
+   226.000 sync tocando=1
+   234.000 mover s=0 x=1800.00 y=372.00
+   234.000 sync tocando=1
+   242.000 mover s=0 x=1800.00 y=356.00
+   242.000 sync tocando=1
+   250.000 mover s=0 x=1800.00 y=340.00
+   250.000 sync tocando=1
+   258.000 mover s=0 x=1800.00 y=324.00
+   258.000 sync tocando=1
+   266.000 mover s=0 x=1800.00 y=308.00
+   266.000 sync tocando=1
+   274.000 mover s=0 x=1800.00 y=292.00
+   274.000 sync tocando=1
+   282.000 mover s=0 x=1800.00 y=276.00
+   282.000 sync tocando=1
+   290.000 mover s=0 x=1800.00 y=260.00
+   290.000 sync tocando=1
+   298.000 mover s=0 x=1800.00 y=244.00
+   298.000 sync tocando=1
+   306.000 mover s=0 x=1800.00 y=228.00
+   306.000 sync tocando=1
+   314.000 mover s=0 x=1800.00 y=212.00
+   314.000 sync tocando=1
+   322.000 mover s=0 x=1800.00 y=200.00
+   322.000 arriba s=0
+   322.000 sync tocando=0
+   390.000 fin

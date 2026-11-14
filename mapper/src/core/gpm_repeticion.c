@@ -10,6 +10,8 @@
 //   syn                         fin del grupo de eventos (SYN_REPORT)
 //   pulsa NOMBRE / suelta NOMBRE    boton 1 / 0 seguido de syn
 //   espera MS                   avanza el reloj (el bucle despierta como el de verdad: turbo, macros...)
+//   mapa ARCHIVO                traducir el mando con esa tabla (como <base>/mando.map; ruta relativa al
+//                               guion; antes del primer evento)
 // Mando virtual por defecto: sticks X/Y y RX/RY (-32768..32767), gatillos Z/RZ (0..255) y
 // cruceta HAT0X/HAT0Y (-1..1).
 #include "gpm_repeticion.h"
@@ -25,6 +27,7 @@
 static long long replay_us = RP_T0;
 static const gpm_plataforma_t *salida;
 static profile_t perfil;
+static gpm_mapa_t mapa_rp;
 
 double gpm_repeticion_ms(void) { return (replay_us - RP_T0) / 1000.0; }
 
@@ -131,6 +134,7 @@ int gpm_repetir(const char *conf, const char *script, const gpm_plataforma_t *sa
     if (!f) { fprintf(stderr, "no se puede abrir %s\n", script); return 1; }
     if (gpm_cargar_perfil(conf, &perfil) != 0) { fprintf(stderr, "no se pudo leer %s\n", conf); fclose(f); return 1; }
     gpm_usar_perfil(&perfil);
+    gpm_usar_mapa(NULL);
     gpm_eje_t pad[ABS_CNT];
     memset(pad, 0, sizeof pad);
     static const int sticks[] = {ABS_X, ABS_Y, ABS_RX, ABS_RY};
@@ -154,6 +158,17 @@ int gpm_repetir(const char *conf, const char *script, const gpm_plataforma_t *sa
             double w = 0, h = 0;
             if (sscanf(a1, "%lfx%lf", &w, &h) == 2 && w >= 100 && h >= 100) gpm_pantalla(w, h);
             else err = 1;
+            continue;
+        }
+        if (!gpm_strcasecmp(cmd, "mapa")) {
+            char ruta[512];
+            const char *barra = strrchr(script, '/');
+            if (connected || n < 2 || strstr(a1, "..")) { err = 1; continue; }
+            snprintf(ruta, sizeof ruta, "%.*s%s", barra ? (int)(barra - script + 1) : 0, script, a1);
+            if (gpm_mapa_leer(ruta, &mapa_rp) != 0) { err = 1; continue; }
+            gpm_usar_mapa(&mapa_rp);
+            rp_time();
+            printf("mapa %s: %d reglas\n", a1, mapa_rp.n);
             continue;
         }
         if (!gpm_strcasecmp(cmd, "rango") || !gpm_strcasecmp(cmd, "quitar")) {
@@ -211,6 +226,7 @@ int gpm_repetir(const char *conf, const char *script, const gpm_plataforma_t *sa
         } else err = 1;
     }
     fclose(f);
+    gpm_usar_mapa(NULL);
     if (err) { fprintf(stderr, "%s:%d: linea no valida\n", script, ln); return 1; }
     gpm_soltar_todo();
     rp_time();

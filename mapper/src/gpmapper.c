@@ -56,7 +56,8 @@
 // avisar si el instalado esta desactualizado. Subirlo con cada cambio del formato de perfil.
 // 2 = toque rapido, rafaga, joystick + cruceta (v1.1).
 // 3 = carpeta de la app (Android/data/com.gamepadmapper.app/files) (v1.2).
-#define GPM_BUILD 6
+// 7 = traduccion del mando con <base>/mando.map (mandos de la comunidad / SDL GameControllerDB).
+#define GPM_BUILD 7
 
 #define logf_ gpm_log
 #define trim gpm_recortar
@@ -348,6 +349,7 @@ static int learning = 0;
 
 static void out_rumble(double level) { gpm_evdev_vibrar(gfd, &ff_id, &ff_level, level); }
 
+#define TB(arr, b) ((arr[(b) / (8 * sizeof(long))] >> ((b) % (8 * sizeof(long)))) & 1)
 static char pad_filter[64] = "";   // -g: usar solo el mando cuyo nombre contenga esto
 
 // Al conectar un mando: en cada juego se activa el perfil cuyo 'controller' aparece en su nombre.
@@ -363,18 +365,90 @@ static void activate_for_controller(void) {
     if (changed) prof_sig = dir_signature();
 }
 
+// ------------------------------------------------- mandos de la comunidad (mando.map)
+// Al conectar un mando se escribe <base>/mando_info (bus, ids, nombre y los codigos que tiene):
+// con eso la app calcula su GUID de SDL, lo busca en SDL GameControllerDB y en los mandos de la
+// comunidad y, si lo encuentra, escribe <base>/mando.map (ver gpm_core.h). La tabla solo se usa si
+// es para este mando (bus, fabricante, producto y version) y se recarga si cambia.
+static char info_file[300], map_file[300];
+static struct input_id gid;
+static gpm_mapa_t pad_map;
+static long long map_sig = -1;
+
+static long long file_sig(const char *path) {
+    struct stat st;
+    if (stat(path, &st) != 0) return 0;
+    return (long long)st.st_mtime * 1000003LL + (long long)st.st_size + 1;
+}
+
+static void write_pad_info(void) {
+    unsigned long keys[KEY_CNT / (8 * sizeof(long)) + 1];
+    unsigned long abs_bits[ABS_CNT / (8 * sizeof(long)) + 1];
+    memset(keys, 0, sizeof keys);
+    memset(abs_bits, 0, sizeof abs_bits);
+    ioctl(gfd, EVIOCGBIT(EV_KEY, sizeof keys), keys);
+    ioctl(gfd, EVIOCGBIT(EV_ABS, sizeof abs_bits), abs_bits);
+    char tmp[320], name[128];
+    snprintf(name, sizeof name, "%s", gname);
+    for (char *q = name; *q; q++) if ((unsigned char)*q < 0x20 || *q == 0x7f) *q = 0x20;
+    snprintf(tmp, sizeof tmp, "%s.tmp", info_file);
+    FILE *f = fopen(tmp, "w");
+    if (!f) return;
+    fprintf(f, "bus=%04x\nvendor=%04x\nproduct=%04x\nversion=%04x\nname=%s\nkeys=", gid.bustype, gid.vendor,
+            gid.product, gid.version, name);
+    int first = 1;
+    for (int c = 0; c < KEY_CNT; c++)
+        if (TB(keys, c)) { fprintf(f, first ? "%x" : ",%x", c); first = 0; }
+    fprintf(f, "\nabs=");
+    first = 1;
+    for (int a = 0; a < ABS_CNT; a++)
+        if (TB(abs_bits, a)) { fprintf(f, first ? "%x" : ",%x", a); first = 0; }
+    fprintf(f, "\n");
+    fclose(f);
+    rename(tmp, info_file);
+}
+
+// Lee <base>/mando.map y la activa si es para el mando conectado. Llamar antes de gpm_mando_nuevo.
+static void load_pad_map(void) {
+    map_sig = file_sig(map_file);
+    if (map_sig && gpm_mapa_leer(map_file, &pad_map) == 0
+        && gpm_mapa_para(&pad_map, gid.bustype, gid.vendor, gid.product, gid.version)) {
+        gpm_usar_mapa(&pad_map);
+        logf_("mando reconocido: tabla \"%s\" (%d reglas)", pad_map.nombre, pad_map.n);
+    } else {
+        gpm_usar_mapa(NULL);
+    }
+}
+
+static void pad_connected(void) {
+    grabbed = 0;
+    load_pad_map();
+    gpm_eje_t ejes[ABS_CNT];
+    gpm_evdev_ejes(gfd, ejes);
+    gpm_mando_nuevo(ejes);
+}
+
 static void scan_gamepad(void) {
     char p[64];
     int fd = gpm_evdev_buscar_mando(pad_filter, VDEV_NAME, gname, sizeof gname, p, sizeof p);
     if (fd < 0) return;
     gfd = fd;
-    grabbed = 0;
-    gpm_eje_t ejes[ABS_CNT];
-    gpm_evdev_ejes(gfd, ejes);
-    gpm_mando_nuevo(ejes);
+    memset(&gid, 0, sizeof gid);
+    ioctl(gfd, EVIOCGID, &gid);
+    write_pad_info();
+    pad_connected();
     ff_id = -1;
-    logf_("mando conectado: \"%s\" (%s)", gname, p);
+    logf_("mando conectado: \"%s\" (%s) %04x:%04x", gname, p, gid.vendor, gid.product);
     activate_for_controller();
+}
+
+// La app cambio (o borro) la tabla: aplicarla al mando conectado sin reconectarlo.
+static void reload_pad_map_if_changed(void) {
+    if (gfd < 0 || file_sig(map_file) == map_sig) return;
+    gpm_soltar_todo();
+    int was = grabbed;
+    pad_connected();
+    grabbed = was;
 }
 
 static void set_grab(int want) {
@@ -402,7 +476,6 @@ static void learn_report(const char *token) {
 // INPUT_PROP_DIRECT: Android los trata como raton/lapiz (sale una flecha). Sin root no se
 // puede instalar un IDC, asi que se captura el dispositivo y se reenvian sus toques a la
 // pantalla virtual. Sus coordenadas ya vienen en la orientacion visible.
-#define TB(arr, b) ((arr[(b) / (8 * sizeof(long))] >> ((b) % (8 * sizeof(long)))) & 1)
 static int touch_fwd = 0;
 static int tfd = -1;
 static char tname[128];
@@ -495,9 +568,10 @@ static void write_status(int enabled) {
     snprintf(tmp, sizeof tmp, "%s.tmp", status_file);
     FILE *f = fopen(tmp, "w");
     if (!f) return;
-    fprintf(f, "time=%lld\nuid=%d\nversion=gpmapper 1.6\nbuild=%d\ngamepad=%s\ntouch=%s\nprofile=%s\npackage=%s\nenabled=%d\nrotate=%d\nrotation=%d\n",
+    fprintf(f, "time=%lld\nuid=%d\nversion=gpmapper 1.6\nbuild=%d\ngamepad=%s\ntouch=%s\nprofile=%s\npackage=%s\nenabled=%d\nrotate=%d\nrotation=%d\nmap=%s\n",
             (long long)time(NULL), (int)getuid(), GPM_BUILD, gfd >= 0 ? gname : "", tfd >= 0 ? tname : "",
-            cur ? profile_label(cur) : "", cur ? cur->pkg : "", enabled, rot_mode, cur_rot);
+            cur ? profile_label(cur) : "", cur ? cur->pkg : "", enabled, rot_mode, cur_rot,
+            gfd >= 0 && gpm_mapa() ? (pad_map.nombre[0] ? pad_map.nombre : "?") : "");
     fclose(f);
     rename(tmp, status_file);
 }
@@ -604,6 +678,8 @@ int main(int argc, char **argv) {
     snprintf(rotation_file, sizeof rotation_file, "%s/../rotation", prof_dir);
     snprintf(display_file, sizeof display_file, "%s/../display", prof_dir);
     snprintf(status_file, sizeof status_file, "%s/../status.txt", prof_dir);
+    snprintf(info_file, sizeof info_file, "%s/../mando_info", prof_dir);
+    snprintf(map_file, sizeof map_file, "%s/../mando.map", prof_dir);
 
     if (tap_u >= 0) {  // modo prueba
         read_rotation();
@@ -660,6 +736,7 @@ int main(int argc, char **argv) {
         if (n - last_poll >= 1000) {
             last_poll = n;
             if (reload_profiles_if_changed()) { gpm_soltar_todo(); set_cur(NULL); active = -1; }
+            reload_pad_map_if_changed();
             int fg = foreground_profile();
             // Pausa desde Ajustes rapidos: solo cuenta el cambio (aparece -> pausa, desaparece -> sigue),
             // asi SELECT+START sigue funcionando aunque el archivo exista.
