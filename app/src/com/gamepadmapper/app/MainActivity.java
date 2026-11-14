@@ -163,6 +163,7 @@ public class MainActivity extends Activity {
             handler.removeCallbacks(this);
             try {
                 fillServiceCard(false);
+                checkPadMap();
                 if (tab == TAB_PAD) {   // mando conectado / desconectado: redibujar la lista
                     StringBuilder s = new StringBuilder();
                     for (Mapper.Pad p : Mapper.pads()) s.append(p.name).append(p.gamepad).append('|');
@@ -467,6 +468,10 @@ public class MainActivity extends Activity {
         android.net.Uri u = intent.getData();
         setIntent(new Intent(this, MainActivity.class));  // procesarlo solo una vez
         if (u == null || !"gpmapper".equals(u.getScheme())) return;
+        if ("auth".equals(u.getHost())) {   // vuelta del inicio de sesion con GitHub (copia en la nube)
+            finishCloudSignIn(u);
+            return;
+        }
         List<String> seg = u.getPathSegments();
         if (seg.size() != 1) return;
         String arg = seg.get(0);
@@ -694,6 +699,8 @@ public class MainActivity extends Activity {
             c.addView(n);
         }
         content.addView(c);
+        View community = padMapCard();
+        if (community != null) content.addView(community);
 
         content.addView(sectionTitle(L.t("Probar botones"), sel != null && sel.gamepad ? null : L.t("vista de ejemplo")));
         LinearLayout t = card();
@@ -712,6 +719,70 @@ public class MainActivity extends Activity {
                 + L.t("botón» en el editor."), 12, Ui.TEXT_3, false);
         tip.setPadding(dp(4), dp(2), dp(4), 0);
         content.addView(tip);
+    }
+
+    // ------------------------------------------------------------------ mandos de la comunidad (modo root)
+    private String padMapSig = "";
+    private volatile ControllerMappings.Result padMap;
+    private volatile boolean padMapBusy;
+
+    /**
+     * Modo root / Shizuku: si gpmapper vio un mando nuevo (mando_info), buscarlo en los mandos de la
+     * comunidad y en SDL GameControllerDB y escribir su tabla (mando.map). En segundo plano.
+     */
+    private void checkPadMap() {
+        if (padMapBusy || !Mapper.status().running) return;
+        final String sig = ControllerMappings.signature(this);
+        if (sig.equals(padMapSig)) return;
+        padMapSig = sig;
+        padMapBusy = true;
+        final android.content.Context app = getApplicationContext();
+        new Thread(() -> {
+            ControllerMappings.Result r = null;
+            try {
+                r = ControllerMappings.update(app);
+            } catch (Exception ignored) {
+            }
+            final ControllerMappings.Result fr = r;
+            runOnUiThread(() -> {
+                padMap = fr;
+                padMapBusy = false;
+                if (tab == TAB_PAD) handler.postDelayed(this::render, 2500);   // gpmapper la aplica en ~1 s
+            });
+        }).start();
+    }
+
+    /** Tarjeta del modo root: «Mando reconocido por la comunidad» y el interruptor para no usarlo. */
+    private View padMapCard() {
+        Mapper.Status st = Mapper.status();
+        if (!st.running || st.gamepad.isEmpty()) return null;
+        LinearLayout c = card();
+        ControllerMappings.Result r = padMap;
+        if (!st.map.isEmpty()) {
+            c.addView(Ui.menuRow(this, R.drawable.ic_people, Ui.OK, L.t("Mando reconocido por la comunidad"),
+                    L.t("Sus botones se traducen con «") + st.map + L.t("» antes de aplicar el perfil")
+                            + (r != null && !r.source.isEmpty() ? " (" + r.source + ")" : ""), null));
+        } else if (r != null && r.standard) {
+            c.addView(Ui.menuRow(this, R.drawable.ic_check, Ui.TEXT_3, L.t("Mando estándar"),
+                    L.t("Envía los botones con sus nombres normales: no hace falta traducirlo"), null));
+        } else {
+            c.addView(Ui.menuRow(this, R.drawable.ic_people, Ui.TEXT_3, L.t("Mando sin mapeo de la comunidad"),
+                    L.t("Si algún botón sale con un nombre raro, usa «Detectar botón» en el editor"), null));
+        }
+        c.addView(Ui.divider(this));
+        LinearLayout row = Ui.menuRow(this, R.drawable.ic_download, Ui.PRIMARY, L.t("Usar mapeos de la comunidad"),
+                L.t("Modo root o Shizuku: corrige los botones de mandos genéricos (SDL GameControllerDB y la web)"), null);
+        row.setClickable(false);
+        final Switch sw = new Switch(this);
+        sw.setChecked(ControllerMappings.enabled(this));
+        sw.setOnCheckedChangeListener((b, on) -> {
+            ControllerMappings.setEnabled(this, on);
+            padMapSig = "";
+            checkPadMap();
+        });
+        row.addView(sw);
+        c.addView(row);
+        return c;
     }
 
     /** Chips con lo que tiene el mando: botones, sticks, gatillos, bateria, vibracion, sensores. */
@@ -1384,6 +1455,9 @@ public class MainActivity extends Activity {
         }
 
         // Idioma: automatico (el del telefono), espanol o ingles.
+        content.addView(sectionTitle(L.t("Copia en la nube"), L.t("opcional")));
+        content.addView(cloudCard());
+
         content.addView(sectionTitle(L.t("Idioma"), null));
         LinearLayout lang = card();
         String curLang = L.pref(this);
@@ -1440,6 +1514,131 @@ public class MainActivity extends Activity {
         }
         content.addView(a);
         content.addView(credit());
+    }
+
+    // ------------------------------------------------------------------ copia en la nube (GitHub)
+    private boolean cloudBusy;
+
+    /** Copia de los perfiles en la cuenta de GitHub (Supabase): iniciar sesion, subir, restaurar, salir. */
+    private View cloudCard() {
+        LinearLayout c = card();
+        if (!CloudBackup.signedIn(this)) {
+            LinearLayout r = Ui.menuRow(this, R.drawable.ic_upload, Ui.PRIMARY, L.t("Copia en la nube"),
+                    L.t("Guarda tus perfiles en tu cuenta de GitHub para recuperarlos en otro teléfono. Solo tú ves tu copia."),
+                    null);
+            r.setClickable(false);
+            c.addView(r);
+            c.addView(padded(Ui.button(this, R.drawable.ic_people, L.t("Iniciar sesión con GitHub"), Ui.PRIMARY_DARK,
+                    Color.WHITE, v -> startCloudSignIn())));
+            return c;
+        }
+        String user = CloudBackup.user(this);
+        c.addView(Ui.menuRow(this, R.drawable.ic_check, Ui.OK, L.t("Copia en la nube activa"),
+                user.isEmpty() ? L.t("Sesión iniciada con GitHub") : L.t("Sesión iniciada como @") + user, null));
+        c.addView(Ui.menuRow(this, R.drawable.ic_upload, Ui.PRIMARY, L.t("Subir mis perfiles"),
+                L.t("Copia todos los perfiles del teléfono (máximo 200)"), v -> cloudTask(L.t("Subiendo perfiles…"), () -> {
+                    int[] r = CloudBackup.uploadAll(this);
+                    return L.t("Perfiles subidos: ") + r[0] + (r[1] > 0 ? L.t(" · con error: ") + r[1] : "");
+                })));
+        c.addView(Ui.menuRow(this, R.drawable.ic_download, Ui.PRIMARY, L.t("Restaurar desde la nube"),
+                L.t("Te pregunta antes de sustituir perfiles del teléfono"), v -> {
+                    if (cloudBusy) return;
+                    cloudBusy = true;
+                    Toast.makeText(this, L.t("Descargando la copia…"), Toast.LENGTH_SHORT).show();
+                    new Thread(() -> {
+                        try {
+                            List<Library.ZipProfile> items = CloudBackup.downloadAll(this);
+                            runOnUiThread(() -> {
+                                cloudBusy = false;
+                                importProfiles(items);
+                            });
+                        } catch (Exception e) {
+                            runOnUiThread(() -> {
+                                cloudBusy = false;
+                                Toast.makeText(this, L.t("No se pudo restaurar: ") + e.getMessage(), Toast.LENGTH_LONG).show();
+                                render();
+                            });
+                        }
+                    }).start();
+                }));
+        c.addView(Ui.divider(this));
+        c.addView(Ui.menuRow(this, R.drawable.ic_delete, Ui.TEXT_3, L.t("Borrar la copia de la nube"),
+                L.t("Los perfiles del teléfono no se tocan"), v -> new AlertDialog.Builder(this)
+                        .setTitle(L.t("Borrar la copia de la nube"))
+                        .setMessage(L.t("Se borrarán todos los perfiles guardados en tu cuenta. Los del teléfono se quedan."))
+                        .setPositiveButton(L.t("Borrar"), (d, w) -> cloudTask(L.t("Borrando…"),
+                                () -> L.t("Perfiles borrados de la nube: ") + CloudBackup.deleteAll(this)))
+                        .setNegativeButton(L.t("Cancelar"), null).show()));
+        c.addView(Ui.menuRow(this, R.drawable.ic_close, Ui.TEXT_3, L.t("Cerrar sesión"),
+                L.t("Borra la sesión de este teléfono"), v -> {
+                    final android.content.Context app = getApplicationContext();
+                    new Thread(() -> {
+                        CloudBackup.signOut(app);
+                        runOnUiThread(() -> {
+                            Toast.makeText(this, L.t("Sesión cerrada"), Toast.LENGTH_SHORT).show();
+                            render();
+                        });
+                    }).start();
+                }));
+        return c;
+    }
+
+    private interface CloudJob {
+        String run() throws Exception;
+    }
+
+    /** Tarea de la copia en segundo plano; muestra el resultado o el error. */
+    private void cloudTask(String working, CloudJob job) {
+        if (cloudBusy) return;
+        cloudBusy = true;
+        Toast.makeText(this, working, Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            String msg;
+            try {
+                msg = job.run();
+            } catch (Exception e) {
+                msg = L.t("Error: ") + e.getMessage();
+            }
+            final String m = msg;
+            runOnUiThread(() -> {
+                cloudBusy = false;
+                Toast.makeText(this, m, Toast.LENGTH_LONG).show();
+                render();
+            });
+        }).start();
+    }
+
+    private void startCloudSignIn() {
+        new AlertDialog.Builder(this).setTitle(L.t("Iniciar sesión con GitHub"))
+                .setMessage(L.t("Se abrirá el navegador para entrar con tu cuenta de GitHub (la misma que en la web). ")
+                        + L.t("Tus perfiles se guardan de forma privada: solo tú los ves y se borran con tu cuenta."))
+                .setPositiveButton(L.t("Continuar"), (d, w) -> {
+                    try {
+                        startActivity(new Intent(Intent.ACTION_VIEW, CloudBackup.beginSignIn(this)));
+                    } catch (Exception e) {
+                        Toast.makeText(this, L.t("No se pudo abrir el navegador"), Toast.LENGTH_LONG).show();
+                    }
+                })
+                .setNegativeButton(L.t("Cancelar"), null).show();
+    }
+
+    private void finishCloudSignIn(final Uri u) {
+        final android.content.Context app = getApplicationContext();
+        new Thread(() -> {
+            String msg;
+            try {
+                String user = CloudBackup.finishSignIn(app, u);
+                msg = user.isEmpty() ? L.t("Sesión iniciada") : L.t("Sesión iniciada como @") + user;
+            } catch (Exception e) {
+                msg = L.t("No se pudo iniciar sesión: ") + e.getMessage();
+            }
+            final String m = msg;
+            runOnUiThread(() -> {
+                Toast.makeText(this, m, Toast.LENGTH_LONG).show();
+                if (tab != TAB_SETTINGS) selectTab(TAB_SETTINGS);
+                else render();
+            });
+        }).start();
     }
 
     /** Lista de permisos con su estado; tocar abre el ajuste correspondiente. */
@@ -2379,7 +2578,11 @@ public class MainActivity extends Activity {
 
     /** Importa una copia .zip: los iguales se saltan; con los distintos pregunta. */
     private void importZip(byte[] zip) throws java.io.IOException {
-        final List<Library.ZipProfile> items = Library.readZip(zip);
+        importProfiles(Library.readZip(zip));
+    }
+
+    /** Importa perfiles (copia .zip o de la nube): los iguales se saltan; con los distintos pregunta. */
+    private void importProfiles(final List<Library.ZipProfile> items) {
         if (items.isEmpty()) {
             Toast.makeText(this, L.t("La copia no contiene perfiles válidos"), Toast.LENGTH_LONG).show();
             return;

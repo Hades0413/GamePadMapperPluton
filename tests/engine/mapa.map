@@ -1,0 +1,15 @@
+# Tabla de traduccion de prueba (como <base>/mando.map): un mando generico con A y B cambiados,
+# el stick derecho en Z/RZ (vertical invertida), la cruceta en un eje y HOME haciendo de L2.
+mando 5 2dc8 6001 *
+nombre Mando de prueba
+BTN_131 = A
+BTN_130 = B
+BTN_13C = L2
+ABS_2 = ABS_RX
+ABS_5 = ABS_RY~
+ABS_6- = DPAD_LEFT
+ABS_6+ = DPAD_RIGHT
+# Lineas no validas: se ignoran
+BTN_ZZ = A
+ABS_2- = ABS_X
+BTN_130 = ABS_X

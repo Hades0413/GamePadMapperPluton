@@ -134,6 +134,43 @@ void gpm_reiniciar_ticks(void);
 void gpm_ticks(int activo);                              // camara, turbo y deslizar
 int gpm_intervalo_ms(void);                              // 0 = sin trabajo periodico; si no, cada cuantos ms
 
+// ------------------------------------------------------------ traduccion del mando (<base>/mando.map)
+// Algunos mandos genericos envian codigos raros por evdev (p. ej. A como BTN_C o el stick derecho
+// en ABS_Z/ABS_RZ con los gatillos en RX/RY). La app busca el mando en SDL GameControllerDB y en
+// los mandos de la comunidad y escribe una tabla "codigo crudo = nombre estandar":
+//   # comentario
+//   mando 3 2dc8 6001 0110     bus, fabricante, producto, version (hex; * = cualquiera)
+//   nombre 8BitDo Pro 2        (informativo)
+//   BTN_130 = B                boton -> boton (A, B, X, Y, L1, R1, L2, R2, SELECT, START, HOME,
+//                              L3, R3, DPAD_UP/DOWN/LEFT/RIGHT o BTN_xxx)
+//   ABS_2 = ABS_RX             eje -> eje (ABS_X, ABS_Y, ABS_Z, ABS_RX, ABS_RY, ABS_RZ, ABS_HAT0X,
+//   ABS_5 = ABS_RY~            ABS_HAT0Y, ABS_GAS, ABS_BRAKE o ABS_<hex>); '~' invierte el eje
+//   ABS_10- = DPAD_LEFT        medio eje -> boton (pulsado pasada la mitad del recorrido)
+// Con una tabla activa, los codigos sin regla pasan tal cual salvo que otra regla ya escriba en
+// ellos (se descartan: si no, el mando "pulsaria" dos veces el mismo control).
+// Sin tabla (gpm_usar_mapa(NULL), lo normal) nada cambia.
+#define GPM_MAPA_REGLAS 96
+typedef struct {
+    int tipo_o, cod_o, mitad;    // origen: EV_KEY / EV_ABS, codigo y mitad (-1, +1; 0 = eje entero o boton)
+    int tipo_d, cod_d;           // destino: EV_KEY / EV_ABS y codigo
+    int invertir;                // eje -> eje: invertir el recorrido
+} gpm_regla_t;
+
+typedef struct {
+    int bus, vendor, product, version;   // -1 = cualquiera
+    char nombre[96];
+    int n;
+    gpm_regla_t r[GPM_MAPA_REGLAS];
+} gpm_mapa_t;
+
+// Lee una tabla (como mucho 16 KB). 0 = bien (con la linea 'mando' y al menos una regla valida).
+int gpm_mapa_leer(const char *ruta, gpm_mapa_t *m);
+// ¿La tabla es para este mando? (bus, fabricante, producto y version de EVIOCGID)
+int gpm_mapa_para(const gpm_mapa_t *m, int bus, int vendor, int product, int version);
+// Tabla activa (NULL = ninguna). Llamar ANTES de gpm_mando_nuevo (traduce tambien los ejes).
+void gpm_usar_mapa(const gpm_mapa_t *m);
+const gpm_mapa_t *gpm_mapa(void);
+
 // ------------------------------------------------------------ toques directos (u, v: 0..1 del destino)
 int gpm_toque_abajo_n(double u, double v);               // devuelve el hueco o -1
 void gpm_toque_mover_n(int slot, double u, double v);

@@ -4,6 +4,7 @@
 #  2. gpmapper -c (C, motor root) sobre el mismo perfil: debe entenderlo igual que la app.
 #  3. gpmapper -F: adaptar a otras pantallas igual que la app.
 #  4. gpmapper -r: guiones de eventos del mando (tests/engine) -> toques, comparados con lo esperado.
+#  5. Mandos de la comunidad: SdlMappingTest (Java) escribe mando.map y gpmapper lo aplica (tests/mandos).
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 root="$(dirname "$here")"
@@ -94,6 +95,27 @@ for guion in "$here"/engine/*.txt; do
         echo "  $nombre: igual"
     else
         echo "  $nombre: DIFERENTE (- esperado, + ahora)" >&2; head -n 40 "$out/$nombre.diff" >&2; fallos=1
+    fi
+done
+[ "$fallos" = 0 ] || exit 1
+
+echo "== Mandos de la comunidad (la app escribe mando.map y gpmapper lo aplica)"
+# SdlMappingTest: GUID como SDL, lineas SDL y la tabla; escribe la del mando de ejemplo, que se
+# repite con tests/mandos/*.txt (como tests/engine). ACTUALIZAR=1 tambien vale aqui.
+"$jdk/bin/javac" -nowarn -encoding UTF-8 -cp "$jar" -sourcepath "$root/app/src" -d "$out/cls" "$here/SdlMappingTest.java"
+mkdir -p "$out/mandos"
+"$jdk/bin/java" -cp "$out/cls$sep$jar" SdlMappingTest "$out/mandos/generado.map"
+for guion in "$here"/mandos/*.txt; do
+    nombre="$(basename "$guion" .txt)"
+    cp "$guion" "$out/mandos/"
+    esperado="$here/mandos/$nombre.esperado"
+    "$out/gpmapper" -r "$here/engine/perfil.conf" "$out/mandos/$nombre.txt" 2>/dev/null > "$out/mandos/$nombre.sal" \
+        || { echo "  $nombre: fallo al repetir" >&2; fallos=1; continue; }
+    if [ "${ACTUALIZAR:-0}" = 1 ]; then cp "$out/mandos/$nombre.sal" "$esperado"; echo "  $nombre: actualizado"; continue; fi
+    if diff -u "$esperado" "$out/mandos/$nombre.sal" > "$out/mandos/$nombre.diff"; then
+        echo "  $nombre: igual"
+    else
+        echo "  $nombre: DIFERENTE (- esperado, + ahora)" >&2; head -n 40 "$out/mandos/$nombre.diff" >&2; fallos=1
     fi
 done
 [ "$fallos" = 0 ] || exit 1

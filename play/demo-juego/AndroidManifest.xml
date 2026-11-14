@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Juego de demostracion SOLO para las capturas de la ficha de Google Play (play/capturas.sh).
+     No se publica: dibuja una escena con controles tactiles para que la burbuja y el editor de
+     Gamepad Mapper Pluton tengan un "juego" encima en el emulador. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="org.pluton.demojuego"
+    android:versionCode="1"
+    android:versionName="1.0">
+
+    <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="35" />
+
+    <application
+        android:label="Pluton Racer (demo)"
+        android:icon="@mipmap/icono"
+        android:appCategory="game"
+        android:isGame="true"
+        android:allowBackup="false"
+        android:theme="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen">
+        <activity
+            android:name=".Demo"
+            android:exported="true"
+            android:screenOrientation="sensorLandscape">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

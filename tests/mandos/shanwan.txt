@@ -1,0 +1,50 @@
+# Mando HID generico (ShanWan, SDL GameControllerDB) con la tabla que escribe la app
+# (SdlMappingTest -> generado.map) y el perfil de tests/engine/perfil.conf.
+mapa generado.map
+quitar RX
+quitar RY
+rango Z 0 255 128
+rango RZ 0 255 128
+# BTN_THUMB2 (0x122) es la A: toque
+boton BTN_122 1
+syn
+espera 40
+boton BTN_122 0
+syn
+espera 20
+# BTN_TRIGGER (0x120) es la Y: interruptor (una pulsacion apoya, otra suelta)
+boton BTN_120 1
+syn
+boton BTN_120 0
+syn
+espera 30
+boton BTN_120 1
+syn
+boton BTN_120 0
+syn
+espera 30
+# Stick derecho en Z/RZ (camara)
+eje Z 255
+syn
+espera 40
+eje Z 128
+syn
+espera 30
+# BTN_BASE (0x126) es L2: capa L2+A
+boton BTN_126 1
+syn
+boton BTN_122 1
+syn
+espera 40
+boton BTN_122 0
+syn
+boton BTN_126 0
+syn
+espera 20
+# Cruceta en el hat: mueve el joystick (dpad)
+eje HAT0X -1
+syn
+espera 30
+eje HAT0X 0
+syn
+espera 30

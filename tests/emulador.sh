@@ -83,6 +83,19 @@ alive && ok "enlace a un perfil que no existe" || bad "enlace a un perfil que no
 adb shell am start -a android.intent.action.VIEW -d "gpmapper://subido/no-es-un-id" "$pkg" >/dev/null
 sleep 2
 alive && ok "enlace gpmapper://subido mal formado" || bad "enlace gpmapper://subido mal formado"
+# Vuelta del inicio de sesion sin haberlo empezado (o con un state falso): se rechaza sin cerrarse.
+adb shell am start -a android.intent.action.VIEW -d "'gpmapper://auth?state=falso&code=falso'" "$pkg" >/dev/null
+shot 04-auth-falso 3
+alive && ok "enlace gpmapper://auth sin inicio de sesión pendiente" || bad "enlace gpmapper://auth falso"
+# Sigue sin sesion: Ajustes muestra «Iniciar sesión con GitHub» (el enlace lleva a Ajustes).
+adb shell input swipe 540 1800 540 700 300 >/dev/null 2>&1 || true
+sleep 1
+adb shell uiautomator dump /sdcard/gpm-ui.xml >/dev/null 2>&1 || true
+if adb shell cat /sdcard/gpm-ui.xml 2>/dev/null | grep -qE "Copia en la nube activa|Cloud backup on"; then
+    bad "un enlace gpmapper://auth falso inició sesión"
+else
+    ok "un enlace gpmapper://auth falso no inicia sesión"
+fi
 
 # 4. Boton de Ajustes rapidos (Android 13+: cmd statusbar)
 if [ "$api" -ge 33 ]; then

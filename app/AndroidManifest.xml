@@ -10,7 +10,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <!-- Descargar perfiles del catalogo -->
+    <!-- Descargar perfiles del catalogo, mandos de la comunidad y copia en la nube (opcional) -->
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Saber que juego esta en primer plano (burbuja) y reactivarla al encender -->
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
@@ -55,7 +55,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/plain" />
             </intent-filter>
-            <!-- "Abrir en la app" desde la web: gpmapper://perfil/<id>, gpmapper://juego/<paquete> y gpmapper://subido/<id> (tras publicar) -->
+            <!-- "Abrir en la app" desde la web: gpmapper://perfil/<id>, gpmapper://juego/<paquete> y gpmapper://subido/<id> (tras publicar); gpmapper://auth (copia en la nube) -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -63,6 +63,8 @@
                 <data android:scheme="gpmapper" android:host="perfil" />
                 <data android:scheme="gpmapper" android:host="juego" />
                 <data android:scheme="gpmapper" android:host="subido" />
+                <!-- Vuelta del inicio de sesion con GitHub (copia en la nube, OAuth con PKCE) -->
+                <data android:scheme="gpmapper" android:host="auth" />
             </intent-filter>
         </activity>
 

@@ -74,6 +74,8 @@ gpm="$root/mapper/module/gpmapper"
 cp "$gpm" "$build/assets/gpmapper"
 cp "$root"/presets/*.json "$root"/presets/*.conf "$build/assets/presets/" 2>/dev/null || true
 echo "   catalogo incluido: $(ls "$build/assets/presets" | wc -l | tr -d ' ') archivos"
+# Subconjunto de SDL GameControllerDB (licencia zlib, con su licencia) para reconocer mandos en modo root
+cp "$here/datos/mandos-sdl.txt" "$here/datos/LICENCIA-SDL_GameControllerDB.txt" "$build/assets/"
 
 echo "1/5 Recursos (aapt2, $platform)..."
 run "$aapt2" compile --dir "$here/res" -o "$build/res.zip"

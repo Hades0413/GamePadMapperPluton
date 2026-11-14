@@ -1,0 +1,31 @@
+     0.000 mapa generado.map: 18 reglas
+     0.000 perfil com.prueba.motor 2400x1080 -> destino 2400x1080
+     0.000 abajo s=0 x=1932.00 y=960.00
+     0.000 sync tocando=1
+    40.000 arriba s=0
+    40.000 sync tocando=0
+    60.000 abajo s=0 x=1570.00 y=958.00
+    60.000 sync tocando=1
+    90.000 arriba s=0
+    90.000 sync tocando=0
+   120.000 abajo s=0 x=1500.00 y=500.00
+   120.000 sync tocando=1
+   130.000 mover s=0 x=1508.75 y=500.03
+   130.000 sync tocando=1
+   140.000 mover s=0 x=1517.65 y=500.06
+   140.000 sync tocando=1
+   150.000 mover s=0 x=1526.69 y=500.08
+   150.000 sync tocando=1
+   160.000 arriba s=0
+   160.000 sync tocando=0
+   190.000 abajo s=0 x=1000.00 y=300.00
+   190.000 sync tocando=1
+   230.000 arriba s=0
+   230.000 sync tocando=0
+   250.000 abajo s=0 x=344.00 y=828.00
+   250.000 sync tocando=1
+   250.000 mover s=0 x=232.00 y=828.00
+   250.000 sync tocando=1
+   280.000 arriba s=0
+   280.000 sync tocando=0
+   310.000 fin
