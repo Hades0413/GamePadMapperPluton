@@ -354,8 +354,11 @@ impl Servicio {
 
     /// Crea, cambia o quita el mando virtual de un mando segun su configuracion efectiva.
     fn sincronizar_salida(&mut self, id: IdMando) {
-        let deseado =
-            if self.pausado { TipoSalida::Ninguna } else { self.efectivo(id).map_or(TipoSalida::Ninguna, |m| m.salida) };
+        let deseado = if self.pausado {
+            TipoSalida::Ninguna
+        } else {
+            self.efectivo(id).map_or(TipoSalida::Ninguna, |m| m.salida)
+        };
         let actual = self.activas.get(&id).map(|a| a.dispositivo.tipo());
         if actual == Some(deseado) {
             return;

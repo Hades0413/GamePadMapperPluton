@@ -48,11 +48,7 @@ pub struct Motor {
 
 /// Botones (como salidas) del estado estandar, para la grabacion.
 fn bits_estandar(e: &EstadoEstandar) -> u32 {
-    e.botones
-        .iter()
-        .filter(|(_, p)| **p)
-        .filter_map(|(c, _)| SalidaPad::de_control(*c))
-        .fold(0, |b, s| b | s.bit())
+    e.botones.iter().filter(|(_, p)| **p).filter_map(|(c, _)| SalidaPad::de_control(*c)).fold(0, |b, s| b | s.bit())
 }
 
 /// Valor 0..1 de una entrada con el estado ya ajustado.
@@ -140,7 +136,11 @@ impl Motor {
             nuevos.push(PasoMacro::Esperar { ms: espera });
         }
         for s in cambios {
-            nuevos.push(if bits & s.bit() != 0 { PasoMacro::Pulsar { salida: s } } else { PasoMacro::Soltar { salida: s } });
+            nuevos.push(if bits & s.bit() != 0 {
+                PasoMacro::Pulsar { salida: s }
+            } else {
+                PasoMacro::Soltar { salida: s }
+            });
         }
         if g.pasos.len() + nuevos.len() > MAX_PASOS {
             return;
@@ -401,7 +401,10 @@ mod pruebas {
         m.macros.push(Macro {
             id: 1,
             nombre: "combo".into(),
-            pasos: vec![PasoMacro::Toque { salida: SalidaPad::A, ms: 30 }, PasoMacro::Toque { salida: SalidaPad::B, ms: 30 }],
+            pasos: vec![
+                PasoMacro::Toque { salida: SalidaPad::A, ms: 30 },
+                PasoMacro::Toque { salida: SalidaPad::B, ms: 30 },
+            ],
             repetir: false,
         });
         m.acciones.insert("b8".parse().unwrap(), Accion::Macro { macro_id: 1 });

@@ -10,28 +10,63 @@
 //! | DualShock 4 | hid-playstation | 054c:09cc   | 0x8111  | 0..255 (128)     | ABS_Z/RZ 0..255 + BTN_TL2/TR2 |
 //! | Switch Pro  | hid-nintendo    | 057e:2009   | 0x8111  | -32767..32767    | BTN_TL2/TR2 (digitales) |
 //!
-//! Todos llevan la marca [`MARCA_PHYS`] en `phys`: la fuente de mandos la usa para no leer
-//! nuestros propios mandos virtuales. La vibracion que el juego sube al mando virtual (FF_RUMBLE)
-//! se recoge en [`SalidaVirtual::vibracion`] para reenviarla al mando fisico.
+//! Cada dispositivo creado se apunta en un registro (su nombre en sysfs, `inputN`) y la fuente de
+//! mandos lo consulta con [`es_propio`] para no leer nuestros propios mandos virtuales. (No se usa
+//! `phys` como marca: el ioctl UI_SET_PHYS del crate evdev 0.13 tiene mal el tamano y falla con
+//! EINVAL.) La vibracion que el juego sube al mando virtual (FF_RUMBLE) se recoge en
+//! [`SalidaVirtual::vibracion`] para reenviarla al mando fisico.
 
-use super::{
-    a_rango, Disponibilidad, ErrorSalida, EstadoPad, FabricaSalidas, SalidaVirtual, Teclado, TipoSalida,
-};
+use super::{a_rango, Disponibilidad, ErrorSalida, EstadoPad, FabricaSalidas, SalidaVirtual, Teclado, TipoSalida};
 use crate::mapeo::acciones::{SalidaPad, TECLAS};
 use evdev::uinput::VirtualDevice;
 use evdev::{
     AbsInfo, AbsoluteAxisCode as A, AttributeSet, BusType, EventSummary, EventType, FFEffectCode, FFEffectKind,
     InputEvent, InputId, KeyCode as K, UInputCode, UinputAbsSetup,
 };
-use std::collections::HashMap;
-use std::ffi::CString;
+use std::collections::{BTreeSet, HashMap};
 use std::io;
 use std::os::fd::AsRawFd;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
-/// Prefijo de `phys` de todos los dispositivos que crea la app.
-pub const MARCA_PHYS: &str = "gamepad-mapper-pluton/virtual";
+/// Dispositivos creados por este proceso (nombre en sysfs: `input123`).
+static PROPIOS: Mutex<BTreeSet<String>> = Mutex::new(BTreeSet::new());
+
+fn propios() -> std::sync::MutexGuard<'static, BTreeSet<String>> {
+    PROPIOS.lock().unwrap_or_else(|e| e.into_inner())
+}
+
+/// Apunta un dispositivo recien creado en el registro y devuelve su nombre en sysfs.
+fn registrar(dev: &mut VirtualDevice) -> Option<String> {
+    let nombre = dev.get_syspath().ok()?.file_name()?.to_string_lossy().into_owned();
+    propios().insert(nombre.clone());
+    Some(nombre)
+}
+
+/// Nombre en sysfs (`inputN`) del dispositivo de un nodo `/dev/input/eventM`.
+fn nombre_sysfs(nodo: &Path) -> Option<String> {
+    let evento = nodo.file_name()?.to_str()?;
+    let dispositivo = std::fs::canonicalize(Path::new("/sys/class/input").join(evento).join("device")).ok()?;
+    Some(dispositivo.file_name()?.to_string_lossy().into_owned())
+}
+
+/// ¿Es el nodo uno de nuestros mandos virtuales (o el teclado virtual)?
+pub fn es_propio(nodo: &Path) -> bool {
+    let registro = propios();
+    !registro.is_empty() && nombre_sysfs(nodo).is_some_and(|n| registro.contains(&n))
+}
+
+/// Quita el dispositivo del registro al destruirlo.
+struct Registro(Option<String>);
+
+impl Drop for Registro {
+    fn drop(&mut self) {
+        if let Some(n) = self.0.take() {
+            propios().remove(&n);
+        }
+    }
+}
 
 struct Disposicion {
     nombre: &'static str,
@@ -163,6 +198,7 @@ pub struct SalidaUinput {
     tipo: TipoSalida,
     disp: &'static Disposicion,
     dev: VirtualDevice,
+    _registro: Registro,
     nodo: Option<PathBuf>,
     efectos: HashMap<i16, Efecto>,
     /// Efecto sonando y hasta cuando (None = sin fin).
@@ -173,7 +209,7 @@ pub struct SalidaUinput {
 }
 
 impl SalidaUinput {
-    pub fn crear(tipo: TipoSalida, numero: u32) -> Result<Self, ErrorSalida> {
+    pub fn crear(tipo: TipoSalida) -> Result<Self, ErrorSalida> {
         let disp = disposicion(tipo).ok_or(ErrorSalida::NoDisponible)?;
         let mut teclas = AttributeSet::<K>::new();
         for (_, k) in disp.botones {
@@ -186,7 +222,6 @@ impl SalidaUinput {
         let mut ff = AttributeSet::<FFEffectCode>::new();
         ff.insert(FFEffectCode::FF_RUMBLE);
         ff.insert(FFEffectCode::FF_GAIN);
-        let phys = CString::new(format!("{MARCA_PHYS}/{numero}")).map_err(|e| ErrorSalida::Io(io::Error::other(e)))?;
         let (min, centro, max, fuzz, flat) = disp.stick;
         let stick = AbsInfo::new(centro, min, max, fuzz, flat, 0);
         let gatillo = AbsInfo::new(0, 0, 255, 0, 0, 0);
@@ -195,7 +230,6 @@ impl SalidaUinput {
             .map_err(error_creacion)?
             .name(disp.nombre)
             .input_id(InputId::new(BusType::BUS_USB, disp.vendedor, disp.producto, disp.version))
-            .with_phys(&phys)?
             .with_keys(&teclas)?
             .with_ff(&ff)?
             .with_ff_effects_max(16);
@@ -213,16 +247,21 @@ impl SalidaUinput {
             b = b.with_absolute_axis(&UinputAbsSetup::new(eje, info))?;
         }
         let mut dev = b.build().map_err(error_creacion)?;
+        let registro = Registro(registrar(&mut dev));
         no_bloqueante(dev.as_raw_fd())?;
         let nodo = dev
             .enumerate_dev_nodes_blocking()
             .ok()
             .and_then(|mut it| it.find_map(|p| p.ok().filter(|p| p.to_string_lossy().contains("event"))));
-        log::info!("mando virtual {tipo:?} creado en {}", nodo.as_ref().map_or("?".into(), |p| p.display().to_string()));
+        log::info!(
+            "mando virtual {tipo:?} creado en {}",
+            nodo.as_ref().map_or("?".into(), |p| p.display().to_string())
+        );
         Ok(Self {
             tipo,
             disp,
             dev,
+            _registro: registro,
             nodo,
             efectos: HashMap::new(),
             sonando: None,
@@ -250,7 +289,8 @@ impl SalidaUinput {
                         if let FFEffectKind::Rumble { strong_magnitude, weak_magnitude } = datos.kind {
                             let duracion = Duration::from_millis(u64::from(datos.replay.length));
                             let id = subida.effect_id();
-                            self.efectos.insert(id, Efecto { fuerte: strong_magnitude, debil: weak_magnitude, duracion });
+                            self.efectos
+                                .insert(id, Efecto { fuerte: strong_magnitude, debil: weak_magnitude, duracion });
                             subida.set_retval(0);
                         } else {
                             subida.set_retval(-libc::EINVAL);
@@ -374,6 +414,7 @@ impl SalidaVirtual for SalidaUinput {
 
 pub struct TecladoUinput {
     dev: VirtualDevice,
+    _registro: Registro,
 }
 
 impl TecladoUinput {
@@ -382,16 +423,15 @@ impl TecladoUinput {
         for (_, codigo, _) in TECLAS {
             teclas.insert(K(*codigo));
         }
-        let phys = CString::new(format!("{MARCA_PHYS}/teclado")).map_err(|e| ErrorSalida::Io(io::Error::other(e)))?;
-        let dev = VirtualDevice::builder()
+        let mut dev = VirtualDevice::builder()
             .map_err(error_creacion)?
             .name("Gamepad Mapper Pluton - teclado virtual")
             .input_id(InputId::new(BusType::BUS_VIRTUAL, 0x1209, 0x6771, 1))
-            .with_phys(&phys)?
             .with_keys(&teclas)?
             .build()
             .map_err(error_creacion)?;
-        Ok(Self { dev })
+        let registro = Registro(registrar(&mut dev));
+        Ok(Self { dev, _registro: registro })
     }
 }
 
@@ -403,9 +443,7 @@ impl Teclado for TecladoUinput {
 }
 
 #[derive(Default)]
-pub struct FabricaUinput {
-    creados: u32,
-}
+pub struct FabricaUinput;
 
 /// ¿Se puede abrir /dev/uinput para escribir?
 pub fn uinput_accesible() -> bool {
@@ -426,8 +464,7 @@ impl FabricaSalidas for FabricaUinput {
     }
 
     fn crear(&mut self, tipo: TipoSalida) -> Result<Box<dyn SalidaVirtual>, ErrorSalida> {
-        self.creados += 1;
-        Ok(Box::new(SalidaUinput::crear(tipo, self.creados)?))
+        Ok(Box::new(SalidaUinput::crear(tipo)?))
     }
 
     fn teclado(&mut self) -> Result<Box<dyn Teclado>, ErrorSalida> {

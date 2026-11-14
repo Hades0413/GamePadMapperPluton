@@ -451,11 +451,7 @@ impl FabricaVigem {
 
 impl FabricaSalidas for FabricaVigem {
     fn disponibilidad(&self) -> Vec<Disponibilidad> {
-        let fallo = if !bus_instalado() {
-            Some(ErrorSalida::SinVigem)
-        } else {
-            self.cliente().err()
-        };
+        let fallo = if !bus_instalado() { Some(ErrorSalida::SinVigem) } else { self.cliente().err() };
         TipoSalida::VIRTUALES
             .into_iter()
             .map(|tipo| {

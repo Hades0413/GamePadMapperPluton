@@ -129,9 +129,7 @@ mod windows {
         let r = if activar {
             let datos = ancho(&format!("\"{}\" {ARGUMENTO_MINIMIZADO}", ejecutable_actual()?.display()));
             // SAFETY: datos UTF-16 terminados en 0 con su tamano en bytes.
-            unsafe {
-                RegSetValueExW(clave, valor.as_ptr(), 0, REG_SZ, datos.as_ptr().cast(), (datos.len() * 2) as u32)
-            }
+            unsafe { RegSetValueExW(clave, valor.as_ptr(), 0, REG_SZ, datos.as_ptr().cast(), (datos.len() * 2) as u32) }
         } else {
             // SAFETY: nombre terminado en 0.
             let r = unsafe { RegDeleteValueW(clave, valor.as_ptr()) };

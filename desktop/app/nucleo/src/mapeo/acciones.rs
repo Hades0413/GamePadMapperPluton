@@ -220,11 +220,20 @@ impl From<Entrada> for String {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "tipo", rename_all = "lowercase")]
 pub enum PasoMacro {
-    Pulsar { salida: SalidaPad },
-    Soltar { salida: SalidaPad },
+    Pulsar {
+        salida: SalidaPad,
+    },
+    Soltar {
+        salida: SalidaPad,
+    },
     /// Pulsa, mantiene `ms` y suelta.
-    Toque { salida: SalidaPad, ms: u32 },
-    Esperar { ms: u32 },
+    Toque {
+        salida: SalidaPad,
+        ms: u32,
+    },
+    Esperar {
+        ms: u32,
+    },
 }
 
 /// Secuencia de pulsaciones del mando virtual. Al terminar se suelta todo lo que siga pulsado.
@@ -408,10 +417,7 @@ mod pruebas {
     fn json_de_acciones() {
         let mut m: BTreeMap<Entrada, Accion> = BTreeMap::new();
         m.insert("b12".parse().unwrap(), Accion::Macro { macro_id: 3 });
-        m.insert(
-            "A".parse().unwrap(),
-            Accion::Pad { salida: SalidaPad::B, modo: Modo::Turbo, turbo_hz: 12.0 },
-        );
+        m.insert("A".parse().unwrap(), Accion::Pad { salida: SalidaPad::B, modo: Modo::Turbo, turbo_hz: 12.0 });
         m.insert("+a7".parse().unwrap(), Accion::Tecla { tecla: "SPACE".into() });
         let json = serde_json::to_string(&m).unwrap();
         assert!(json.contains(r#""A":{"tipo":"pad","salida":"B","modo":"turbo","turbo_hz":12.0}"#), "{json}");

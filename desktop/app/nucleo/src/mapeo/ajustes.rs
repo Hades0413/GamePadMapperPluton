@@ -138,14 +138,16 @@ mod pruebas {
         assert!(cerca(g.aplicar(0.35), 0.5));
         assert_eq!(g.aplicar(0.7), 1.0);
         // Valores imposibles: al rango.
-        let raro = AjusteEje { zona_muerta: 3.0, anti_zona_muerta: f32::NAN, sensibilidad: 99.0, saturacion: 0.0 }.limitado();
+        let raro =
+            AjusteEje { zona_muerta: 3.0, anti_zona_muerta: f32::NAN, sensibilidad: 99.0, saturacion: 0.0 }.limitado();
         assert_eq!((raro.zona_muerta, raro.anti_zona_muerta, raro.sensibilidad), (0.9, 0.0, 4.0));
         assert!(raro.saturacion > raro.zona_muerta);
     }
 
     #[test]
     fn inversion_y_valores_raros() {
-        let a = AjusteStick { zona_muerta: 0.0, curva: f32::NAN, invertir_x: true, invertir_y: true, ..Default::default() };
+        let a =
+            AjusteStick { zona_muerta: 0.0, curva: f32::NAN, invertir_x: true, invertir_y: true, ..Default::default() };
         let [x, y] = ajustar_stick(0.5, -0.5, &a);
         assert!(cerca(x, -0.5) && cerca(y, 0.5));
     }

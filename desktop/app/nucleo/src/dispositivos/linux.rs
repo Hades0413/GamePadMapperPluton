@@ -15,7 +15,7 @@ use super::{
     Plataforma,
 };
 use crate::mapeo::sdl::guid_sdl;
-use crate::salida::linux::MARCA_PHYS;
+use crate::salida::linux::es_propio;
 use evdev::{
     AbsoluteAxisCode, Device, EventSummary, FFEffect, FFEffectCode, FFEffectData, FFEffectKind, FFReplay, FFTrigger,
     KeyCode,
@@ -43,10 +43,6 @@ const INTERVALO_ESCANEO: Duration = Duration::from_secs(1);
 
 /// ¿Parece un mando? (igual que `gpm_evdev_es_mando` en `mapper/src/linux/gpm_evdev.c`).
 pub fn es_mando(dev: &Device) -> bool {
-    // Nuestros propios mandos virtuales no se leen (saldria la entrada dos veces).
-    if dev.physical_path().is_some_and(|p| p.starts_with(MARCA_PHYS)) {
-        return false;
-    }
     let Some(teclas) = dev.supported_keys() else { return false };
     if teclas.contains(KeyCode(BTN_TOUCH)) {
         return false;
@@ -124,6 +120,11 @@ impl FuenteEvdev {
             if self.descartados.get(&ruta) == Some(&inodo)
                 || self.abiertos.iter().any(|a| a.info.ruta == ruta.to_string_lossy())
             {
+                continue;
+            }
+            // Nuestros propios mandos virtuales no se leen (el juego veria la entrada dos veces).
+            if es_propio(&ruta) {
+                self.descartados.insert(ruta, inodo);
                 continue;
             }
             match Device::open(&ruta) {

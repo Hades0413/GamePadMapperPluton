@@ -36,9 +36,7 @@ mod linux {
     use x11rb::protocol::xproto::{AtomEnum, ConnectionExt};
 
     fn ejecutable(pid: u32) -> String {
-        std::fs::read_link(format!("/proc/{pid}/exe"))
-            .map(|r| sin_ruta(&r.to_string_lossy()))
-            .unwrap_or_default()
+        std::fs::read_link(format!("/proc/{pid}/exe")).map(|r| sin_ruta(&r.to_string_lossy())).unwrap_or_default()
     }
 
     fn con_x11rb() -> Option<Ventana> {

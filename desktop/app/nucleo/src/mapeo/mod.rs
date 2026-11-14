@@ -543,7 +543,6 @@ impl MapeoMando {
     }
 }
 
-
 #[cfg(test)]
 mod pruebas {
     use super::*;

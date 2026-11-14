@@ -132,7 +132,7 @@ pub trait FabricaSalidas: Send {
 /// La fabrica del sistema en el que se compila.
 pub fn fabrica_nativa() -> Box<dyn FabricaSalidas> {
     #[cfg(target_os = "linux")]
-    return Box::new(linux::FabricaUinput::default());
+    return Box::new(linux::FabricaUinput);
     #[cfg(windows)]
     return Box::new(windows::FabricaVigem::default());
     #[cfg(not(any(target_os = "linux", windows)))]
