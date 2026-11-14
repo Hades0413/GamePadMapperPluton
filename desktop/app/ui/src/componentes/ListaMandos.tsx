@@ -56,7 +56,7 @@ export function ListaMandos({ mandos, activo, app, onElegir, onCargarBaseDatos }
 
       <div className="rounded-xl border border-line bg-surface p-3 text-xs text-muted">
         <p className="mb-2">
-          {t('Base de datos SDL: {n} mandos conocidos', { n: app?.entradas_base_datos ?? 0 })}
+          {t('Base de datos SDL: {n} mandos conocidos. Puedes añadir el gamecontrollerdb.txt completo.', { n: app?.entradas_base_datos ?? 0 })}
         </p>
         <input ref={archivo} type="file" accept=".txt,text/plain" className="hidden"
           onChange={async (e) => {
@@ -65,7 +65,7 @@ export function ListaMandos({ mandos, activo, app, onElegir, onCargarBaseDatos }
             e.target.value = '';
           }} />
         <button type="button" className={claseBoton('secundario', 'sm', 'w-full')} onClick={() => archivo.current?.click()}>
-          <IconoSubir />{t('Cargar gamecontrollerdb.txt')}
+          <IconoSubir />{t('Cargar base completa')}
         </button>
       </div>
     </aside>

@@ -58,7 +58,7 @@ export function PestanaMandos({ backend }: { backend: Backend }) {
 
   if (!info) {
     return (
-      <main className="grid min-h-0 flex-1 grid-cols-[15rem_1fr]">
+      <main className="grid min-h-0 flex-1 grid-cols-[13rem_1fr] xl:grid-cols-[16rem_1fr]">
         <ListaMandos mandos={mandos} activo={null} app={app} onElegir={elegir} onCargarBaseDatos={cargarBaseDatos} />
         <div className="flex flex-col items-center justify-center gap-3 p-8 text-center text-muted">
           <span className="flex size-14 items-center justify-center rounded-2xl bg-surface-2 text-primary"><IconoMando /></span>
@@ -90,20 +90,35 @@ export function PestanaMandos({ backend }: { backend: Backend }) {
   };
 
   return (
-    <main className="grid min-h-0 flex-1 grid-cols-[15rem_1fr] xl:grid-cols-[17rem_1fr]">
+    <main className="grid min-h-0 flex-1 grid-cols-[13rem_1fr] xl:grid-cols-[16rem_1fr]">
       <ListaMandos mandos={mandos} activo={id} app={app} onElegir={elegir} onCargarBaseDatos={cargarBaseDatos} />
 
       <div className="min-h-0 space-y-4 overflow-y-auto p-4">
-        <section className="card flex flex-wrap items-center gap-x-4 gap-y-3 p-4">
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="truncate text-lg font-semibold">{info.nombre}</h1>
-              {estado && <span className="rounded-md bg-surface-2 px-2 py-0.5 text-xs text-muted">{origen[estado.origen]}</span>}
-              {estado?.sin_guardar && <span className="rounded-md bg-warning/15 px-2 py-0.5 text-xs font-medium text-warning">{t('Sin guardar')}</span>}
+        <section className="card space-y-3 p-4">
+          <div className="flex flex-wrap items-start gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="truncate text-lg font-semibold">{info.nombre}</h1>
+                {estado && <span className="rounded-md bg-surface-2 px-2 py-0.5 text-xs text-muted">{origen[estado.origen]}</span>}
+                {estado?.sin_guardar && <span className="rounded-md bg-warning/15 px-2 py-0.5 text-xs font-medium text-warning">{t('Sin guardar')}</span>}
+              </div>
+              <p className="mt-0.5 truncate font-mono text-xs text-muted" title={info.guid}>{info.guid} · {info.ruta}</p>
             </div>
-            <p className="mt-0.5 truncate font-mono text-xs text-muted" title={info.guid}>{info.guid} · {info.ruta}</p>
+            <div className="flex items-center gap-2">
+              <button type="button" className={claseBoton('fantasma')}
+                onClick={() => conMapeo(() => backend.restablecerMapeo(id), t('Mapeo restablecido'))}>
+                <IconoDeshacer />{t('Restablecer')}
+              </button>
+              <button type="button" className={claseBoton(estado?.sin_guardar ? 'primario' : 'secundario')} disabled={!estado?.sin_guardar}
+                onClick={() => void ejecutar(() => backend.guardarMapeo(id), (r) => {
+                  setEstado(r.estado);
+                  return t('Guardado en {ruta}', { ruta: r.ruta });
+                })}>
+                <IconoGuardar />{t('Guardar')}
+              </button>
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 border-t border-line pt-3">
             <button type="button" className={claseBoton('primario')} disabled={!!asistente}
               onClick={() => { setSeleccionado(null); void ejecutar(() => backend.asistenteIniciar(id)); }}>
               <IconoVarita />{t('Asignar todo')}
@@ -116,31 +131,22 @@ export function PestanaMandos({ backend }: { backend: Backend }) {
               onClick={() => void ejecutar(() => backend.probarVibracion(id), () => t('Vibrando…'))}>
               <IconoVibrar />{t('Vibración')}
             </button>
-            <button type="button" className={claseBoton('fantasma')} title={t('Copia el mapeo en formato SDL')}
-              onClick={() => void ejecutar(async () => {
-                const linea = await backend.exportarSdl(id);
-                await navigator.clipboard.writeText(linea);
-              }, () => t('Línea SDL copiada al portapapeles'))}>
-              <IconoCopiar />{t('Exportar SDL')}
-            </button>
-            <button type="button" className={claseBoton('fantasma')} onClick={() => setImportando(true)}>
-              <IconoSubir />{t('Importar SDL')}
-            </button>
-            <button type="button" className={claseBoton('fantasma')}
-              onClick={() => conMapeo(() => backend.restablecerMapeo(id), t('Mapeo restablecido'))}>
-              <IconoDeshacer />{t('Restablecer')}
-            </button>
-            <button type="button" className={claseBoton(estado?.sin_guardar ? 'primario' : 'secundario')} disabled={!estado?.sin_guardar}
-              onClick={() => void ejecutar(() => backend.guardarMapeo(id), (r) => {
-                setEstado(r.estado);
-                return t('Guardado en {ruta}', { ruta: r.ruta });
-              })}>
-              <IconoGuardar />{t('Guardar')}
-            </button>
+            <span className="ml-auto flex gap-1">
+              <button type="button" className={claseBoton('fantasma', 'sm')} title={t('Copia el mapeo en formato SDL')}
+                onClick={() => void ejecutar(async () => {
+                  const linea = await backend.exportarSdl(id);
+                  await navigator.clipboard.writeText(linea);
+                }, () => t('Línea SDL copiada al portapapeles'))}>
+                <IconoCopiar />{t('Exportar SDL')}
+              </button>
+              <button type="button" className={claseBoton('fantasma', 'sm')} onClick={() => setImportando(true)}>
+                <IconoSubir />{t('Importar SDL')}
+              </button>
+            </span>
           </div>
         </section>
 
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_21rem]">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_17rem] xl:grid-cols-[minmax(0,1fr)_21rem]">
           <div className="min-w-0 space-y-4">
             {asistente && (
               <PanelAsistente info={info} vista={asistente}

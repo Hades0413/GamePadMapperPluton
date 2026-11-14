@@ -20,8 +20,9 @@ export const EN: Readonly<Record<string, string>> = {
   'Virtual': 'Virtual',
   'Otra': 'Other',
   'simulado': 'simulated',
-  'Base de datos SDL: {n} mandos conocidos': 'SDL database: {n} known controllers',
-  'Cargar gamecontrollerdb.txt': 'Load gamecontrollerdb.txt',
+  'Base de datos SDL: {n} mandos conocidos. Puedes añadir el gamecontrollerdb.txt completo.':
+    'SDL database: {n} known controllers. You can add the full gamecontrollerdb.txt.',
+  'Cargar base completa': 'Load full database',
   '{n} mandos añadidos a la base de datos': '{n} controllers added to the database',
   'No hay ningún mando conectado': 'No controller connected',
   'En Linux hace falta permiso para leer /dev/input (grupo «input»). Mira desktop/linux/instalar-permisos.sh.':
