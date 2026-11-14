@@ -20,6 +20,34 @@ make apk                                     # o el APK que vayas a enseñar
 ./play/comprobar-ficha.sh                    # límites de caracteres de la ficha
 ```
 
+## Subida automática a Play (prueba interna)
+
+Al publicar una versión (`make release`, tag `v*`), GitHub Actions compila y firma el AAB y lo sube
+solo a la pista **Prueba interna** (job `play` de `build.yml`, script `scripts/play-subir.py`).
+
+- **Notas de la versión**: edita `play/novedades/es-ES.txt` y `en-US.txt` (máx. 500 caracteres)
+  **antes** de `make release`.
+- **Mientras la app no haya pasado la primera revisión de Google** («(unreviewed)»), Play solo
+  acepta borradores por la API: la versión queda como borrador en *Prueba interna* y hay que
+  pulsar *Guardar y publicar* en Play Console. Después de la revisión se publica sola.
+- **Si el código de versión ya está en Play** (subido a mano), se usa ese bundle sin volver a subirlo.
+- **Pasar a prueba cerrada o producción**: en Play Console, la versión › *Promocionar versión*
+  (o en local: `PLAY_TRACK=alpha PLAY_SERVICE_ACCOUNT_JSON_FILE=… make play-subir`).
+- **En local**: `PLAY_SERVICE_ACCOUNT_JSON_FILE=/ruta/fuera/del/repo/clave.json make play-subir`.
+
+### Cuenta de servicio (una sola vez)
+
+1. Google Cloud Console → proyecto propio (p. ej. «gamepad-mapper-play») → *APIs y servicios* →
+   activa **Google Play Android Developer API**.
+2. *IAM y administración › Cuentas de servicio* → *Crear cuenta de servicio* (sin roles de Cloud).
+   En la cuenta → *Claves › Agregar clave › JSON*: descarga el archivo y guárdalo **fuera** del
+   repositorio.
+3. Play Console → *Usuarios y permisos* → *Invitar a usuarios nuevos* → el correo de la cuenta de
+   servicio (`…@….iam.gserviceaccount.com`) → pestaña *Permisos de la app* → esta app →
+   *Publicar en pistas de prueba* (y *Ver información de la app*). Sin permisos de cuenta.
+4. El JSON va al secreto `PLAY_SERVICE_ACCOUNT_JSON` del entorno **google-play** del repositorio
+   (solo lo pueden usar los tags `v*`).
+
 ## Antes de subir esta versión
 
 - **Versión**: 1.7.1 (versionCode 10, optimizada con R8), con los mandos de la comunidad en modo root y la copia en la nube. Sube el AAB de `make aab`.

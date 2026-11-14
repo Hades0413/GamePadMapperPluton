@@ -1,0 +1,1 @@
+Smaller app. Sharing, exporting or uploading a profile now keeps the phone model, controller and screen.
