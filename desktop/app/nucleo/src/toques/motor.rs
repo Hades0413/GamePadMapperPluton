@@ -364,9 +364,10 @@ impl MotorToques {
         self.sacar()
     }
 
-    /// Una vuelta del bucle: combos del mando, macros pendientes y lo que depende del tiempo
-    /// (camara, turbo, deslizar). `activo`: se esta mapeando.
-    pub fn vuelta(&mut self, activo: bool) -> (Vec<OpToque>, Peticiones) {
+    /// Una vuelta del bucle: combos del mando y macros pendientes y, con `ticks`, lo que depende
+    /// del tiempo (camara, turbo, deslizar; como mucho cada [`MotorToques::intervalo_ms`], como el
+    /// bucle de gpmapper). `activo`: se esta mapeando.
+    pub fn vuelta(&mut self, activo: bool, ticks: bool) -> (Vec<OpToque>, Peticiones) {
         // SAFETY: nucleo reservado por esta instancia.
         let peticiones = unsafe {
             let pausa = ffi::gpm_combo_pausa(1) != 0;
@@ -374,7 +375,9 @@ impl MotorToques {
             if activo {
                 ffi::gpm_macros();
             }
-            ffi::gpm_ticks(c_int::from(activo));
+            if ticks {
+                ffi::gpm_ticks(c_int::from(activo));
+            }
             Peticiones { pausa, cambio }
         };
         (self.sacar(), peticiones)

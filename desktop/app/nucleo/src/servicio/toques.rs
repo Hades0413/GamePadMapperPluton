@@ -77,6 +77,7 @@ pub(super) struct Sesion {
     ventana: Option<VentanaAbierta>,
     mapeando: bool,
     error_avisado: bool,
+    ultimo_tick: std::time::Instant,
 }
 
 impl Sesion {
@@ -281,6 +282,7 @@ impl Servicio {
                     ventana: None,
                     mapeando: false,
                     error_avisado: false,
+                    ultimo_tick: std::time::Instant::now(),
                 });
                 self.actualizar_perfil_toques();
                 self.sincronizar_destino_toques();
@@ -319,7 +321,13 @@ impl Servicio {
         let mapeando = s.mapeando;
         let Some(m) = s.motor.as_mut() else { return };
         let mut ops = m.mando(pad, mapeando);
-        let (mas, peticiones) = m.vuelta(mapeando);
+        // Camara, turbo y deslizar al ritmo del nucleo (8-10 ms), no a cada lectura del mando.
+        let intervalo = Duration::from_millis(u64::from(m.intervalo_ms()));
+        let ticks = s.ultimo_tick.elapsed() >= intervalo;
+        if ticks {
+            s.ultimo_tick = std::time::Instant::now();
+        }
+        let (mas, peticiones) = m.vuelta(mapeando, ticks);
         ops.extend(mas);
         let vibrar = s.enviar(&ops);
         if let Err(e) = s.pantalla.mantener() {
