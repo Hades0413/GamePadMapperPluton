@@ -1485,6 +1485,7 @@ dependencies = [
 name = "gpm-nucleo"
 version = "0.1.0"
 dependencies = [
+ "cc",
  "evdev",
  "libc",
  "log",
