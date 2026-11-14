@@ -17,6 +17,10 @@ español e inglés, y modo rápido sin root con Shizuku (o con root mediante Mag
 encuentra los controles táctiles (descartando menús y el personaje) y los asigna al mando, uno a
 uno pulsando el botón que quieras o automáticamente (Android 11+).
 
+**En el PC (Linux y Windows):** `gpm-escritorio` usa los mismos perfiles para jugar con mando a
+juegos Android que se ven en el ordenador (scrcpy, Waydroid, un emulador). Ver
+[Versión de escritorio](#versión-de-escritorio-linux-y-windows-desktop).
+
 ## Cómo instalar (por cable USB)
 
 > **Mientras la app no esté en Google Play, hay que instalarla por USB desde un PC.**
@@ -285,7 +289,13 @@ make doctor    # comprueba herramientas, clave de firma y teléfono
 make build     # pruebas + módulos + APK + AAB (Google Play) en dist/
 make run       # instala por USB y abre la app
 make logs      # registro de depuración en vivo (make logs-off para apagarlo)
+make escritorio  # gpm-escritorio para Linux y Windows en dist/
 ```
+
+`make test` comprueba que la app y `gpmapper` entienden igual los perfiles y que el motor
+genera exactamente los mismos toques que antes con los guiones de `tests/engine/`
+(`gpmapper -r perfil.conf guion.txt`, con reloj virtual). Si un cambio del motor es a propósito:
+`ACTUALIZAR=1 make test` y revisa el diff de los `.esperado`.
 
 **Publicar una versión** (`main` está protegida): sube la versión en una rama (`make bump V=x.y`),
 fusiónala en `develop` por pull request, abre el pull request `develop` → `main` y, ya fusionado,
@@ -327,7 +337,9 @@ crear en *Settings › Secrets and variables › Actions* los secretos `KEYSTORE
 
 ```
 module/                  Módulo Magisk "Touch Fix" (Home + A)
-mapper/                  Mapeador propio: src/gpmapper.c, module/ y build.ps1
+mapper/                  Mapeador propio: src/gpmapper.c (Android), src/core/ (núcleo común), module/
+desktop/                 gpm-escritorio: el mismo núcleo para Linux y Windows
+tests/                   Pruebas de perfiles y del motor (tests/engine/)
 app/                     App Android (editor visual): src/, res/, AndroidManifest.xml, build.ps1
 keystore/                Clave de firma de la app (SECRETA, NO subir a GitHub)
 build.ps1                Empaqueta un módulo en dist\<id>-<version>.zip
@@ -351,6 +363,20 @@ El root es **opcional** (la app funciona sin él). Si usas el módulo con Magisk
   original (`fastboot flash boot <tu-boot-original>.img` y `fastboot reboot`).
 - **Si actualizas la ROM** se pierde el root: parchea con Magisk el `boot.img` de la nueva versión.
   El módulo sigue instalado y vuelve a funcionar en cuanto el root está activo.
+
+## Versión de escritorio (Linux y Windows): `desktop/`
+
+`gpm-escritorio` convierte el mando en toques dentro de la ventana donde se ve un juego Android en
+el PC (scrcpy, Waydroid, un emulador), con el mismo núcleo que el motor root de la app y los mismos
+perfiles, adaptados al tamaño de la ventana. En Linux crea una pantalla táctil virtual (uinput) y
+en Windows inyecta toques reales (Windows 8+, mandos XInput). Se descarga en Releases junto al APK.
+
+```bash
+./gpm-escritorio-linux-x86_64 --perfil mi-juego.conf --ventana "Juego"
+gpm-escritorio-windows-x86_64.exe --comunidad <id-del-perfil> --ventana "BlueStacks"
+```
+
+Permisos, opciones y limitaciones (Wayland, mandos no XInput...) en [`desktop/README.md`](desktop/README.md).
 
 ## Web y perfiles de la comunidad
 

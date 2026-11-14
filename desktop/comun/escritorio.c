@@ -111,7 +111,6 @@ static const gpm_plataforma_t plataforma = {
 
 // ------------------------------------------------------------ perfiles de la comunidad
 static int es_uuid(const char *s) {
-    if (strlen(s) != 36) return 0;
     for (int i = 0; i < 36; i++) {
         if (i == 8 || i == 13 || i == 18 || i == 23) { if (s[i] != '-') return 0; }
         else if (!isxdigit((unsigned char)s[i])) return 0;
@@ -175,9 +174,13 @@ static void crear_dirs(const char *ruta) {
     crear_dir(tmp);
 }
 
-// Descarga el perfil publicado 'id' con curl y lo guarda en la cache. 0 = bien.
-static int descargar_comunidad(const char *id, char *ruta, size_t n) {
-    if (!es_uuid(id)) { escr_log("--comunidad necesita el id del perfil (uuid, como sale en la web)"); return -1; }
+// Descarga el perfil publicado con curl y lo guarda en la cache. 0 = bien.
+// 'arg' es el id (uuid) o la direccion de la web que lo lleva (.../perfil/<id>).
+static int descargar_comunidad(const char *arg, char *ruta, size_t n) {
+    char id[37] = "";
+    for (size_t i = 0, l = strlen(arg); i + 36 <= l; i++)
+        if (es_uuid(arg + i) && (i + 36 == l || !isxdigit((unsigned char)arg[i + 36]))) { memcpy(id, arg + i, 36); id[36] = 0; break; }
+    if (!id[0]) { escr_log("--comunidad necesita el id del perfil o su direccion en la web (.../perfil/<id>)"); return -1; }
     char cmd[640];
     snprintf(cmd, sizeof cmd,
              "curl -fsSL --max-time 20 -H \"apikey: %s\" \"%s?select=conf&id=eq.%s&status=eq.published\"",
@@ -218,7 +221,8 @@ static void ayuda(const char *prog) {
            "Uso: %s --perfil ARCHIVO.conf [opciones]\n"
            "     %s --comunidad ID [opciones]\n\n"
            "  --perfil ARCHIVO     perfil (.conf) como los de la app\n"
-           "  --comunidad ID       descargar un perfil publicado en la comunidad (necesita curl)\n"
+           "  --comunidad ID       descargar un perfil publicado (su id o la direccion de su pagina\n"
+           "                       en la web, .../perfil/<id>; necesita curl)\n"
            "  --ventana \"TITULO\"   tocar dentro de la ventana cuyo titulo contiene ese texto;\n"
            "                       solo se mapea mientras esa ventana tiene el foco\n"
            "  --rect X,Y,ANCHO,ALTO   tocar dentro de ese rectangulo del escritorio\n"

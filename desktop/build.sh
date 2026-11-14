@@ -37,4 +37,5 @@ set -e
 avisos="$(grep -E '(desktop|mapper)/.*(warning|error)' <<<"$out" || true)"
 if [ $code -ne 0 ] || [ ! -f "$bin" ]; then echo "$out" >&2; echo "Fallo la compilacion" >&2; exit 1; fi
 if [ -n "$avisos" ]; then echo "$out" >&2; echo "Hay avisos del compilador: corrigelos" >&2; rm -f "$bin"; exit 1; fi
+rm -f "${bin%.exe}.pdb"   # simbolos de depuracion de Windows: no se distribuyen
 echo "Listo: $bin ($(du -h "$bin" | cut -f1))"

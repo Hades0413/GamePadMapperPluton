@@ -425,7 +425,8 @@ public class Profile {
      * a la altura (en horizontal) y cada boton conserva su distancia al borde mas cercano (los de
      * la izquierda a la izquierda, los de la derecha a la derecha, los del centro centrados), con
      * una transicion suave entre zonas. Con la misma proporcion de pantalla es un escalado normal.
-     * gpmapper.c (fit_x / fit_y) usa exactamente la misma formula: si se cambia, cambiar las dos.
+     * mapper/src/core/gpm_core.c (gpm_fit_x / gpm_fit_y) usa exactamente la misma formula: si se
+     * cambia, cambiar las dos.
      */
 
     /** Peso del anclaje derecho (o inferior) para una posicion relativa t en 0..1. */

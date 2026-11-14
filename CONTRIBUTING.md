@@ -31,7 +31,9 @@ Nombres recomendados para tu rama: `arreglo/descripcion-corta`, `mejora/descripc
 - Sin dependencias nuevas sin hablarlo antes en un issue (la app se compila sin Gradle).
 - La web usa **pnpm**, TypeScript estricto y su arquitectura por capas (ver `web/README.md`).
 - Si cambias el formato de los perfiles `.conf`, actualízalo en todos los sitios que lo leen
-  (`Profile.java`, `gpmapper.c`, `web/src/domain/profile/conf/validateConf.ts`, `supabase/migrations`).
+  (`Profile.java`, `mapper/src/core/gpm_core.c`, `web/src/domain/profile/conf/validateConf.ts`, `supabase/migrations`).
+- Si cambias el motor (`mapper/src/core/`), `make test` repite los guiones de `tests/engine/`: si el cambio
+  de los toques es a propósito, `ACTUALIZAR=1 make test` y revisa el diff de los `.esperado`.
 - Nunca subas claves, contraseñas, keystores (`*.jks`) ni archivos `.env`.
 
 ## Perfiles de juegos
