@@ -23,9 +23,13 @@ dos sistemas y un backend propio de cada uno dentro (`#[cfg(target_os = ...)]`).
   en 0, se queda con la entrada que más se ha movido y no avanza hasta que sueltas (antirrebote).
   Permite **Atrás**, **Saltar** y **Cancelar**.
 - **«Automático»:** busca el mando en **SDL GameControllerDB** (por su GUID, calculado como SDL) y,
-  si no está, deduce el mapeo de los códigos del sistema. Incluye un subconjunto de la base (Xbox,
-  PlayStation, Nintendo, Valve, Logitech, 8BitDo) y puedes cargar el `gamecontrollerdb.txt` completo
-  (se recuerda para los siguientes arranques).
+  si no está, deduce el mapeo de los códigos del sistema. La **base completa viene incluida**
+  (Windows y Linux, versión fijada). Por capas, cada una manda sobre la anterior:
+  1. la incluida en la app (`make app-escritorio-base` la refresca para una versión nueva);
+  2. **«Buscar actualizaciones»**: descarga la última base oficial (HTTPS, 20 s, 8 MB como mucho,
+     se valida antes de usarla) y los mandos que la comunidad envía en la web y aprueba la moderación;
+  3. **«Añadir mandos nuevos»**: archivos o líneas SDL **solo en tu equipo** (4 MB como mucho; se
+     suman a los anteriores). Para compartir un mando con todos, se envía en la web.
 - **Sticks:** zona muerta radial, curva de respuesta e inversión de cada eje, con vista previa.
 - **Vibración de prueba**, **exportar/importar** el mapeo como línea SDL y **guardar** por mando
   (por GUID) en:
@@ -45,13 +49,13 @@ desktop/app/
 │   │   └── simulado.rs     fuente en memoria para pruebas
 │   ├── src/mapeo/          modelo entrada cruda -> control estándar
 │   │   ├── sdl.rs          líneas SDL GameControllerDB y GUID de SDL
-│   │   ├── basedatos.rs    base de datos (subconjunto incluido + archivo del usuario)
+│   │   ├── basedatos.rs    base de datos por capas (incluida, actualizada, del usuario)
 │   │   ├── auto.rs         automático (base de datos o heurística)
 │   │   ├── ajustes.rs      zona muerta, curva, inversión -> estado estándar
 │   │   └── almacen.rs      JSON por GUID en la carpeta de configuración
 │   ├── src/asistente.rs    máquina de estados de «Asignar todo»
 │   ├── src/servicio.rs     une todo para la interfaz
-│   ├── datos/              subconjunto de SDL_GameControllerDB + su licencia (zlib)
+│   ├── datos/              SDL_GameControllerDB (Windows y Linux) + su licencia (zlib)
 │   ├── tests/uinput.rs     prueba con un mando virtual (Linux)
 │   └── examples/mando_virtual.rs   mando virtual que se mueve solo, para probar la app
 ├── src-tauri/              la app: comandos, hilo de lectura (~60 Hz a la interfaz), bandeja
@@ -138,7 +142,7 @@ target/release/gamepad-mapper-pluton --listar-mandos      # lo que ve el backend
 ## Licencias
 
 - Código: PolyForm Noncommercial 1.0.0 (como el resto del proyecto).
-- `nucleo/datos/gamecontrollerdb-subconjunto.txt`: entradas sin cambios de
+- `nucleo/datos/gamecontrollerdb.txt`: líneas de Windows y Linux, sin cambios, de
   [SDL_GameControllerDB](https://github.com/mdqinc/SDL_GameControllerDB), licencia zlib
   ([`LICENCIA-SDL_GameControllerDB.txt`](nucleo/datos/LICENCIA-SDL_GameControllerDB.txt)).
 - El diagrama del mando es un dibujo propio; «compatible con XInput» describe el protocolo. No se

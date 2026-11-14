@@ -238,6 +238,11 @@ impl Servicio {
         self.base.anadir_texto(texto)
     }
 
+    /// Sustituye la base de datos entera (tras actualizarla o anadir mandos en disco).
+    pub fn reemplazar_base_datos(&mut self, base: BaseDatosSdl) {
+        self.base = base;
+    }
+
     pub fn probar_vibracion(&mut self, id: IdMando) -> Result<(), ErrorServicio> {
         Ok(self.fuente.vibrar(id, 0.8, 0.5, Duration::from_millis(600))?)
     }

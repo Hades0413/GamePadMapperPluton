@@ -51,14 +51,7 @@ fn iniciar_registro() {
 }
 
 fn base_datos() -> BaseDatosSdl {
-    let mut base = BaseDatosSdl::incluida();
-    if let Some(ruta) = comandos::ruta_base_datos().filter(|r| r.exists()) {
-        match base.cargar_archivo(&ruta) {
-            Ok(n) => log::info!("base de datos SDL del usuario: {n} entradas ({})", ruta.display()),
-            Err(e) => log::warn!("no se pudo leer {}: {e}", ruta.display()),
-        }
-    }
-    base
+    comandos::construir_base()
 }
 
 /// `--listar-mandos`: espera un poco a que aparezcan y los escribe en JSON.
@@ -128,7 +121,8 @@ fn main() {
             comandos::auto_mapear,
             comandos::exportar_sdl,
             comandos::importar_sdl,
-            comandos::cargar_base_datos,
+            comandos::anadir_mandos,
+            comandos::actualizar_base,
             comandos::probar_vibracion,
             comandos::asistente_iniciar,
             comandos::asistente_saltar,

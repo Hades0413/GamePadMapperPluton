@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { ERROR } from '../dominio/errores';
 import type { Backend } from '../backend';
 import { AjustesSticks } from '../componentes/AjustesSticks';
 import { Asignaciones } from '../componentes/Asignaciones';
@@ -18,6 +19,9 @@ interface Aviso {
   texto: string;
   error: boolean;
 }
+
+/** Tamano maximo de un archivo de mandos (igual que MAX_ANADIR en src-tauri/src/comandos.rs). */
+const MAX_ARCHIVO = 4 * 1024 * 1024;
 
 const mensajeDe = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
@@ -51,15 +55,24 @@ export function PestanaMandos({ backend }: { backend: Backend }) {
   const conMapeo = (accion: () => Promise<EstadoMapeo>, ok?: string) =>
     void ejecutar(async () => setEstado(await accion()), ok === undefined ? undefined : () => ok);
 
-  const cargarBaseDatos = (texto: string) => void ejecutar(() => backend.cargarBaseDatos(texto), (n) => {
+  const anadirMandos = (archivo: File) => void ejecutar(async () => {
+    // Limite tambien en el backend; aqui evita leer en memoria un archivo enorme.
+    if (archivo.size > MAX_ARCHIVO) throw new Error(ERROR.archivoGrande);
+    return backend.anadirMandos(await archivo.text());
+  }, (n) => {
     void refrescarApp();
     return t('{n} mandos añadidos a la base de datos', { n });
+  });
+  const actualizarBase = () => void ejecutar(() => backend.actualizarBase(), (r) => {
+    void refrescarApp();
+    const nuevos = r.despues - r.antes;
+    return nuevos > 0 ? t('Base actualizada: {n} mandos nuevos', { n: nuevos }) : t('La base ya estaba al día');
   });
 
   if (!info) {
     return (
       <main className="grid min-h-0 flex-1 grid-cols-[13rem_1fr] xl:grid-cols-[16rem_1fr]">
-        <ListaMandos mandos={mandos} activo={null} app={app} onElegir={elegir} onCargarBaseDatos={cargarBaseDatos} />
+        <ListaMandos mandos={mandos} activo={null} app={app} onElegir={elegir} onAnadirMandos={anadirMandos} onActualizarBase={actualizarBase} />
         <div className="flex flex-col items-center justify-center gap-3 p-8 text-center text-muted">
           <span className="flex size-14 items-center justify-center rounded-2xl bg-surface-2 text-primary"><IconoMando /></span>
           <p className="text-lg font-medium text-ink">{t('No hay ningún mando conectado')}</p>
@@ -91,7 +104,7 @@ export function PestanaMandos({ backend }: { backend: Backend }) {
 
   return (
     <main className="grid min-h-0 flex-1 grid-cols-[13rem_1fr] xl:grid-cols-[16rem_1fr]">
-      <ListaMandos mandos={mandos} activo={id} app={app} onElegir={elegir} onCargarBaseDatos={cargarBaseDatos} />
+      <ListaMandos mandos={mandos} activo={id} app={app} onElegir={elegir} onAnadirMandos={anadirMandos} onActualizarBase={actualizarBase} />
 
       <div className="min-h-0 space-y-4 overflow-y-auto p-4">
         <section className="card space-y-3 p-4">

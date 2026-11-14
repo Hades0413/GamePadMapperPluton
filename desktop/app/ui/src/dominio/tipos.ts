@@ -98,4 +98,15 @@ export interface InfoApp {
   version: string;
   carpeta_mapeos: string | null;
   entradas_base_datos: number;
+  /** Fecha de la base completa incluida en la app (AAAA-MM-DD). */
+  base_incluida: string;
+  /** Ultima actualizacion descargada (segundos Unix) o null si nunca se actualizo. */
+  base_actualizada: number | null;
+  /** Mandos anadidos por el usuario. */
+  mandos_anadidos: number;
+}
+
+export interface Actualizacion {
+  antes: number;
+  despues: number;
 }

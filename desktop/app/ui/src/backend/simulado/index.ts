@@ -61,7 +61,9 @@ export function crearBackendSimulado(): Backend {
       : { mapeo: mapeoAutomatico(info), origen: 'basedatos', sin_guardar: false });
   }
   const asistentes = new Map<IdMando, Asistente>();
-  let entradasBase = 369;
+  let entradasBase = 1614;
+  let anadidos = 0;
+  let actualizada: number | null = null;
 
   const buscar = (id: IdMando): InfoMando => {
     const info = MANDOS_SIMULADOS.find((m) => m.id === id);
@@ -106,7 +108,10 @@ export function crearBackendSimulado(): Backend {
   };
 
   return {
-    info: async () => ({ version: '0.1.0', carpeta_mapeos: '~/.config/gamepad-mapper-pluton/mandos', entradas_base_datos: entradasBase }),
+    info: async () => ({
+      version: '0.1.0', carpeta_mapeos: '~/.config/gamepad-mapper-pluton/mandos', entradas_base_datos: entradasBase,
+      base_incluida: '2026-11-09', base_actualizada: actualizada, mandos_anadidos: anadidos,
+    }),
     listarMandos: async () => structuredClone([...MANDOS_SIMULADOS]),
     alCambiarMandos: () => () => undefined,
     suscribirEntrada(id, cb) {
@@ -158,10 +163,19 @@ export function crearBackendSimulado(): Backend {
       }
       return poner(id, { ...estadoMapeo(id).mapeo, asignaciones }, 'manual');
     },
-    async cargarBaseDatos(texto) {
+    async anadirMandos(texto) {
       const n = texto.split('\n').filter((l) => /^[0-9a-f]{32},/i.test(l.trim())).length;
+      if (n === 0) throw new Error(ERROR.sinMandosValidos);
       entradasBase += n;
+      anadidos += n;
       return n;
+    },
+    async actualizarBase() {
+      await new Promise((r) => setTimeout(r, 600));
+      const antes = entradasBase;
+      entradasBase += 12;
+      actualizada = Math.floor(Date.now() / 1000);
+      return { antes, despues: entradasBase };
     },
     probarVibracion: async (id) => {
       if (!buscar(id).vibracion) throw new Error(ERROR.sinVibracion);

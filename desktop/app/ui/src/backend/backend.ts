@@ -1,4 +1,4 @@
-import type { EstadoMapeo, IdMando, InfoApp, InfoMando, Instantanea, MapeoMando, VistaAsistente } from '../dominio/tipos';
+import type { Actualizacion, EstadoMapeo, IdMando, InfoApp, InfoMando, Instantanea, MapeoMando, VistaAsistente } from '../dominio/tipos';
 
 /** Lo que la interfaz pide al backend: el real (Tauri + nucleo en Rust) o el simulado del navegador. */
 export interface Backend {
@@ -16,8 +16,10 @@ export interface Backend {
   autoMapear(id: IdMando): Promise<EstadoMapeo>;
   exportarSdl(id: IdMando): Promise<string>;
   importarSdl(id: IdMando, linea: string): Promise<EstadoMapeo>;
-  /** Anade el texto de un gamecontrollerdb.txt a la base de datos (y lo recuerda). Devuelve las entradas. */
-  cargarBaseDatos(texto: string): Promise<number>;
+  /** Anade mandos nuevos (gamecontrollerdb.txt o lineas sueltas) sin borrar los anteriores. Devuelve cuantos. */
+  anadirMandos(texto: string): Promise<number>;
+  /** Descarga la ultima base oficial de mandos (SDL GameControllerDB). */
+  actualizarBase(): Promise<Actualizacion>;
   probarVibracion(id: IdMando): Promise<void>;
 
   asistenteIniciar(id: IdMando): Promise<VistaAsistente>;
