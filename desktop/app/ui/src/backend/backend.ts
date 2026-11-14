@@ -20,6 +20,8 @@ export interface Backend {
   anadirMandos(texto: string): Promise<number>;
   /** Descarga la ultima base oficial de mandos (SDL GameControllerDB). */
   actualizarBase(): Promise<Actualizacion>;
+  /** Abre la web con este mando listo para enviarlo a la comunidad (la moderacion lo revisa). */
+  enviarAComunidad(id: IdMando): Promise<void>;
   probarVibracion(id: IdMando): Promise<void>;
 
   asistenteIniciar(id: IdMando): Promise<VistaAsistente>;

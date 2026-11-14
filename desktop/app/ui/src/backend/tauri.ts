@@ -27,6 +27,7 @@ export function crearBackendTauri(): Backend {
     importarSdl: (id, linea) => invoke('importar_sdl', { id, linea }),
     anadirMandos: (texto) => invoke('anadir_mandos', { texto }),
     actualizarBase: () => invoke('actualizar_base'),
+    enviarAComunidad: (id) => invoke('enviar_a_comunidad', { id }),
     probarVibracion: (id) => invoke('probar_vibracion', { id }),
     asistenteIniciar: (id) => invoke('asistente_iniciar', { id }),
     asistenteSaltar: (id) => invoke('asistente_saltar', { id }),

@@ -83,6 +83,8 @@ fn main() {
     let compartido = Arc::new(Compartido::nuevo(servicio));
 
     let resultado = tauri::Builder::default()
+        // Solo se usa desde Rust (enviar_a_comunidad): la interfaz no tiene permiso para abrir URLs.
+        .plugin(tauri_plugin_opener::init())
         .manage(Arc::clone(&compartido))
         .setup(move |app| {
             let mostrar = MenuItem::with_id(app, "mostrar", "Mostrar / Show", true, None::<&str>)?;
@@ -123,6 +125,7 @@ fn main() {
             comandos::importar_sdl,
             comandos::anadir_mandos,
             comandos::actualizar_base,
+            comandos::enviar_a_comunidad,
             comandos::probar_vibracion,
             comandos::asistente_iniciar,
             comandos::asistente_saltar,

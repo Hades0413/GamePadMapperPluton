@@ -31,6 +31,11 @@ export const EN: Readonly<Record<string, string>> = {
     'For controllers it doesn\'t recognize yet: a gamecontrollerdb.txt or SDL lines. They are added to the existing ones.',
   'Base actualizada: {n} mandos nuevos': 'Database updated: {n} new controllers',
   'La base ya estaba al día': 'The database was already up to date',
+  '{n} de la comunidad': '{n} from the community',
+  'Abre la web con este mando listo para enviarlo; se publica cuando lo aprueba la moderación':
+    'Opens the website with this controller ready to submit; it is published once moderation approves it',
+  'Abriendo la web…': 'Opening the website…',
+  'Enviar a la comunidad': 'Send to the community',
   'No hay ningún mando válido de Windows o Linux en ese texto.': 'There is no valid Windows or Linux controller in that text.',
   'La base descargada no parece válida; se mantiene la actual.': 'The downloaded database doesn\'t look valid; keeping the current one.',
   'No se encuentra la carpeta de configuración.': 'The configuration folder can\'t be found.',

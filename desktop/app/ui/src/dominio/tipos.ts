@@ -109,4 +109,6 @@ export interface InfoApp {
 export interface Actualizacion {
   antes: number;
   despues: number;
+  /** Mandos aprobados de la comunidad descargados (null si no se pudo consultar). */
+  comunidad: number | null;
 }

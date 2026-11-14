@@ -170,12 +170,15 @@ export function crearBackendSimulado(): Backend {
       anadidos += n;
       return n;
     },
+    async enviarAComunidad(id) {
+      buscar(id);
+    },
     async actualizarBase() {
       await new Promise((r) => setTimeout(r, 600));
       const antes = entradasBase;
       entradasBase += 12;
       actualizada = Math.floor(Date.now() / 1000);
-      return { antes, despues: entradasBase };
+      return { antes, despues: entradasBase, comunidad: 3 };
     },
     probarVibracion: async (id) => {
       if (!buscar(id).vibracion) throw new Error(ERROR.sinVibracion);

@@ -66,7 +66,8 @@ export function PestanaMandos({ backend }: { backend: Backend }) {
   const actualizarBase = () => void ejecutar(() => backend.actualizarBase(), (r) => {
     void refrescarApp();
     const nuevos = r.despues - r.antes;
-    return nuevos > 0 ? t('Base actualizada: {n} mandos nuevos', { n: nuevos }) : t('La base ya estaba al día');
+    const base = nuevos > 0 ? t('Base actualizada: {n} mandos nuevos', { n: nuevos }) : t('La base ya estaba al día');
+    return r.comunidad === null ? base : `${base} · ${t('{n} de la comunidad', { n: r.comunidad })}`;
   });
 
   if (!info) {
@@ -154,6 +155,11 @@ export function PestanaMandos({ backend }: { backend: Backend }) {
               </button>
               <button type="button" className={claseBoton('fantasma', 'sm')} onClick={() => setImportando(true)}>
                 <IconoSubir />{t('Importar SDL')}
+              </button>
+              <button type="button" className={claseBoton('fantasma', 'sm')}
+                title={t('Abre la web con este mando listo para enviarlo; se publica cuando lo aprueba la moderación')}
+                onClick={() => void ejecutar(() => backend.enviarAComunidad(id), () => t('Abriendo la web…'))}>
+                <IconoAuto />{t('Enviar a la comunidad')}
               </button>
             </span>
           </div>
