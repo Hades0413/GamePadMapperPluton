@@ -32,6 +32,19 @@ import java.util.Map;
  * ls_curve = 1.5         # opcional: curva de respuesta (1 lineal, >1 mas suave al centro)
  * look_y = 1.00          # sensibilidad vertical de la camara
  * look_invert = 0        # invertir eje Y de la camara
+ * aim_button = L2        # opcional: mientras se mantiene, la camara va a aim_scale
+ * aim_scale = 0.50       #   (apuntar con mas precision)
+ * look_accel = 0.50      # opcional: la camara acelera con el stick al tope (0 = no)
+ * controller = xbox      # opcional: al conectar un mando con ese nombre se activa este perfil
+ * rumble = 0.50          # opcional: vibracion del mando al pulsar (0 = no, 1 = fuerte)
+ * gyro = 1.00            # opcional, solo sin root: camara con el giroscopio (0 = no)
+ * gyro_button = L2       #   solo mientras se mantiene ese boton (vacio = siempre)
+ * gyro_invert = 0        #   invertir el eje vertical del giroscopio
+ * mouse = 1.00           # opcional, solo sin root: el raton mueve la camara (0 = no)
+ * KB_W = tap 300 700     # tecla de un teclado fisico (solo sin root)
+ * MOUSE_LEFT = tap 1900 800   # boton del raton (solo sin root)
+ * players = 2            # opcional, solo sin root: el segundo mando es el jugador 2
+ * P2_A = tap 900 700     #   botones y sticks del jugador 2 (P2_LS, P2_RS...)
  * A  = tap 1980 895
  * B  = turbo 1700 900 12           # toques por segundo mientras se mantiene
  * X  = toggle 1500 700             # una pulsacion mantiene el toque, otra lo suelta
@@ -132,15 +145,30 @@ public class Profile {
     public boolean lookInvert = false;
     public float lsDeadzone = -1, rsDeadzone = -1;           // -1 = usar 'deadzone'
     public float lsCurve = 1, rsCurve = 1;                   // 1 lineal, >1 mas suave al centro
+    /** Apuntar: mientras se mantiene aimButton ("" = no), la camara va a aimScale. */
+    public String aimButton = "";
+    public float aimScale = 0.5f;
+    /** La camara acelera hasta (1 + lookAccel) con el stick al tope (0 = sin aceleracion). */
+    public float lookAccel = 0;
+    /** Parte del nombre del mando que activa este perfil al conectarse ("" = cualquiera). */
+    public String controller = "";
+    /** Vibracion del mando al pulsar un boton mapeado (0 = no, 1 = fuerte). */
+    public float rumble = 0;
+    /** Solo sin root: camara con el giroscopio (sensibilidad, 0 = no) y raton (0 = no). */
+    public float gyro = 0, mouse = 0;
+    public String gyroButton = "";
+    public boolean gyroInvert = false;
+    /** Solo sin root: 2 = el segundo mando es el jugador 2 (sus botones son P2_*). */
+    public int players = 1;
     public final Map<String, Binding> bindings = new LinkedHashMap<>();
 
     public float deadzoneOf(String stick) {
-        float d = "LS".equals(stick) ? lsDeadzone : rsDeadzone;
+        float d = "LS".equals(stickBase(stick)) ? lsDeadzone : rsDeadzone;
         return d >= 0 ? d : deadzone;
     }
 
     public float curveOf(String stick) {
-        return Math.max(0.3f, "LS".equals(stick) ? lsCurve : rsCurve);
+        return Math.max(0.3f, "LS".equals(stickBase(stick)) ? lsCurve : rsCurve);
     }
 
     /** Paquete de la app: su carpeta propia es Android/data/<PKG>/files. */
@@ -178,7 +206,13 @@ public class Profile {
     }
 
     public static boolean isStick(String key) {
-        return "LS".equals(key) || "RS".equals(key);
+        String k = stickBase(key);
+        return "LS".equals(k) || "RS".equals(k);
+    }
+
+    /** "P2_LS" -> "LS" (los sticks del jugador 2 usan los mismos ajustes). */
+    public static String stickBase(String key) {
+        return key != null && key.startsWith("P2_") ? key.substring(3) : key;
     }
 
     /** Nombre legible de un boton/eje del perfil ("L2+A" con capa). */
@@ -189,6 +223,18 @@ public class Profile {
     }
 
     private static String label1(String key) {
+        if (key.startsWith("P2_")) return L.t("J2 ") + label1(key.substring(3));
+        if (key.startsWith("KB_")) return key.substring(3);
+        if (key.startsWith("MOUSE_")) {
+            switch (key) {
+                case "MOUSE_LEFT": return L.t("Clic izq.");
+                case "MOUSE_RIGHT": return L.t("Clic der.");
+                case "MOUSE_MIDDLE": return L.t("Clic rueda");
+                case "MOUSE_WHEEL_UP": return L.t("Rueda ↑");
+                case "MOUSE_WHEEL_DOWN": return L.t("Rueda ↓");
+                default: return L.t("Ratón ") + key.substring(6);
+            }
+        }
         if (key.startsWith("AXIS_")) return L.t("Eje ") + key.substring(5);
         if (key.startsWith("BTN_")) return L.t("Btn ") + key.substring(4);
         if (key.startsWith("DPAD_")) {
@@ -253,6 +299,16 @@ public class Profile {
                         case "rs_curve": p.rsCurve = Float.parseFloat(val); break;
                         case "look_y": p.lookY = Float.parseFloat(val); break;
                         case "look_invert": p.lookInvert = !"0".equals(val.trim()); break;
+                        case "aim_button": p.aimButton = cleanButton(val); break;
+                        case "aim_scale": p.aimScale = clamp(Float.parseFloat(val), 0.1f, 2f); break;
+                        case "look_accel": p.lookAccel = clamp(Float.parseFloat(val), 0f, 3f); break;
+                        case "controller": p.controller = cleanController(val); break;
+                        case "rumble": p.rumble = clamp(Float.parseFloat(val), 0f, 1f); break;
+                        case "gyro": p.gyro = clamp(Float.parseFloat(val), 0f, 5f); break;
+                        case "gyro_button": p.gyroButton = cleanButton(val); break;
+                        case "gyro_invert": p.gyroInvert = !"0".equals(val.trim()); break;
+                        case "mouse": p.mouse = clamp(Float.parseFloat(val), 0f, 5f); break;
+                        case "players": p.players = "2".equals(val.trim()) ? 2 : 1; break;
                         default: {
                             String[] t = val.split("\\s+");
                             String type = t[0].toLowerCase(Locale.ROOT);
@@ -303,6 +359,34 @@ public class Profile {
 
     private static float f(String s) {
         return Float.parseFloat(s);
+    }
+
+    private static float clamp(float v, float lo, float hi) {
+        return Float.isNaN(v) ? lo : Math.max(lo, Math.min(hi, v));
+    }
+
+    /** Nombre de boton (L2, BTN_13A...) o "" si no es valido. */
+    static String cleanButton(String v) {
+        String b = v.trim().toUpperCase(Locale.ROOT);
+        return b.matches("[A-Z][A-Z0-9_]{0,15}") && !isStick(b) ? b : "";
+    }
+
+    /** Texto a buscar en el nombre del mando (sin caracteres raros, como mucho 40). */
+    static String cleanController(String v) {
+        String c = v.replaceAll("[^A-Za-z0-9 ._()+-]", "").trim();
+        return c.length() > 40 ? c.substring(0, 40).trim() : c;
+    }
+
+    /** ¿Este perfil es para el mando 'padName'? (sin 'controller' no se elige automaticamente). */
+    public boolean matchesController(String padName) {
+        return !controller.isEmpty() && padName != null
+                && padName.toLowerCase(Locale.ROOT).contains(controller.toLowerCase(Locale.ROOT));
+    }
+
+    /** Teclas de teclado (KB_*) y raton (MOUSE_*): solo las entiende el modo sin root. */
+    public static boolean isNonRootInput(String key) {
+        String base = baseOf(key);
+        return base.startsWith("KB_") || base.startsWith("MOUSE_") || base.startsWith("P2_") || key.startsWith("P2_");
     }
 
     /** Numero sin ceros sobrantes: 1.5 -> "1.5", 40.0 -> "40". */
@@ -391,7 +475,7 @@ public class Profile {
 
     public Binding add(String key, float x, float y) {
         Binding b;
-        if ("RS".equals(key)) b = new Binding(key, LOOK, x, y, 14);       // stick derecho: camara
+        if ("RS".equals(stickBase(key))) b = new Binding(key, LOOK, x, y, 14);   // stick derecho: camara
         else if (isStick(key)) b = new Binding(key, STICK, x, y, Math.round(Math.min(sw, sh) * 0.14f));
         else b = new Binding(key, TAP, x, y, 0);
         bindings.put(key, b);
@@ -464,7 +548,22 @@ public class Profile {
             if (lsCurve != 1) w.write(String.format(Locale.ROOT, "ls_curve = %.2f\n", lsCurve));
             if (rsCurve != 1) w.write(String.format(Locale.ROOT, "rs_curve = %.2f\n", rsCurve));
             w.write(String.format(Locale.ROOT, "look_y = %.2f\n", lookY));
-            w.write("look_invert = " + (lookInvert ? 1 : 0) + "\n\n");
+            w.write("look_invert = " + (lookInvert ? 1 : 0) + "\n");
+            if (!aimButton.isEmpty()) {
+                w.write("aim_button = " + aimButton + "\n");
+                w.write(String.format(Locale.ROOT, "aim_scale = %.2f\n", aimScale));
+            }
+            if (lookAccel > 0) w.write(String.format(Locale.ROOT, "look_accel = %.2f\n", lookAccel));
+            if (!controller.isEmpty()) w.write("controller = " + controller + "\n");
+            if (rumble > 0) w.write(String.format(Locale.ROOT, "rumble = %.2f\n", rumble));
+            if (gyro > 0) {
+                w.write(String.format(Locale.ROOT, "gyro = %.2f\n", gyro));
+                if (!gyroButton.isEmpty()) w.write("gyro_button = " + gyroButton + "\n");
+                if (gyroInvert) w.write("gyro_invert = 1\n");
+            }
+            if (mouse > 0) w.write(String.format(Locale.ROOT, "mouse = %.2f\n", mouse));
+            if (players == 2) w.write("players = 2\n");
+            w.write("\n");
             List<String> keys = new ArrayList<>(Arrays.asList(BUTTONS));
             List<String> extra = new ArrayList<>();
             for (String k : bindings.keySet()) if (!keys.contains(k)) extra.add(k);

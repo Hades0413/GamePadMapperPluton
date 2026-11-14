@@ -30,6 +30,16 @@ describe('validateConf', () => {
     expect(layer?.button).toBe('A');
   });
 
+  it('acepta los ajustes de mando, el teclado y el raton', () => {
+    const result = validateConf(conf([
+      'aim_button = l2', 'aim_scale = 0.40', 'look_accel = 0.5', 'controller = Xbox Wireless', 'rumble = 0.3',
+      'gyro = 1.2', 'gyro_button = L2', 'gyro_invert = 1', 'mouse = 0.8',
+      'RS = look 500 250 14', 'KB_W = tap 10 10', 'MOUSE_LEFT = tap 20 20',
+    ]));
+    if (!result.ok) throw new Error(result.error);
+    expect(result.config.bindings.map((b) => b.key)).toEqual(['RS', 'KB_W', 'MOUSE_LEFT']);
+  });
+
   it.each([
     [conf(['A = tap 2000 10']), 'fuera de la pantalla'],
     [conf(['A = fly 1 1']), 'desconocido'],
@@ -41,6 +51,9 @@ describe('validateConf', () => {
     [conf(['A tap 1 1']), 'falta «='],
     [conf(['A = tap 1 1\u0007']), 'caracteres'],
     [conf(['A = tap dpad 1']), 'números'],
+    [conf(['rumble = 2', 'A = tap 1 1']), 'entre 0 y 1'],
+    [conf(['aim_button = L2;x', 'A = tap 1 1']), 'botón'],
+    [conf(['controller = <script>', 'A = tap 1 1']), 'mando'],
   ])('rechaza perfiles mal formados (%#)', (text, message) => {
     const result = validateConf(text);
     expect(result.ok).toBe(false);

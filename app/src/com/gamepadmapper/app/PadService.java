@@ -168,6 +168,8 @@ public class PadService extends AccessibilityService {
     @Override
     public void onDestroy() {
         setPadWindow(false);
+        if (sensors != null) sensors.unregisterListener(gyroListener);
+        gyroOn = false;
         applyDryRun(false);
         android.hardware.input.InputManager im = (android.hardware.input.InputManager) getSystemService(INPUT_SERVICE);
         if (im != null) im.unregisterInputDeviceListener(deviceListener);
@@ -387,6 +389,8 @@ public class PadService extends AccessibilityService {
     private void updateSources() {
         boolean want = !daemonRunning && (learning || (cur != null && enabled));
         setPadWindow(want);
+        updateGyro();
+        updateMouseCapture();
         boolean viaA11y = Build.VERSION.SDK_INT >= 34 && !daemonRunning && (learning || cur != null)
                 && !(want && padWinFocused);
         if (viaA11y == sourcesOn) return;
@@ -414,10 +418,17 @@ public class PadService extends AccessibilityService {
         }
 
         @Override
+        public boolean dispatchCapturedPointerEvent(MotionEvent ev) {
+            handleMouse(ev);
+            return true;
+        }
+
+        @Override
         public void onWindowFocusChanged(boolean hasFocus) {
             super.onWindowFocusChanged(hasFocus);
             if (hasFocus) requestFocus();
             padWinFocused = hasFocus;
+            if (hasFocus) handler.post(PadService.this::updateMouseCapture);
             if (hasFocus) padWindowWorked = true;
             handler.post(PadService.this::updateSources);
         }
@@ -620,6 +631,9 @@ public class PadService extends AccessibilityService {
             new android.hardware.input.InputManager.InputDeviceListener() {
                 @Override
                 public void onInputDeviceAdded(int id) {
+                    InputDevice d = InputDevice.getDevice(id);
+                    if (d != null && !d.isVirtual() && isPadSource(d.getSources())) activateForController(d.getName());
+                    updateMouseCapture();
                 }
 
                 @Override
@@ -628,6 +642,8 @@ public class PadService extends AccessibilityService {
 
                 @Override
                 public void onInputDeviceRemoved(int id) {
+                    if (id == p1Id) p1Id = -1;
+                    if (id == p2Id) p2Id = -1;
                     boolean known = devAxes.remove(id) != null
                             || (lastDevice != null && lastDevice.getId() == id);
                     if (!known) return;
@@ -703,7 +719,9 @@ public class PadService extends AccessibilityService {
     private float[] dominant(float[] current) {
         float[] best = current;
         float bestMag = deflection(current);
+        float[] p2 = twoPlayers() && p2Id >= 0 ? devAxes.get(p2Id) : null;
         for (float[] d : devAxes.values()) {
+            if (d == p2) continue;   // el jugador 2 tiene sus propios sticks
             float m = deflection(d);
             if (m > bestMag + 0.05f) {
                 best = d;
@@ -733,14 +751,19 @@ public class PadService extends AccessibilityService {
 
     @Override
     protected boolean onKeyEvent(KeyEvent ev) {
-        if (!isPadSource(ev.getSource())) return false;
-        if (ev.getDevice() != null) {
+        boolean pad = isPadSource(ev.getSource());
+        String kb = pad ? null : keyboardToken(ev);
+        if (!pad && kb == null) return false;
+        if (pad && ev.getDevice() != null) {
             lastDevice = ev.getDevice();
             lastPad = lastDevice.getName();
         }
         if (!active()) return false;
         if (ev.getAction() != KeyEvent.ACTION_DOWN && ev.getAction() != KeyEvent.ACTION_UP) return false;
-        String t = keyToken(ev.getKeyCode());
+        String t = pad ? keyToken(ev.getKeyCode()) : kb;
+        if (pad && playerOf(ev.getDevice()) == 2) t = "P2_" + t;
+        // Teclado: solo se queda las teclas que usa el perfil (o al asignar en el editor).
+        if (!pad && !learning && !isBound(t)) return false;
         boolean down = ev.getAction() == KeyEvent.ACTION_DOWN;
         if (ev.getRepeatCount() == 0 && dbgEnabled()) dbg(L.t("tecla ") + t + (down ? L.t(" abajo") : L.t(" arriba")));
         if (learning) {
@@ -769,10 +792,16 @@ public class PadService extends AccessibilityService {
         // Cada mando guarda sus propios ejes; manda el mas inclinado (dos mandos no se mezclan).
         float[] arr = devAxes.get(ev.getDeviceId());
         if (arr == null) devAxes.put(ev.getDeviceId(), arr = new float[64]);
+        boolean p2 = playerOf(ev.getDevice()) == 2;
         for (int a : AXES_READ) {
             float v = ev.getAxisValue(a);
             arr[a] = v;
-            if (learning) axes.put(a, v);
+            if (learning && !p2) axes.put(a, v);
+        }
+        // El mando del jugador 2 nunca manda en los sticks del jugador 1 (y su cruceta son P2_DPAD_*).
+        if (p2) {
+            update();
+            return;
         }
         axv = devAxes.size() == 1 ? arr : dominant(arr);
         if (dbgEnabled()) {
@@ -930,7 +959,10 @@ public class PadService extends AccessibilityService {
 
     // ------------------------------------------------------------------ logica (igual que gpmapper)
     private final Map<String, Inj.Ptr> rt = new HashMap<>();
-    private final float[] lookCx = new float[2], lookCy = new float[2];
+    // 0 = LS, 1 = RS, 2 = P2_LS, 3 = P2_RS
+    private final float[] lookCx = new float[4], lookCy = new float[4];
+    /** Desde cuando esta cada stick de camara al tope (aceleracion), 0 = no lo esta. */
+    private final long[] lookFull = new long[4];
 
     private void updateDerived() {
         float hx = axis(MotionEvent.AXIS_HAT_X), hy = axis(MotionEvent.AXIS_HAT_Y);
@@ -947,6 +979,15 @@ public class PadService extends AccessibilityService {
         }
         setVirt("L2", axDown.contains("AXIS_A+"));
         setVirt("R2", axDown.contains("AXIS_9+"));
+        // Jugador 2: su cruceta (hat) y sus gatillos analogicos.
+        float[] p2 = twoPlayers() && p2Id >= 0 ? devAxes.get(p2Id) : null;
+        float px = p2 == null ? 0 : p2[MotionEvent.AXIS_HAT_X], py = p2 == null ? 0 : p2[MotionEvent.AXIS_HAT_Y];
+        setVirt("P2_DPAD_LEFT", px < -0.5f);
+        setVirt("P2_DPAD_RIGHT", px > 0.5f);
+        setVirt("P2_DPAD_UP", py < -0.5f);
+        setVirt("P2_DPAD_DOWN", py > 0.5f);
+        setVirt("P2_L2", p2 != null && Math.max(p2[MotionEvent.AXIS_BRAKE], p2[MotionEvent.AXIS_LTRIGGER]) > AX_PRESS);
+        setVirt("P2_R2", p2 != null && Math.max(p2[MotionEvent.AXIS_GAS], p2[MotionEvent.AXIS_RTRIGGER]) > AX_PRESS);
     }
 
     private void hyst(String token, float d) {
@@ -998,6 +1039,10 @@ public class PadService extends AccessibilityService {
         }
         applyStick("LS");
         applyStick("RS");
+        if (twoPlayers()) {
+            applyStick("P2_LS");
+            applyStick("P2_RS");
+        }
         if (needsTicks()) startTicks();
     }
 
@@ -1013,6 +1058,7 @@ public class PadService extends AccessibilityService {
 
     private void press(Act a) {
         Profile.Binding b = a.b;
+        rumble();
         switch (b.type) {
             case Profile.TAP:
                 a.p = inj.down(sx(b.x), sy(b.y));
@@ -1114,6 +1160,7 @@ public class PadService extends AccessibilityService {
     }
 
     private int[] stickAxes(String which) {
+        which = Profile.stickBase(which);
         String o = "LS".equals(which) ? cur.lsAxes : cur.rsAxes;
         if (o != null && o.contains(",")) {
             try {
@@ -1133,7 +1180,33 @@ public class PadService extends AccessibilityService {
 
     private float[] stickVec(String which) {
         int[] a = stickAxes(which);
+        if (which.startsWith("P2_")) {   // jugador 2: los ejes de su propio mando
+            float[] p2 = p2Id >= 0 ? devAxes.get(p2Id) : null;
+            if (p2 == null) return new float[]{0, 0};
+            return new float[]{clamp(p2[a[0]]), clamp(p2[a[1]])};
+        }
         return new float[]{clamp(axis(a[0])), clamp(axis(a[1]))};
+    }
+
+    // ------------------------------------------------------------------ dos jugadores
+
+    /** Mando del jugador 1 y del jugador 2 (ids de dispositivo; -1 = sin asignar). */
+    private int p1Id = -1, p2Id = -1;
+    /** Mientras se edita en la burbuja: jugadores del perfil que se esta editando. */
+    static volatile int editorPlayers = 1;
+
+    private boolean twoPlayers() {
+        return learning ? editorPlayers >= 2 : cur != null && cur.players >= 2;
+    }
+
+    /** 1 o 2: el primer mando que se usa es el jugador 1 y el siguiente, el 2. */
+    private int playerOf(InputDevice d) {
+        if (d == null || !twoPlayers()) return 1;
+        int id = d.getId();
+        if (p1Id < 0 || InputDevice.getDevice(p1Id) == null) p1Id = id;
+        if (id == p1Id) return 1;
+        if (p2Id < 0 || InputDevice.getDevice(p2Id) == null) p2Id = id;
+        return id == p2Id ? 2 : 1;
     }
 
     private static float clamp(float v) {
@@ -1178,8 +1251,11 @@ public class PadService extends AccessibilityService {
         if (cur == null) return false;
         if (!swipes.isEmpty()) return true;
         for (Act a : acts.values()) if (Profile.TURBO.equals(a.b.type)) return true;
-        Profile.Binding l = cur.bindings.get("LS"), r = cur.bindings.get("RS");
-        return (l != null && Profile.LOOK.equals(l.type)) || (r != null && Profile.LOOK.equals(r.type));
+        for (String w : new String[]{"LS", "RS", "P2_LS", "P2_RS"}) {
+            Profile.Binding b = cur.bindings.get(w);
+            if (b != null && Profile.LOOK.equals(b.type)) return true;
+        }
+        return false;
     }
 
     private boolean ticking = false;
@@ -1203,6 +1279,7 @@ public class PadService extends AccessibilityService {
             float dt = Math.min(4f, (n - lastTick) / 16f);
             lastTick = n;
             boolean any = lookTick("LS", 0, dt) | lookTick("RS", 1, dt);
+            if (twoPlayers()) any |= lookTick("P2_LS", 2, dt) | lookTick("P2_RS", 3, dt);
             // Turbo: apoyar / levantar a su ritmo mientras se mantiene el boton.
             for (Act a : acts.values()) {
                 if (!Profile.TURBO.equals(a.b.type)) continue;
@@ -1239,7 +1316,16 @@ public class PadService extends AccessibilityService {
         if (b == null || !Profile.LOOK.equals(b.type)) return false;
         float[] s = shaped(which, false);
         Inj.Ptr p = rt.get(which);
-        if (s == null) {
+        // Giroscopio y raton mueven la misma camara (la de RS, o la de LS si RS no es camara).
+        float ex = 0, ey = 0;
+        boolean ext = false;
+        if (which.equals(extTarget())) {
+            ex = extDx;
+            ey = extDy;
+            extDx = extDy = 0;
+            ext = ex != 0 || ey != 0 || SystemClock.uptimeMillis() - extLast < 250;
+        }
+        if (s == null && !ext) {
             if (p != null) {
                 inj.up(p);
                 rt.remove(which);
@@ -1253,8 +1339,16 @@ public class PadService extends AccessibilityService {
             return true;
         }
         float ys = cur.lookY * (cur.lookInvert ? -1 : 1);
-        lookCx[i] += s[0] * b.r * dt;
-        lookCy[i] += s[1] * b.r * ys * dt;
+        float aim = aimFactor();
+        if (s != null) {
+            float m = aim * accelFactor(i, s);
+            lookCx[i] += s[0] * b.r * m * dt;
+            lookCy[i] += s[1] * b.r * ys * m * dt;
+        } else {
+            lookFull[i] = 0;
+        }
+        lookCx[i] += ex * aim;
+        lookCy[i] += ey * aim;
         float dx = lookCx[i] - b.x, dy = lookCy[i] - b.y, lim = Math.min(cur.sw, cur.sh) * 0.28f;
         boolean out = lookCx[i] < 0 || lookCy[i] < 0 || lookCx[i] >= cur.sw || lookCy[i] >= cur.sh;
         if (out || dx * dx + dy * dy > lim * lim) {   // demasiado lejos: levantar y volver al centro
@@ -1266,6 +1360,254 @@ public class PadService extends AccessibilityService {
         }
         inj.move(p, sx(lookCx[i]), sy(lookCy[i]));
         return true;
+    }
+
+    // ------------------------------------------------------------------ apuntar y aceleracion
+
+    /** Mientras se mantiene aim_button, la camara va a aim_scale. */
+    private float aimFactor() {
+        return !cur.aimButton.isEmpty() && pressed(cur.aimButton) ? cur.aimScale : 1f;
+    }
+
+    /** Con el stick al tope, la camara acelera hasta (1 + look_accel) en 0,6 s. */
+    private float accelFactor(int i, float[] s) {
+        if (cur.lookAccel <= 0 || s[0] * s[0] + s[1] * s[1] < 0.81f) {
+            lookFull[i] = 0;
+            return 1f;
+        }
+        long n = SystemClock.uptimeMillis();
+        if (lookFull[i] == 0) lookFull[i] = n;
+        return 1f + cur.lookAccel * Math.min(1f, (n - lookFull[i]) / 600f);
+    }
+
+    // ------------------------------------------------------------------ vibracion del mando
+
+    private long lastRumble;
+
+    /** Vibracion corta del mando al pulsar un boton mapeado (si el perfil la pide y el mando vibra). */
+    private void rumble() {
+        if (cur == null || cur.rumble <= 0 || lastDevice == null) return;
+        long n = SystemClock.uptimeMillis();
+        if (n - lastRumble < 60) return;   // varias pulsaciones a la vez: una sola vibracion
+        lastRumble = n;
+        try {
+            android.os.Vibrator v = Build.VERSION.SDK_INT >= 31
+                    ? lastDevice.getVibratorManager().getDefaultVibrator() : lastDevice.getVibrator();
+            if (v == null || !v.hasVibrator()) return;
+            int amp = Math.max(1, Math.min(255, Math.round(cur.rumble * 255)));
+            v.vibrate(android.os.VibrationEffect.createOneShot(35, v.hasAmplitudeControl() ? amp : android.os.VibrationEffect.DEFAULT_AMPLITUDE));
+        } catch (Exception ignored) {
+            // el mando no admite vibracion
+        }
+    }
+
+    // ------------------------------------------------------------------ perfil segun el mando
+
+    /** Al conectar un mando: en cada juego se activa el perfil cuyo 'controller' aparece en su nombre. */
+    private void activateForController(String padName) {
+        if (padName == null || padName.isEmpty() || daemonRunning) return;   // con root lo hace gpmapper
+        Map<String, Profile> pick = new HashMap<>();
+        File[] fs = Profile.profilesDir().listFiles((d, n) -> n.endsWith(".conf"));
+        if (fs == null) return;
+        java.util.Arrays.sort(fs);
+        for (File f : fs) {
+            try {
+                Profile p = Profile.load(f);
+                if (p.matchesController(padName) && !pick.containsKey(p.pkg)) pick.put(p.pkg, p);
+            } catch (Exception ignored) {
+            }
+        }
+        for (Profile p : pick.values()) {
+            try {
+                if (p.file.getName().equals(Library.activeFile(p.pkg))) continue;
+                Library.setActive(p.pkg, p.file.getName());
+                dbg(L.t("mando ") + padName + L.t(": perfil ") + p.displayName());
+            } catch (Exception ignored) {
+            }
+        }
+        if (!pick.isEmpty()) loadProfile();
+    }
+
+    // ------------------------------------------------------------------ giroscopio y raton (camara)
+
+    /** Movimiento pendiente de la camara por giroscopio o raton (px del perfil). */
+    private float extDx, extDy;
+    private long extLast;
+
+    /** Camara que mueven el giroscopio y el raton: RS si es camara, si no LS. */
+    private String extTarget() {
+        if (cur == null) return "";
+        Profile.Binding r = cur.bindings.get("RS");
+        if (r != null && Profile.LOOK.equals(r.type)) return "RS";
+        Profile.Binding l = cur.bindings.get("LS");
+        return l != null && Profile.LOOK.equals(l.type) ? "LS" : "";
+    }
+
+    private void addExternal(float dx, float dy) {
+        if (Math.abs(dx) + Math.abs(dy) < 0.05f) return;
+        extDx += dx;
+        extDy += dy;
+        extLast = SystemClock.uptimeMillis();
+        startTicks();
+    }
+
+    private android.hardware.SensorManager sensors;
+    private boolean gyroOn;
+    private long gyroLastNs;
+
+    private final android.hardware.SensorEventListener gyroListener = new android.hardware.SensorEventListener() {
+        @Override
+        public void onSensorChanged(android.hardware.SensorEvent e) {
+            long prev = gyroLastNs;
+            gyroLastNs = e.timestamp;
+            if (prev == 0 || cur == null || !enabled || cur.gyro <= 0) return;
+            if (!cur.gyroButton.isEmpty() && !pressed(cur.gyroButton)) return;
+            float dt = Math.min(0.05f, (e.timestamp - prev) / 1e9f);
+            float gx = e.values[0], gy = e.values[1];
+            if (Math.abs(gx) < 0.02f) gx = 0;   // reposo: sin deriva
+            if (Math.abs(gy) < 0.02f) gy = 0;
+            float[] d = gyroToScreen(gx, gy);
+            float k = Math.min(cur.sw, cur.sh) * 0.5f * cur.gyro * dt;
+            addExternal(d[0] * k, d[1] * k * (cur.gyroInvert ? -1 : 1));
+        }
+
+        @Override
+        public void onAccuracyChanged(android.hardware.Sensor s, int a) {
+        }
+    };
+
+    /**
+     * Giro del telefono (rad/s en los ejes del telefono) -> movimiento de camara en pantalla: girar
+     * a la derecha mueve a la derecha; inclinar el borde de arriba hacia delante mira arriba.
+     */
+    private float[] gyroToScreen(float gx, float gy) {
+        int rot;
+        try {
+            //noinspection deprecation
+            rot = wm.getDefaultDisplay().getRotation();
+        } catch (Exception e) {
+            rot = android.view.Surface.ROTATION_90;
+        }
+        switch (rot) {
+            case android.view.Surface.ROTATION_0: return new float[]{-gy, gx};
+            case android.view.Surface.ROTATION_180: return new float[]{gy, -gx};
+            case android.view.Surface.ROTATION_270: return new float[]{gx, gy};
+            default: return new float[]{-gx, -gy};   // ROTATION_90 (horizontal, lo normal)
+        }
+    }
+
+    /** El giroscopio solo esta encendido con un perfil que lo usa (ahorra bateria). */
+    private void updateGyro() {
+        boolean want = cur != null && enabled && !daemonRunning && !learning && cur.gyro > 0 && !extTarget().isEmpty();
+        if (want == gyroOn) return;
+        if (sensors == null) sensors = (android.hardware.SensorManager) getSystemService(SENSOR_SERVICE);
+        if (sensors == null) return;
+        if (want) {
+            android.hardware.Sensor g = sensors.getDefaultSensor(android.hardware.Sensor.TYPE_GYROSCOPE);
+            if (g == null) {
+                dbg(L.t("este teléfono no tiene giroscopio"));
+                return;
+            }
+            gyroLastNs = 0;
+            gyroOn = sensors.registerListener(gyroListener, g, android.hardware.SensorManager.SENSOR_DELAY_GAME, handler);
+        } else {
+            sensors.unregisterListener(gyroListener);
+            gyroOn = false;
+        }
+    }
+
+    /** ¿El perfil usa el raton? (camara con 'mouse' o botones MOUSE_*). */
+    private boolean wantsMouse() {
+        if (cur == null) return false;
+        if (cur.mouse > 0 && !extTarget().isEmpty()) return true;
+        for (String k : cur.bindings.keySet()) if (Profile.baseOf(k).startsWith("MOUSE_")) return true;
+        return false;
+    }
+
+    /** Captura el raton en la ventana del stick mientras el perfil lo use (el cursor desaparece). */
+    private void updateMouseCapture() {
+        if (Build.VERSION.SDK_INT < 26 || padWin == null) return;
+        boolean want = padWinFocused && wantsMouse() && enabled && !learning && hasMouse();
+        try {
+            if (want && !padWin.hasPointerCapture()) padWin.requestPointerCapture();
+            else if (!want && padWin.hasPointerCapture()) padWin.releasePointerCapture();
+        } catch (Exception ignored) {
+        }
+    }
+
+    private static boolean hasMouse() {
+        for (int id : InputDevice.getDeviceIds()) {
+            InputDevice d = InputDevice.getDevice(id);
+            if (d != null && !d.isVirtual() && d.supportsSource(InputDevice.SOURCE_MOUSE)) return true;
+        }
+        return false;
+    }
+
+    private int mouseButtons;
+    private static final int[] MOUSE_BITS = {MotionEvent.BUTTON_PRIMARY, MotionEvent.BUTTON_SECONDARY,
+            MotionEvent.BUTTON_TERTIARY, MotionEvent.BUTTON_BACK, MotionEvent.BUTTON_FORWARD};
+    private static final String[] MOUSE_NAMES = {"MOUSE_LEFT", "MOUSE_RIGHT", "MOUSE_MIDDLE", "MOUSE_BACK", "MOUSE_FORWARD"};
+
+    /** Raton capturado: movimiento -> camara, botones -> MOUSE_*, rueda -> MOUSE_WHEEL_UP/DOWN. */
+    private void handleMouse(MotionEvent ev) {
+        if (cur == null || !enabled) return;
+        int state = ev.getButtonState();
+        if (state != mouseButtons) {
+            for (int i = 0; i < MOUSE_BITS.length; i++) {
+                boolean was = (mouseButtons & MOUSE_BITS[i]) != 0, now = (state & MOUSE_BITS[i]) != 0;
+                if (was != now) virtualKey(MOUSE_NAMES[i], now);
+            }
+            mouseButtons = state;
+        }
+        float wheel = ev.getAxisValue(MotionEvent.AXIS_VSCROLL);
+        if (wheel != 0) {
+            final String w = wheel > 0 ? "MOUSE_WHEEL_UP" : "MOUSE_WHEEL_DOWN";
+            virtualKey(w, true);
+            handler.postDelayed(() -> virtualKey(w, false), 60);
+        }
+        if (ev.getActionMasked() == MotionEvent.ACTION_MOVE && cur.mouse > 0) {
+            float dx = 0, dy = 0;
+            for (int h = 0; h < ev.getHistorySize(); h++) {
+                dx += ev.getHistoricalX(h);
+                dy += ev.getHistoricalY(h);
+            }
+            dx += ev.getX();
+            dy += ev.getY();
+            addExternal(dx * cur.mouse, dy * cur.mouse * (cur.lookInvert ? -1 : 1));
+        }
+    }
+
+    /** Pulsar / soltar una tecla que no viene del mando (raton). */
+    private void virtualKey(String token, boolean down) {
+        if (learning) {
+            if (down) learnReport(token);
+            return;
+        }
+        if (down) keys.add(token);
+        else keys.remove(token);
+        update();
+    }
+
+    /**
+     * Tecla de un teclado fisico externo ("KB_W", "KB_SPACE") o null si no es de un teclado
+     * (las teclas del propio telefono, como volumen o encendido, nunca se usan).
+     */
+    private static String keyboardToken(KeyEvent ev) {
+        InputDevice d = ev.getDevice();
+        if (d == null || d.isVirtual() || (ev.getSource() & InputDevice.SOURCE_KEYBOARD) != InputDevice.SOURCE_KEYBOARD
+                || d.getKeyboardType() != InputDevice.KEYBOARD_TYPE_ALPHABETIC) return null;
+        if (Build.VERSION.SDK_INT >= 29 && !d.isExternal()) return null;
+        switch (ev.getKeyCode()) {
+            case KeyEvent.KEYCODE_VOLUME_UP: case KeyEvent.KEYCODE_VOLUME_DOWN: case KeyEvent.KEYCODE_VOLUME_MUTE:
+            case KeyEvent.KEYCODE_POWER: case KeyEvent.KEYCODE_HOME: case KeyEvent.KEYCODE_BACK:
+            case KeyEvent.KEYCODE_APP_SWITCH: case KeyEvent.KEYCODE_SLEEP: case KeyEvent.KEYCODE_WAKEUP:
+                return null;
+            default:
+        }
+        String n = KeyEvent.keyCodeToString(ev.getKeyCode());
+        if (n == null || !n.startsWith("KEYCODE_")) return null;
+        n = n.substring(8);
+        return n.matches("[A-Z0-9_]{1,13}") ? "KB_" + n : null;
     }
 
     private void releaseAll() {

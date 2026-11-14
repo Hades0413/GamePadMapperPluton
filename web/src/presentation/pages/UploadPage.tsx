@@ -6,13 +6,14 @@ import { ProfileForm, type ProfileFormValues } from '../components/profile/Profi
 import { guessDeviceModel } from '../lib/device';
 import { cameFromApp, readAppLink, setFromApp, type PublishedState } from '../lib/appLink';
 import { PageSpinner } from '../components/ui/Spinner';
-import { loadDraft, saveDraft } from '../lib/sessionDraft';
+import { loadDraft, saveDraft, UPLOAD_DRAFT_KEY } from '../lib/sessionDraft';
+import { useT } from '../i18n/I18nContext';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { useFillGameImages } from '../queries/games';
 import { usePublishProfile } from '../queries/profiles';
 import { paths } from '../routes/paths';
 
-const DRAFT_KEY = 'gpm.uploadDraft';
+const DRAFT_KEY = UPLOAD_DRAFT_KEY;
 const EMPTY: ProfileFormValues = { conf: '', packageName: '', gameName: '', title: '', description: '', deviceModel: '' };
 
 /** Valores iniciales: borrador guardado + perfil que llega desde la app en el enlace. */
@@ -30,7 +31,8 @@ function initialValues(packageParam: string | null): { values: ProfileFormValues
 }
 
 export default function UploadPage() {
-  useDocumentTitle('Subir perfil');
+  const t = useT();
+  useDocumentTitle(t('Subir perfil'));
   const [params] = useSearchParams();
   const [{ values: initial, fromLink }] = useState(() => initialValues(params.get('juego')));
   // Sin modelo: lo pregunta al navegador (Chrome en Android lo sabe) y rellena el formulario.
@@ -48,16 +50,15 @@ export default function UploadPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold">Subir un perfil</h1>
-        <p className="mt-1 text-muted">Comparte la configuración de tu juego para que otros la usen.</p>
+        <h1 className="text-3xl font-bold">{t('Subir un perfil')}</h1>
+        <p className="mt-1 text-muted">{t('Comparte la configuración de tu juego para que otros la usen.')}</p>
       </div>
       {fromLink && (
         <Alert tone="warning">
-          Este formulario se rellenó con un perfil que venía en el enlace. Publícalo solo si lo has creado tú
-          (por ejemplo, desde «Subir a la comunidad» de la app) y revisa la vista previa.
+          {t('Este formulario se rellenó con un perfil que venía en el enlace. Publícalo solo si lo has creado tú (por ejemplo, desde «Subir a la comunidad» de la app) y revisa la vista previa.')}
         </Alert>
       )}
-      <RequireAccount reason="Para subir un perfil y que aparezca tu nombre, inicia sesión con GitHub.">
+      <RequireAccount reason={t('Para subir un perfil y que aparezca tu nombre, inicia sesión con GitHub.')}>
         {() => (
           model === null ? <PageSpinner /> : <ProfileForm mode="create" initial={{ ...initial, deviceModel: initial.deviceModel || model }} pending={publish.isPending} error={publish.error}
             onChange={(v) => saveDraft(DRAFT_KEY, v)}

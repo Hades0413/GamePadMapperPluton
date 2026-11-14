@@ -1,6 +1,8 @@
 import { createServices } from '@app/container';
 import { readEnv } from '@infrastructure/config/env';
 import { App, ConfigError } from '@presentation/App';
+import { getLang } from '@presentation/i18n/lang';
+import { translate } from '@presentation/i18n/translate';
 import '@presentation/styles/index.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -16,7 +18,8 @@ function isFramed(): boolean {
 
 function start(root: ReturnType<typeof createRoot>) {
   if (isFramed()) {
-    root.render(<ConfigError title="Abre esta web directamente" message="Por seguridad no se puede usar dentro de otra página." />);
+    root.render(<ConfigError title={translate(getLang(), 'Abre esta web directamente')}
+      message={translate(getLang(), 'Por seguridad no se puede usar dentro de otra página.')} />);
     return;
   }
   try {

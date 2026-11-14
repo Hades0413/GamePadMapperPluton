@@ -1,3 +1,4 @@
+import { useT } from '../../i18n/I18nContext';
 import { errorMessage } from '../../lib/errorMessage';
 import type { ReactNode } from 'react';
 
@@ -23,13 +24,14 @@ export function Alert({ tone = 'info', children, action }: { tone?: Tone; childr
 }
 
 export function ErrorAlert({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
+  const t = useT();
   return (
     <Alert
       tone="error"
       action={
         onRetry && (
           <button type="button" onClick={onRetry} className="font-medium underline underline-offset-2">
-            Reintentar
+            {t('Reintentar')}
           </button>
         )
       }

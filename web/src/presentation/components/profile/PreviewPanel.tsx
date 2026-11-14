@@ -1,6 +1,7 @@
 import type { ProfileConfig } from '@domain/profile/conf/ProfileConfig';
 import { fitConfig, sameRatio } from '@domain/profile/conf/fit';
 import { useMemo, useState, type ReactNode } from 'react';
+import { useT } from '../../i18n/I18nContext';
 import { ratioLabel, visitorScreen } from '../../lib/device';
 import { ProfilePreview } from './ProfilePreview';
 
@@ -26,8 +27,9 @@ function Segmented<T extends string | boolean>({
  *    (botones anclados a los bordes, igual que hace la app) o «Original».
  */
 export function PreviewPanel({
-  config, background, title = 'Vista previa', footer,
+  config, background, title, footer,
 }: { config: ProfileConfig; background: string | null; title?: string; footer?: ReactNode }) {
+  const t = useT();
   const [overGame, setOverGame] = useState(true);
   const [myScreen] = useState(visitorScreen);
   const differs = myScreen !== null && !sameRatio(config.screen, myScreen);
@@ -40,25 +42,25 @@ export function PreviewPanel({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-semibold">{title}</h2>
+        <h2 className="font-semibold">{title ?? t('Vista previa')}</h2>
         <div className="flex flex-wrap gap-2">
           {differs && (
-            <Segmented label="Pantalla" value={onMine} onChange={setOnMine}
-              options={[[true, 'En tu pantalla'], [false, 'Original']] as const} />
+            <Segmented label={t('Pantalla')} value={onMine} onChange={setOnMine}
+              options={[[true, t('En tu pantalla')], [false, t('Original')]] as const} />
           )}
           {background && (
-            <Segmented label="Fondo" value={overGame} onChange={setOverGame}
-              options={[[true, 'Sobre el juego'], [false, 'Esquema']] as const} />
+            <Segmented label={t('Fondo')} value={overGame} onChange={setOverGame}
+              options={[[true, t('Sobre el juego')], [false, t('Esquema')]] as const} />
           )}
         </div>
       </div>
       <ProfilePreview config={shown} background={bg} />
       <p className="text-xs text-muted">
-        Morado: botones · Amarillo: capas (mantener otro botón) · Turquesa: joystick, cámara y deslizar.
+        {t('Morado: botones · Amarillo: capas (mantener otro botón) · Turquesa: joystick, cámara y deslizar.')}
         {differs && onMine && myScreen &&
-          ` Adaptado a tu pantalla (${ratioLabel(myScreen)}): los botones se mueven con los bordes, como en el juego.`}
-        {differs && !onMine && ` Hecho en una pantalla ${ratioLabel(config.screen)}.`}
-        {bg && ' La captura del juego es orientativa.'}
+          ` ${t('Adaptado a tu pantalla ({ratio}): los botones se mueven con los bordes, como en el juego.', { ratio: ratioLabel(myScreen) })}`}
+        {differs && !onMine && ` ${t('Hecho en una pantalla {ratio}.', { ratio: ratioLabel(config.screen) })}`}
+        {bg && ` ${t('La captura del juego es orientativa.')}`}
       </p>
       {footer}
     </div>

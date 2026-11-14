@@ -139,6 +139,7 @@ public class OverlayService extends Service {
     private TextView toolbarInfo;
     private Button saveButton;
     private View addPanel;
+    private View settingsPanel;
     private LinearLayout editPanel, banner;
     private int offX, offY;          // posicion de la ventana del editor en pantalla
 
@@ -251,6 +252,8 @@ public class OverlayService extends Service {
     private final java.util.Map<String, Integer> communityCount = new java.util.concurrent.ConcurrentHashMap<>();
     private volatile long communityAt;
     private volatile boolean communityLoading;
+    /** Perfil recomendado de la comunidad para cada juego sin perfil (con su texto .conf). */
+    private final java.util.Map<String, Community.Item> recommended = new java.util.concurrent.ConcurrentHashMap<>();
     private String pendingEditPkg;       // abrir el editor al llegar a este juego
     private final java.util.Map<String, Boolean> gameCache = new java.util.HashMap<>();
     private long gameCacheAt;
@@ -358,6 +361,7 @@ public class OverlayService extends Service {
             if (!fg.equals(currentGame)) {
                 closeMenu();
                 checkCommunity(fg);
+                checkGameUpdated(fg);
             }
             currentGame = fg;
             showBubbleView();
@@ -367,6 +371,46 @@ public class OverlayService extends Service {
             if (bubble != null) bubble.setVisibility(View.GONE);
         }
         updateHints(show ? fg : null);   // L.t("Mostrar controles"): solo en el juego con burbuja
+    }
+
+    // ------------------------------------------------------------------ juego actualizado
+
+    private static final String KEY_GAME_VERSION = "game_version:";
+    /** Juegos que se han actualizado desde que se uso su perfil (hasta que el usuario lo revise). */
+    private final java.util.Set<String> updatedGames = new java.util.HashSet<>();
+
+    private long gameVersion(String pkg) {
+        try {
+            android.content.pm.PackageInfo pi = getPackageManager().getPackageInfo(pkg, 0);
+            return Build.VERSION.SDK_INT >= 28 ? pi.getLongVersionCode() : pi.versionCode;
+        } catch (Exception e) {
+            return -1;
+        }
+    }
+
+    /**
+     * Si el juego se ha actualizado desde la ultima vez que se jugo con su perfil, puede haber
+     * movido sus controles: se avisa una vez y el menu ofrece probar o editar el perfil.
+     */
+    private void checkGameUpdated(String pkg) {
+        if (Library.profilesOf(pkg).isEmpty()) return;
+        long now = gameVersion(pkg);
+        if (now < 0) return;
+        android.content.SharedPreferences p = getSharedPreferences(Games.PREFS, MODE_PRIVATE);
+        long seen = p.getLong(KEY_GAME_VERSION + pkg, -1);
+        if (seen < 0) {
+            p.edit().putLong(KEY_GAME_VERSION + pkg, now).apply();   // primera vez: se toma como buena
+            return;
+        }
+        if (seen == now || updatedGames.contains(pkg)) return;
+        updatedGames.add(pkg);
+        showHint(L.t("El juego se ha actualizado: comprueba que los botones sigan en su sitio (menú de la burbuja)."));
+    }
+
+    /** El usuario ha revisado el perfil tras la actualizacion del juego. */
+    private void gameUpdateReviewed(String pkg) {
+        updatedGames.remove(pkg);
+        getSharedPreferences(Games.PREFS, MODE_PRIVATE).edit().putLong(KEY_GAME_VERSION + pkg, gameVersion(pkg)).apply();
     }
 
     // ------------------------------------------------------------------ comunidad
@@ -406,11 +450,59 @@ public class OverlayService extends Service {
     private void tellCommunity(String pkg) {
         Integer n = communityCount.get(pkg);
         if (n == null || n <= 0 || !Library.profilesOf(pkg).isEmpty()) return;
+        loadRecommended(pkg);
         android.content.SharedPreferences p = getSharedPreferences(Games.PREFS, MODE_PRIVATE);
         java.util.Set<String> told = new java.util.HashSet<>(p.getStringSet(KEY_COMMUNITY_TOLD, new java.util.HashSet<>()));
         if (!told.add(pkg)) return;
         p.edit().putStringSet(KEY_COMMUNITY_TOLD, told).apply();
         showHint(L.t("Hay perfiles de la comunidad para este juego: toca la burbuja para verlos."));
+    }
+
+    /** Busca en segundo plano el perfil recomendado para ese juego (una vez por juego). */
+    private void loadRecommended(String pkg) {
+        if (recommended.containsKey(pkg)) return;
+        final float ratio = Community.screenRatio(this);
+        new Thread(() -> {
+            try {
+                Community.Item it = Community.recommend(this, pkg, ratio);
+                if (it != null && it.conf != null && pkg.equals(Library.validate(it.conf))) recommended.put(pkg, it);
+            } catch (Exception ignored) {
+                // sin conexion o perfil no valido: no se recomienda nada
+            }
+        }).start();
+    }
+
+    /** Texto corto de por que se recomienda: «Encaja con tu pantalla · 92 % funciona». */
+    private String recommendReason(Community.Item it) {
+        String r = Community.fitsScreen(it, Community.screenRatio(this)) ? L.t("Encaja con tu pantalla") : L.t("Se adapta a tu pantalla");
+        int share = Community.worksShare(it);
+        if (share >= 0) r += " · " + share + L.t(" % funciona");
+        else if (it.likes > 0) r += " · ♥ " + it.likes;
+        return r;
+    }
+
+    /** Instala el perfil recomendado (el usuario lo ha pedido tocando «Instalar»). */
+    private void installRecommended(String pkg, Community.Item it) {
+        closeMenu();
+        try {
+            if (!pkg.equals(Library.validate(it.conf))) throw new java.io.IOException(L.t("El perfil no es del juego indicado"));
+            java.io.File f = Library.install(it.conf, Library.newFile(pkg));
+            Library.setActive(pkg, f.getName());
+            CommunityLinks.remember(this, f, it);
+            final String id = it.id, install = CommunityLinks.installId(this);
+            new Thread(() -> {
+                try {
+                    Community.registerInstall(id, install);
+                } catch (Exception ignored) {
+                    // el contador es orientativo
+                }
+            }).start();
+            recommended.remove(pkg);
+            gameCache.clear();
+            showHint(L.t("Instalado «") + it.title + L.t("». Pruébalo, y si algo no encaja, «Editar controles»."));
+        } catch (Exception e) {
+            toast(L.t("No se pudo instalar: ") + e.getMessage());
+        }
     }
 
     /** Abre en la app los perfiles de la comunidad de ese juego. */
@@ -902,7 +994,57 @@ public class OverlayService extends Service {
         stopLearn();
         clearGhosts();
         guided = null;
-        showHint(L.t("Listo. Revisa los círculos (puedes moverlos o cambiar el botón) y toca Guardar."));
+        // Ultimo paso del asistente: guardar y, si se puede, probar sin tocar el juego.
+        Button saveTest = PadService.canDryRun() ? button(L.t("Guardar y probar"), C_OK, v -> {
+            hideBanner();
+            if (!save()) return;
+            closeEditor();
+            if (PadService.setDryRun(true)) {
+                showHint(L.t("Modo prueba: pulsa botones y mueve los sticks; verás dónde tocaría. Termina desde la burbuja."));
+            }
+        }) : null;
+        Button saveOnly = button(L.t("Guardar"), saveTest == null ? C_OK : C_NEUTRAL, v -> {
+            hideBanner();
+            save();
+        });
+        Button keep = button(L.t("Seguir editando"), C_NEUTRAL, v -> hideBanner());
+        String text = L.t("Revisa los círculos (puedes moverlos o cambiar el botón).");
+        if (saveTest != null) showBanner(L.t("¡Listo!"), text, C_PRIMARY, saveTest, saveOnly, keep);
+        else showBanner(L.t("¡Listo!"), text, C_PRIMARY, saveOnly, keep);
+    }
+
+    /**
+     * Asistente del primer perfil: tres caminos al crear uno en blanco. El automatico encadena
+     * detectar botones -> asignar cada uno con el mando -> guardar y probar.
+     */
+    private void welcomeWizard() {
+        if (editor == null || profile == null) return;
+        final String pkg = profile.pkg;
+        final Community.Item rec = recommended.get(pkg);
+        Button auto = button(L.t("Asistente automático"), C_OK, v -> {
+            hideBanner();
+            autoDetectIntro();
+        });
+        Button hand = button(L.t("Colocar a mano"), C_NEUTRAL, v -> {
+            hideBanner();
+            showHint(L.t("«+ Botón» añade botones; arrástralos sobre el juego y toca Guardar."));
+        });
+        if (rec != null) {
+            Button use = button(L.t("Usar el recomendado"), C_PRIMARY, v -> {
+                hideBanner();
+                dirty = false;
+                java.io.File blank = profile.file;
+                closeEditor();
+                //noinspection ResultOfMethodCallIgnored
+                blank.delete();   // el perfil vacio recien creado ya no hace falta
+                installRecommended(pkg, rec);
+            });
+            showBanner(L.t("Nuevo perfil"), L.t("Hay un perfil de la comunidad que te puede servir: «") + rec.title + "» ("
+                    + recommendReason(rec) + L.t("). O crea el tuyo:"), C_PRIMARY, use, auto, hand);
+        } else {
+            showBanner(L.t("Nuevo perfil"), L.t("El asistente busca los botones del juego y te pide pulsar el del mando para cada uno."),
+                    C_PRIMARY, auto, hand);
+        }
     }
 
     /** Circulo discontinuo de un boton detectado. Tocar = usar / descartar. */
@@ -1329,6 +1471,11 @@ public class OverlayService extends Service {
 
         if (page == MENU_MAIN) {
             if (active == null) {
+                final Community.Item rec = recommended.get(pkg);
+                if (rec != null) {
+                    card.addView(Ui.menuRow(this, R.drawable.ic_download, Ui.OK, L.t("Instalar el recomendado: ") + rec.title,
+                            recommendReason(rec), v -> installRecommended(pkg, rec)));
+                }
                 Integer shared = communityCount.get(pkg);
                 if (shared != null && shared > 0) {
                     card.addView(Ui.menuRow(this, R.drawable.ic_people, Ui.OK, L.t("Perfiles de la comunidad"),
@@ -1347,8 +1494,19 @@ public class OverlayService extends Service {
                             updateHints(pkg);
                             toast(showing ? L.t("Controles ocultos") : L.t("Controles visibles (no bloquean tus toques)"));
                         }));
+                if (updatedGames.contains(pkg)) {
+                    card.addView(Ui.menuRow(this, R.drawable.ic_warning, Ui.WARN, L.t("El juego se ha actualizado"),
+                            L.t("Toca si los botones siguen bien; si no, prueba o edita el perfil"), v -> {
+                                gameUpdateReviewed(pkg);
+                                closeMenu();
+                                toast(L.t("Perfecto: no se volverá a avisar hasta la próxima actualización"));
+                            }));
+                }
                 card.addView(Ui.menuRow(this, R.drawable.ic_edit, Ui.PRIMARY, L.t("Editar controles"),
-                        active.displayName(), v -> editProfile(active)));
+                        active.displayName(), v -> {
+                            gameUpdateReviewed(pkg);
+                            editProfile(active);
+                        }));
                 if (PadService.canDryRun()) {
                     final boolean testing = PadService.dryRun;
                     card.addView(Ui.menuRow(this, R.drawable.ic_play, testing ? Ui.WARN : Ui.PRIMARY,
@@ -1500,11 +1658,12 @@ public class OverlayService extends Service {
             p.save();
             Library.setActive(pkg, p.file.getName());
             gameCache.clear();
-            toast(L.t("Creado \"") + p.name + L.t("\". Coloca los botones y pulsa Guardar."));
             profile = p;
             dirty = base == null;  // en blanco: hay que guardar la distribucion inicial
             closeMenu();
             openEditor();
+            if (base == null) handler.post(this::welcomeWizard);
+            else toast(L.t("Creado \"") + p.name + L.t("\". Coloca los botones y pulsa Guardar."));
         } catch (Exception e) {
             toast(L.t("No se pudo crear: ") + e.getMessage());
         }
@@ -1572,6 +1731,7 @@ public class OverlayService extends Service {
 
     // ------------------------------------------------------------------ editor
     private void openEditor() {
+        if (profile != null) PadService.editorPlayers = profile.players;
         if (profile == null || editor != null) return;
         int[] size = screenSize();
         profile.rescaleTo(size[0], size[1]);
@@ -1641,6 +1801,7 @@ public class OverlayService extends Service {
         undoButton = null;
         undo.clear();
         addPanel = null;
+        settingsPanel = null;
         editPanel = null;
         banner = null;
         gameCache.clear();  // puede haber un perfil nuevo
@@ -1680,6 +1841,7 @@ public class OverlayService extends Service {
         toolbarInfo.setEllipsize(android.text.TextUtils.TruncateAt.END);
         toolbar.addView(toolbarInfo);
         toolbar.addView(button(L.t("+ Botón"), v -> toggleAddPanel()));
+        toolbar.addView(button("⚙", C_NEUTRAL, v -> toggleSettings()));
         undoButton = button("↶", C_NEUTRAL, v -> doUndo());
         undoButton.setEnabled(!undo.isEmpty());
         toolbar.addView(undoButton);
@@ -1713,6 +1875,7 @@ public class OverlayService extends Service {
         if (toolbar != null) toolbar.setAlpha(a);
         if (editPanel != null) editPanel.setAlpha(a);
         if (addPanel != null) addPanel.setAlpha(a);
+        if (settingsPanel != null) settingsPanel.setAlpha(a);
         if (banner != null) banner.setAlpha(a);
     }
 
@@ -1778,6 +1941,130 @@ public class OverlayService extends Service {
         int[] sz = measure(card);
         int w = Math.min(sz[0], editor.getWidth() - dp(32));
         editor.addView(card, spotParams(bestSpot(w, sz[1], null, toolbar)));
+        makeDraggable(card, grip, null);
+    }
+
+    // ------------------------------------------------------------------ ajustes del perfil
+
+    private static final String[] AIM_CHOICES = {"", "L2", "R2", "L1", "R1"};
+
+    private static String nextChoice(String cur) {
+        for (int i = 0; i < AIM_CHOICES.length; i++) {
+            if (AIM_CHOICES[i].equals(cur)) return AIM_CHOICES[(i + 1) % AIM_CHOICES.length];
+        }
+        return AIM_CHOICES[0];
+    }
+
+    /** Apuntar, aceleracion, giroscopio, raton, vibracion y mando del perfil. */
+    private void toggleSettings() {
+        if (settingsPanel != null) {
+            editor.removeView(settingsPanel);
+            settingsPanel = null;
+            return;
+        }
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setBackground(roundBg(C_CARD, 18));
+        card.setPadding(dp(8), dp(4), dp(8), dp(8));
+        LinearLayout head = row();
+        TextView grip = handle();
+        head.addView(grip);
+        head.addView(text(L.t("Ajustes del perfil"), 14, Color.WHITE, true), new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        head.addView(button("✕", C_NEUTRAL, v -> toggleSettings()));
+        card.addView(head);
+        Runnable reopen = () -> {
+            toggleSettings();
+            toggleSettings();
+        };
+
+        // Apuntar
+        card.addView(text(L.t("Cámara"), 13, Color.WHITE, true));
+        card.addView(button(profile.aimButton.isEmpty() ? L.t("Botón para apuntar: ninguno")
+                : L.t("Botón para apuntar: ") + Profile.label(profile.aimButton), C_NEUTRAL, v -> {
+            profile.aimButton = nextChoice(profile.aimButton);
+            markDirty();
+            reopen.run();
+        }));
+        if (!profile.aimButton.isEmpty()) {
+            addSlider(card, L.t("Velocidad al apuntar: %d%%"), 10, 100, Math.round(profile.aimScale * 100),
+                    v -> profile.aimScale = v / 100f);
+        }
+        addSlider(card, L.t("Aceleración con el stick al tope: %d%%"), 0, 200, Math.round(profile.lookAccel * 100),
+                v -> profile.lookAccel = v / 100f);
+
+        // Giroscopio y raton (solo sin root)
+        card.addView(text(L.t("Giroscopio y ratón (solo sin root)"), 13, Color.WHITE, true));
+        addSlider(card, L.t("Giroscopio: %d%% (0 = apagado)"), 0, 300, Math.round(profile.gyro * 100),
+                v -> profile.gyro = v / 100f);
+        card.addView(button(profile.gyroButton.isEmpty() ? L.t("Giroscopio: siempre activo")
+                : L.t("Giroscopio: solo mientras mantienes ") + Profile.label(profile.gyroButton), C_NEUTRAL, v -> {
+            profile.gyroButton = nextChoice(profile.gyroButton);
+            markDirty();
+            reopen.run();
+        }));
+        card.addView(button(profile.gyroInvert ? L.t("✓ Giroscopio vertical invertido") : L.t("Invertir giroscopio vertical"),
+                profile.gyroInvert ? C_OK : C_NEUTRAL, v -> {
+                    profile.gyroInvert = !profile.gyroInvert;
+                    markDirty();
+                    reopen.run();
+                }));
+        addSlider(card, L.t("Ratón como cámara: %d%% (0 = apagado)"), 0, 300, Math.round(profile.mouse * 100),
+                v -> profile.mouse = v / 100f);
+        card.addView(text(L.t("Teclas y botones del ratón: «+ Botón» › «Detectar» y pulsa la tecla o el botón."),
+                11, C_TEXT2, false));
+
+        // Dos jugadores (solo sin root)
+        card.addView(text(L.t("Dos jugadores (solo sin root)"), 13, Color.WHITE, true));
+        card.addView(button(profile.players == 2 ? L.t("✓ Dos mandos: el segundo es el jugador 2") : L.t("Activar dos jugadores"),
+                profile.players == 2 ? C_OK : C_NEUTRAL, v -> {
+                    profile.players = profile.players == 2 ? 1 : 2;
+                    PadService.editorPlayers = profile.players;
+                    markDirty();
+                    reopen.run();
+                }));
+        if (profile.players == 2) {
+            card.addView(text(L.t("Botones del jugador 2: «+ Botón» › «Detectar» y pulsa en su mando. Sus sticks:"),
+                    11, C_TEXT2, false));
+            LinearLayout p2 = row();
+            for (final String k : new String[]{"P2_LS", "P2_RS"}) {
+                if (profile.bindings.containsKey(k)) continue;
+                p2.addView(button(L.t("Añadir ") + Profile.label(k), C_NEUTRAL, v -> {
+                    toggleSettings();
+                    addAtCenter(k);
+                }));
+            }
+            if (p2.getChildCount() > 0) card.addView(p2);
+        }
+
+        // Mando
+        card.addView(text(L.t("Mando"), 13, Color.WHITE, true));
+        addSlider(card, L.t("Vibración al pulsar: %d%% (0 = apagada)"), 0, 100, Math.round(profile.rumble * 100),
+                v -> profile.rumble = v / 100f);
+        String pad = Profile.cleanController(PadService.lastPad == null ? "" : PadService.lastPad);
+        if (!profile.controller.isEmpty()) {
+            card.addView(button(L.t("✓ Se activa con el mando «") + profile.controller + L.t("» (quitar)"), C_OK, v -> {
+                profile.controller = "";
+                markDirty();
+                reopen.run();
+            }));
+        } else if (!pad.isEmpty()) {
+            card.addView(button(L.t("Activar este perfil al conectar «") + pad + "»", C_NEUTRAL, v -> {
+                profile.controller = pad;
+                markDirty();
+                reopen.run();
+            }));
+        } else {
+            card.addView(text(L.t("Pulsa un botón del mando para poder asociarle este perfil."), 11, C_TEXT2, false));
+        }
+
+        settingsPanel = card;
+        card.setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT));
+        fitToScreen(card, 0, 1);
+        int[] sz = measure(card);
+        int w = Math.min(sz[0], editor.getWidth() - dp(32));
+        editor.addView(card, spotParams(bestSpot(w, Math.min(sz[1], editor.getHeight() - dp(32)), null, toolbar)));
         makeDraggable(card, grip, null);
     }
 
@@ -2187,8 +2474,10 @@ public class OverlayService extends Service {
                         Profile.STICK.equals(b.type) ? C_OK : C_PRIMARY, v -> setType(b, Profile.STICK)));
                 actions.addView(button(Profile.LOOK.equals(b.type) ? L.t("✓ Cámara") : L.t("Cámara"),
                         Profile.LOOK.equals(b.type) ? C_OK : C_PRIMARY, v -> setType(b, Profile.LOOK)));
-                actions.addView(button(L.t("Detectar stick"), C_WARN, v -> learnStick(b)));
-                if (Profile.STICK.equals(b.type)) {
+                // El jugador 2 usa los mismos ejes que el 1 (en su mando) y no lleva cruceta.
+                final boolean p1 = !b.key.startsWith("P2_");
+                if (p1) actions.addView(button(L.t("Detectar stick"), C_WARN, v -> learnStick(b)));
+                if (p1 && Profile.STICK.equals(b.type)) {
                     actions.addView(button(b.dpad ? L.t("✓ + Cruceta") : L.t("+ Cruceta"), b.dpad ? C_OK : C_PRIMARY, v -> {
                         b.dpad = !b.dpad;
                         if (b.dpad) {
@@ -2342,7 +2631,7 @@ public class OverlayService extends Service {
                 LinearLayout opts = new LinearLayout(this);
                 opts.setOrientation(LinearLayout.VERTICAL);
                 opts.setPadding(dp(8), 0, 0, 0);
-                String axes = "LS".equals(b.key) ? profile.lsAxes : profile.rsAxes;
+                String axes = "LS".equals(Profile.stickBase(b.key)) ? profile.lsAxes : profile.rsAxes;
                 opts.addView(text(L.t("Ejes del mando: ") + (axes.isEmpty() ? L.t("automáticos") : axes), 12, C_TEXT2, false));
                 if (Profile.LOOK.equals(b.type)) {
                     addSlider(opts, L.t("Velocidad de cámara: %d"), 2, 60, Math.round(b.r), v -> b.r = v);
@@ -2361,7 +2650,7 @@ public class OverlayService extends Service {
                         if (selected != null) selected.layoutToBinding();
                     });
                 }
-                final boolean isLs = "LS".equals(b.key);
+                final boolean isLs = "LS".equals(Profile.stickBase(b.key));
                 addSlider(opts, L.t("Zona muerta de ") + b.key + L.t(": %d%%"), 0, 60,
                         Math.round(profile.deadzoneOf(b.key) * 100), v -> {
                             if (isLs) profile.lsDeadzone = v / 100f;

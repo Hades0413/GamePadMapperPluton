@@ -70,6 +70,8 @@ public final class Community {
         public int likes, buttons, screenW, screenH;
         /** Instalaciones desde la app y respuestas «¿te funcionó?» (orientativos). */
         public int installs, worksYes, worksNo;
+        /** Votos de los ultimos 30 dias (para avisar si ha dejado de funcionar). */
+        public int recentYes, recentNo;
         public long createdAt, updatedAt;
         /** Texto .conf (solo al pedir un perfil concreto). */
         public String conf;
@@ -158,7 +160,7 @@ public final class Community {
     }
 
     private static final String SUMMARY = "id,package,title,description,screen_w,screen_h,device_model,binding_count,"
-            + "like_count,install_count,works_yes,works_no,created_at,updated_at,author:authors!game_profiles_author_id_fkey(username),game:games(name,icon_url,background_url)";
+            + "like_count,install_count,works_yes,works_no,recent_yes,recent_no,created_at,updated_at,author:authors!game_profiles_author_id_fkey(username),game:games(name,icon_url,background_url)";
 
     /**
      * Fecha de la ultima modificacion (titulo, descripcion o perfil) de los perfiles indicados que
@@ -177,6 +179,33 @@ public final class Community {
                 0, SERVER_MAX_ROWS - 1);
         for (Item it : parseItems(json, false)) out.put(it.id, it);
         return out;
+    }
+
+    /**
+     * El perfil que mejor encaja para empezar: primero los hechos con tu proporcion de pantalla,
+     * luego los que mas dicen que funcionan, los mas instalados y los mas gustados. Se descartan
+     * los que la mayoria dice que no funcionan. Devuelve el perfil completo (con conf) o null.
+     * Llamar fuera del hilo principal.
+     */
+    public static Item recommend(Context c, String pkg, float ratio) throws IOException {
+        Item best = null;
+        double bestScore = -1;
+        for (Item it : profiles(c, pkg, false, 0, 0)) {
+            int share = worksShare(it);
+            if ((share >= 0 && share < 40) || recentlyBroken(it)) continue;
+            double score = (fitsScreen(it, ratio) ? 1000 : 0) + (share >= 0 ? share : 60) * 4
+                    + Math.min(it.installs, 500) * 0.2 + Math.min(it.likes, 200);
+            if (score > bestScore) {
+                bestScore = score;
+                best = it;
+            }
+        }
+        return best == null ? null : profile(c, best.id);
+    }
+
+    /** ¿La mayoria de los votos recientes dice que ya no funciona? (con al menos 3). */
+    public static boolean recentlyBroken(Item it) {
+        return it.recentNo >= 3 && it.recentNo > it.recentYes;
     }
 
     /** Porcentaje (0-100) que dice que le funciona, o -1 si aun hay pocos votos. */
@@ -295,8 +324,26 @@ public final class Community {
         }
     }
 
+    /**
+     * Envia un diagnostico (el usuario lo ha visto entero y ha pulsado Enviar). Devuelve un codigo
+     * corto para darselo al autor.
+     */
+    public static String submitDiagnostic(String installId, String app, String android, String device, String mode,
+                                          String message, String log) throws IOException {
+        if (!UUID.matcher(installId).matches()) throw new IOException("id");
+        try {
+            String id = rpc("submit_diagnostic", new JSONObject().put("p_install", installId).put("p_app", app)
+                    .put("p_android", android).put("p_device", device).put("p_mode", mode)
+                    .put("p_message", message).put("p_log", log)).replace("\"", "").trim();
+            if (!UUID.matcher(id).matches()) throw new IOException(L.t("Respuesta no válida del servidor"));
+            return id.substring(0, 8).toUpperCase(java.util.Locale.ROOT);
+        } catch (JSONException e) {
+            throw new IOException(e.getMessage());
+        }
+    }
+
     /** Llama a una funcion publica de la base de datos (solo las pensadas para la app sin cuenta). */
-    private static void rpc(String fn, JSONObject body) throws IOException {
+    private static String rpc(String fn, JSONObject body) throws IOException {
         HttpURLConnection h = (HttpURLConnection) new URL(API + "rpc/" + fn).openConnection();
         try {
             h.setConnectTimeout(10000);
@@ -314,7 +361,22 @@ public final class Community {
                 out.write(b);
             }
             int code = h.getResponseCode();
+            if (code == 400 || code == 429) {
+                // Mensaje del servidor ("CODIGO|texto"): p. ej. el limite diario.
+                try (InputStream err = h.getErrorStream()) {
+                    String m = err == null ? "" : new JSONObject(new String(Library.readBytes(err, 8192), StandardCharsets.UTF_8))
+                            .optString("message", "");
+                    int bar = m.indexOf('|');
+                    if (bar > 0) throw new IOException(m.substring(bar + 1));
+                } catch (JSONException ignored) {
+                    // sin mensaje legible
+                }
+            }
             if (code < 200 || code >= 300) throw new IOException(L.t("El servidor respondió ") + code);
+            if (code == 204) return "";
+            try (InputStream in = h.getInputStream()) {
+                return new String(Library.readBytes(in, 8192), StandardCharsets.UTF_8);
+            }
         } finally {
             h.disconnect();
         }
@@ -364,6 +426,8 @@ public final class Community {
                 it.installs = Math.max(0, o.optInt("install_count", 0));
                 it.worksYes = Math.max(0, o.optInt("works_yes", 0));
                 it.worksNo = Math.max(0, o.optInt("works_no", 0));
+                it.recentYes = Math.max(0, o.optInt("recent_yes", 0));
+                it.recentNo = Math.max(0, o.optInt("recent_no", 0));
                 it.createdAt = parseDate(o.optString("created_at", ""));
                 it.updatedAt = parseDate(o.optString("updated_at", ""));
                 JSONObject au = o.optJSONObject("author");

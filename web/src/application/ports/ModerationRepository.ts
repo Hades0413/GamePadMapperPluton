@@ -30,8 +30,22 @@ export interface ImportedGame {
   readonly nameUpdated: boolean;
 }
 
+/** Diagnostico enviado desde la app («Enviar diagnóstico»). */
+export interface Diagnostic {
+  readonly id: string;
+  readonly appVersion: string;
+  readonly android: string;
+  readonly device: string;
+  readonly mode: string;
+  readonly message: string;
+  readonly log: string;
+  readonly createdAt: Date;
+}
+
 export interface ModerationRepository {
   reportedProfiles(): Promise<readonly ReportedProfile[]>;
+  diagnostics(): Promise<readonly Diagnostic[]>;
+  deleteDiagnostic(id: string): Promise<void>;
   setProfileStatus(id: string, status: ProfileStatus, clearReports: boolean): Promise<void>;
   setAuthorBanned(authorId: string, banned: boolean): Promise<void>;
   updateGame(packageName: string, changes: GameChanges): Promise<void>;

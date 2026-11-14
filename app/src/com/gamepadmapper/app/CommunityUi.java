@@ -563,6 +563,7 @@ final class CommunityUi {
         if (it.installs > 0) out += " · " + it.installs + (it.installs == 1 ? L.t(" instalación") : L.t(" instalaciones"));
         int share = Community.worksShare(it);
         if (share >= 0) out += " · " + share + L.t(" % funciona");
+        if (Community.recentlyBroken(it)) out += " · ⚠ " + L.t("últimamente no funciona");
         return out;
     }
 }

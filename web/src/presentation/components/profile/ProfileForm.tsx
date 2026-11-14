@@ -6,6 +6,7 @@ import { validateConf } from '@domain/profile/conf/validateConf';
 import { DESCRIPTION_MAX, TITLE_MAX } from '@domain/profile/GameProfile';
 import { isValidPackage } from '@domain/game/Game';
 import { useDeferredValue, useMemo, useState, type FormEvent } from 'react';
+import { useT } from '../../i18n/I18nContext';
 import { ratioLabel } from '../../lib/device';
 import { readSmallTextFile } from '../../lib/files';
 import { useFillGameImages, useGame } from '../../queries/games';
@@ -46,6 +47,7 @@ export function ProfileForm({
   onChange?: (values: ProfileFormValues) => void;
   onSubmit: (values: ProfileFormValues) => void;
 }) {
+  const t = useT();
   const [values, setValues] = useState(initial);
   const [submitted, setSubmitted] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -70,7 +72,7 @@ export function ProfileForm({
   };
 
   const errors = {
-    conf: values.conf.trim() === '' ? 'Pega el perfil o carga el archivo .conf.' :
+    conf: values.conf.trim() === '' ? t('Pega el perfil o carga el archivo .conf.') :
       parsed && !parsed.ok ? parsed.error :
       problem(() => {
         const r = validateConf(values.conf, values.packageName.trim());
@@ -94,8 +96,8 @@ export function ProfileForm({
   return (
     <form onSubmit={submit} className="grid gap-8 lg:grid-cols-2" noValidate>
       <div className="space-y-5">
-        <Field label="Perfil (.conf)" error={show('conf')}
-          hint="En la app: Biblioteca › tu perfil › Compartir, y pégalo aquí. O carga el archivo.">
+        <Field label={t('Perfil (.conf)')} error={show('conf')}
+          hint={t('En la app: Biblioteca › tu perfil › Compartir, y pégalo aquí. O carga el archivo.')}>
           {(a) => (
             <textarea {...a} className="input min-h-56 font-mono text-xs leading-relaxed" spellCheck={false}
               placeholder={'package = com.empresa.juego\nscreen = 2400x1080\nA = tap 1932 960\n…'}
@@ -104,7 +106,7 @@ export function ProfileForm({
         </Field>
         <div className="flex flex-wrap items-center gap-3">
           <label className="cursor-pointer rounded-xl border border-dashed border-line px-4 py-2 text-sm text-muted hover:border-primary hover:text-ink">
-            Cargar archivo .conf
+            {t('Cargar archivo .conf')}
             <input type="file" accept=".conf,.txt,text/plain" className="sr-only" onChange={(e) => {
               const file = e.target.files?.[0];
               e.target.value = '';
@@ -116,8 +118,8 @@ export function ProfileForm({
           {fileError && <span className="text-xs text-danger">{fileError}</span>}
         </div>
 
-        <Field label="Paquete del juego" error={show('packageName')}
-          hint={mode === 'edit' ? 'No se puede cambiar.' : 'Se rellena solo con la línea «package» del perfil.'}>
+        <Field label={t('Paquete del juego')} error={show('packageName')}
+          hint={mode === 'edit' ? t('No se puede cambiar.') : t('Se rellena solo con la línea «package» del perfil.')}>
           {(a) => (
             <input {...a} className="input font-mono text-sm" value={values.packageName} disabled={mode === 'edit'}
               placeholder="com.empresa.juego" maxLength={150} autoComplete="off" spellCheck={false}
@@ -132,21 +134,22 @@ export function ProfileForm({
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium">{existingGame.name}</p>
                 <p className="text-xs text-muted">
-                  {existingGame.iconUrl && existingGame.backgroundUrl ? 'Con icono y captura del juego'
-                    : 'Le falta ' + [!existingGame.iconUrl && 'el icono', !existingGame.backgroundUrl && 'la captura'].filter(Boolean).join(' y ')}
+                  {existingGame.iconUrl && existingGame.backgroundUrl ? t('Con icono y captura del juego')
+                    : !existingGame.iconUrl && !existingGame.backgroundUrl ? t('Le falta el icono y la captura')
+                    : !existingGame.iconUrl ? t('Le falta el icono') : t('Le falta la captura')}
                 </p>
               </div>
               {(!existingGame.iconUrl || !existingGame.backgroundUrl) && (
                 <Button size="sm" variant="secondary" loading={fill.isPending}
                   onClick={() => fill.mutate(existingGame.packageName)}>
-                  Traer imágenes de Google Play
+                  {t('Traer imágenes de Google Play')}
                 </Button>
               )}
               {fill.error && <p className="w-full text-xs text-danger">{errorMessage(fill.error)}</p>}
             </div>
           ) : (
-            <Field label="Nombre del juego" error={show('gameName')}
-              hint={packageOk ? 'Es el primer perfil de este juego: escribe su nombre tal como aparece en Google Play. Al publicarlo traeremos su icono y una captura de Google Play.' : undefined}>
+            <Field label={t('Nombre del juego')} error={show('gameName')}
+              hint={packageOk ? t('Es el primer perfil de este juego: escribe su nombre tal como aparece en Google Play. Al publicarlo traeremos su icono y una captura de Google Play.') : undefined}>
               {(a) => (
                 <input {...a} className="input" value={values.gameName} maxLength={60} placeholder="Brawl Stars"
                   onChange={(e) => set({ gameName: e.target.value })} />
@@ -155,54 +158,54 @@ export function ProfileForm({
           )
         )}
 
-        <Field label="Título" error={show('title')} counter={{ value: values.title.trim().length, max: TITLE_MAX }}>
+        <Field label={t('Título')} error={show('title')} counter={{ value: values.title.trim().length, max: TITLE_MAX }}>
           {(a) => (
             <input {...a} className="input" value={values.title} maxLength={TITLE_MAX + 10}
-              placeholder="Ej.: Competitivo con cruceta" onChange={(e) => set({ title: e.target.value })} />
+              placeholder={t('Ej.: Competitivo con cruceta')} onChange={(e) => set({ title: e.target.value })} />
           )}
         </Field>
 
-        <Field label="Descripción (opcional)" error={show('description')}
+        <Field label={t('Descripción (opcional)')} error={show('description')}
           counter={{ value: values.description.trim().length, max: DESCRIPTION_MAX }}
-          hint="Qué mando usas, qué hace cada botón, para qué modo de juego…">
+          hint={t('Qué mando usas, qué hace cada botón, para qué modo de juego…')}>
           {(a) => (
             <textarea {...a} className="input min-h-28" value={values.description} maxLength={DESCRIPTION_MAX + 50}
               onChange={(e) => set({ description: e.target.value })} />
           )}
         </Field>
 
-        <Field label="Modelo del teléfono (opcional)" error={show('deviceModel')}
+        <Field label={t('Modelo del teléfono (opcional)')} error={show('deviceModel')}
           hint={parsed?.ok
-            ? `Ayuda a quien tenga el mismo móvil a encontrar tu perfil. Pantalla del perfil: ${parsed.config.screen.width}×${parsed.config.screen.height} (${ratioLabel(parsed.config.screen)}).`
-            : 'Ayuda a quien tenga el mismo móvil a encontrar tu perfil.'}>
+            ? t('Ayuda a quien tenga el mismo móvil a encontrar tu perfil. Pantalla del perfil: {w}×{h} ({ratio}).', { w: parsed.config.screen.width, h: parsed.config.screen.height, ratio: ratioLabel(parsed.config.screen) })
+            : t('Ayuda a quien tenga el mismo móvil a encontrar tu perfil.')}>
           {(a) => (
-            <input {...a} className="input" value={values.deviceModel} maxLength={60} placeholder="Ej.: Redmi Note 9"
+            <input {...a} className="input" value={values.deviceModel} maxLength={60} placeholder={t('Ej.: Redmi Note 9')}
               autoComplete="off" onChange={(e) => set({ deviceModel: e.target.value })} />
           )}
         </Field>
 
         {!!error && <Alert tone="error">{errorMessage(error)}</Alert>}
         <Button type="submit" size="lg" loading={pending} className="w-full sm:w-auto">
-          {mode === 'create' ? 'Publicar perfil' : 'Guardar cambios'}
+          {mode === 'create' ? t('Publicar perfil') : t('Guardar cambios')}
         </Button>
         <p className="text-xs text-muted">
-          Al publicar aceptas las normas de la comunidad. El perfil será público con tu usuario de GitHub.
+          {t('Al publicar aceptas las normas de la comunidad. El perfil será público con tu usuario de GitHub.')}
         </p>
       </div>
 
-      <aside className="space-y-3 lg:sticky lg:top-24 lg:self-start" aria-label="Vista previa">
+      <aside className="space-y-3 lg:sticky lg:top-24 lg:self-start" aria-label={t('Vista previa')}>
         {parsed?.ok ? (
           <PreviewPanel config={parsed.config} background={existingGame?.backgroundUrl ?? null}
             footer={(
               <p className="text-xs text-muted">
-                {parsed.config.bindings.length} botones · pantalla {parsed.config.screen.width}×{parsed.config.screen.height}
+                {t('{n} botones', { n: parsed.config.bindings.length })} · {t('pantalla {w}×{h}', { w: parsed.config.screen.width, h: parsed.config.screen.height })}
               </p>
             )} />
         ) : (
           <>
-            <h2 className="font-semibold">Vista previa</h2>
+            <h2 className="font-semibold">{t('Vista previa')}</h2>
             <div className="card flex aspect-video items-center justify-center p-6 text-center text-sm text-muted">
-              Aquí verás dónde toca cada botón cuando el perfil sea válido.
+              {t('Aquí verás dónde toca cada botón cuando el perfil sea válido.')}
             </div>
           </>
         )}

@@ -1,3 +1,6 @@
+/** Borrador del formulario de subida (/subir). El editor visual lo rellena para publicar. */
+export const UPLOAD_DRAFT_KEY = 'gpm.uploadDraft';
+
 /** Borrador guardado en sessionStorage (sobrevive al ir y volver de GitHub). */
 export function loadDraft<T extends object>(key: string, fallback: T): T {
   try {

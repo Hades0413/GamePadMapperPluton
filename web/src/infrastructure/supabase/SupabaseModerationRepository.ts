@@ -1,5 +1,5 @@
 import type {
-  GameChanges, ImportedGame, ModerationRepository, PlayScreenshot, ReportedProfile,
+  Diagnostic, GameChanges, ImportedGame, ModerationRepository, PlayScreenshot, ReportedProfile,
 } from '@application/ports/ModerationRepository';
 import type { GameImageFile, GameImageKind } from '@domain/game/GameImage';
 import { AppError } from '@domain/shared/AppError';
@@ -7,13 +7,25 @@ import type { ProfileStatus } from '@domain/profile/GameProfile';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import { parse, toAppError, unwrap } from './errors';
-import { reportedRow } from './rows';
+import { diagnosticRow, reportedRow } from './rows';
 
 export class SupabaseModerationRepository implements ModerationRepository {
   readonly #db: SupabaseClient;
 
   constructor(db: SupabaseClient) {
     this.#db = db;
+  }
+
+  async diagnostics(): Promise<readonly Diagnostic[]> {
+    const rows = parse(z.array(diagnosticRow), unwrap(await this.#db.rpc('admin_list_diagnostics', { p_limit: 100 })));
+    return rows.map((r) => ({
+      id: r.id, appVersion: r.app_version, android: r.android, device: r.device, mode: r.mode,
+      message: r.message, log: r.log, createdAt: new Date(r.created_at),
+    }));
+  }
+
+  async deleteDiagnostic(id: string): Promise<void> {
+    unwrap(await this.#db.rpc('admin_delete_diagnostic', { p_id: id }));
   }
 
   async reportedProfiles(): Promise<readonly ReportedProfile[]> {

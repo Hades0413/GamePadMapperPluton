@@ -89,3 +89,23 @@ export function useBackgroundFromPlay() {
     },
   });
 }
+
+export function useDiagnostics(enabled: boolean) {
+  const { listDiagnostics } = useUseCases();
+  const { data: account } = useAccount();
+  return useQuery({
+    queryKey: ['diagnostics'],
+    queryFn: () => listDiagnostics.execute(),
+    enabled: enabled && !!account?.isAdmin,
+    staleTime: 0,
+  });
+}
+
+export function useDeleteDiagnostic() {
+  const { deleteDiagnostic } = useUseCases();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteDiagnostic.execute(id),
+    onSuccess: () => void client.invalidateQueries({ queryKey: ['diagnostics'] }),
+  });
+}

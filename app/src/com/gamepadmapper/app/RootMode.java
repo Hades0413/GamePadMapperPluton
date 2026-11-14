@@ -22,7 +22,7 @@ public final class RootMode {
     public static final String REPO_URL = "https://github.com/Hades0413/GamePadMapperPluton";
     public static final String MODULE_ASSET = "gamepad_mapper.zip";
     /** Compilacion de gpmapper que lleva esta app (igual que GPM_BUILD en gpmapper.c). */
-    public static final int MODULE_BUILD = 5;
+    public static final int MODULE_BUILD = 6;
     /** Nombre con version: no se confunde con zips de versiones anteriores en Descargas. */
     public static final String MODULE_FILE = "GamepadMapperPluton-root-v" + MODULE_BUILD + ".zip";
 

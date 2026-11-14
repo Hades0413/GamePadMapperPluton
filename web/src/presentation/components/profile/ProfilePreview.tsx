@@ -1,4 +1,6 @@
 import type { Binding, ProfileConfig } from '@domain/profile/conf/ProfileConfig';
+import type { ReactNode, Ref } from 'react';
+import { useT } from '../../i18n/I18nContext';
 import { shortLabel } from '../../lib/labels';
 
 /**
@@ -6,8 +8,13 @@ import { shortLabel } from '../../lib/labels';
  * Los botones de una capa (L2+A) se dibujan en otro color.
  */
 export function ProfilePreview({
-  config, background = null, className = '',
-}: { config: ProfileConfig; background?: string | null; className?: string }) {
+  config, background = null, className = '', overlay = null, svgRef,
+}: {
+  config: ProfileConfig; background?: string | null; className?: string;
+  /** Capa interactiva encima (el editor visual pone aqui los tiradores). */
+  overlay?: ReactNode; svgRef?: Ref<SVGSVGElement>;
+}) {
+  const t = useT();
   const { width, height } = config.screen;
   const unit = Math.min(width, height);
   const r = unit * 0.045;
@@ -15,9 +22,10 @@ export function ProfilePreview({
 
   return (
     <svg
+      ref={svgRef}
       viewBox={`0 0 ${width} ${height}`}
-      role="img"
-      aria-label={`Distribución de ${config.bindings.length} botones en una pantalla de ${width}×${height}`}
+      role={overlay ? 'group' : 'img'}
+      aria-label={t('Distribución de {n} botones en una pantalla de {w}×{h}', { n: config.bindings.length, w: width, h: height })}
       className={`w-full rounded-xl border border-line bg-[#0b0710] ${className}`}
     >
       <defs>
@@ -37,9 +45,10 @@ export function ProfilePreview({
       ) : (
         <rect width={width} height={height} fill="url(#grid)" />
       )}
-      {config.bindings.map((b) => (
-        <BindingShape key={b.key} binding={b} r={r} font={font} onImage={!!background} />
+      {config.bindings.map((b, i) => (
+        <BindingShape key={`${i}:${b.key}`} binding={b} r={r} font={font} onImage={!!background} />
       ))}
+      {overlay}
     </svg>
   );
 }

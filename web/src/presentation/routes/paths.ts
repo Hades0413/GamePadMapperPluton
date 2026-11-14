@@ -7,6 +7,8 @@ export const paths = {
   editProfile: (id: string) => `/perfil/${id}/editar`,
   author: (username: string) => `/autor/${encodeURIComponent(username)}`,
   upload: (packageName?: string) => (packageName ? `/subir?juego=${encodeURIComponent(packageName)}` : '/subir'),
+  editor: '/editor',
+  editorFor: (profileId: string) => `/editor?perfil=${profileId}`,
   account: '/cuenta',
   admin: '/admin',
   privacy: '/privacidad',

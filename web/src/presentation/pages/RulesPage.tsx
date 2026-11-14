@@ -1,31 +1,34 @@
+import { useI18n } from '../i18n/I18nContext';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 
 export default function RulesPage() {
-  useDocumentTitle('Normas de la comunidad');
+  const { t, tr } = useI18n();
+  useDocumentTitle(t('Normas de la comunidad'));
   return (
     <article className="prose-page">
-      <h1 className="text-3xl font-bold text-ink">Normas de la comunidad</h1>
-      <p>Para que el catálogo sea útil para todos, al publicar un perfil te comprometes a:</p>
+      <h1 className="text-3xl font-bold text-ink">{t('Normas de la comunidad')}</h1>
+      <p>{t('Para que el catálogo sea útil para todos, al publicar un perfil te comprometes a:')}</p>
       <ul>
-        <li>Subir perfiles que <strong>funcionen</strong> y que hayas probado en el juego.</li>
-        <li>Usar títulos y descripciones <strong>claros y respetuosos</strong>: nada ofensivo, sexual, violento ni discriminatorio.</li>
-        <li>No hacer <strong>spam</strong>: ni publicidad, ni enlaces, ni el mismo perfil muchas veces.</li>
-        <li>No subir como tuyo el trabajo de otra persona sin su permiso.</li>
-        <li>No usar los perfiles para hacer trampas que el juego prohíba.</li>
+        <li>{tr('Subir perfiles que <b>funcionen</b> y que hayas probado en el juego.')}</li>
+        <li>{tr('Usar títulos y descripciones <b>claros y respetuosos</b>: nada ofensivo, sexual, violento ni discriminatorio.')}</li>
+        <li>{tr('No hacer <b>spam</b>: ni publicidad, ni enlaces, ni el mismo perfil muchas veces.')}</li>
+        <li>{t('No subir como tuyo el trabajo de otra persona sin su permiso.')}</li>
+        <li>{t('No usar los perfiles para hacer trampas que el juego prohíba.')}</li>
+        <li>{tr('En los <b>comentarios</b>: ayuda o da tu opinión sobre el perfil; nada de insultos, spam ni datos personales.')}</li>
       </ul>
 
-      <h2>Moderación</h2>
+      <h2>{t('Moderación')}</h2>
       <ul>
-        <li>Cualquier usuario con sesión puede <strong>reportar</strong> un perfil.</li>
-        <li>Un perfil con <strong>3 reportes se oculta automáticamente</strong> hasta que lo revisa la moderación.</li>
-        <li>La moderación puede ocultar o borrar perfiles y <strong>bloquear</strong> cuentas que incumplan estas normas.</li>
-        <li>Para evitar abusos hay límites: 10 perfiles nuevos al día y 100 en total por cuenta.</li>
+        <li>{tr('Cualquier usuario con sesión puede <b>reportar</b> un perfil.')}</li>
+        <li>{tr('Un perfil con <b>3 reportes se oculta automáticamente</b> hasta que lo revisa la moderación.')}</li>
+        <li>{tr('La moderación puede ocultar o borrar perfiles y <b>bloquear</b> cuentas que incumplan estas normas.')}</li>
+        <li>{t('Para evitar abusos hay límites: 10 perfiles nuevos al día y 100 en total por cuenta, y 30 comentarios al día.')}</li>
+        <li>{t('El autor de un perfil puede borrar los comentarios de su perfil; la moderación, cualquiera.')}</li>
       </ul>
 
-      <h2>Licencia de los perfiles</h2>
+      <h2>{t('Licencia de los perfiles')}</h2>
       <p>
-        Al publicar un perfil permites que cualquiera lo descargue, lo use y lo modifique gratis dentro de la app.
-        La app es de uso gratuito y no comercial (PolyForm Noncommercial 1.0.0).
+        {t('Al publicar un perfil permites que cualquiera lo descargue, lo use y lo modifique gratis dentro de la app. La app es de uso gratuito y no comercial (PolyForm Noncommercial 1.0.0).')}
       </p>
     </article>
   );

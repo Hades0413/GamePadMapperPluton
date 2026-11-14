@@ -122,8 +122,16 @@ public final class Games {
     // ---------------------------------------------------------------- primer plano
     public static boolean hasUsageAccess(Context c) {
         AppOpsManager ops = (AppOpsManager) c.getSystemService(Context.APP_OPS_SERVICE);
-        int mode = ops.unsafeCheckOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), c.getPackageName());
+        // unsafeCheckOpNoThrow existe desde Android 10; antes, checkOpNoThrow (la app se cerraba en Android 8-9).
+        int mode = android.os.Build.VERSION.SDK_INT >= 29
+                ? ops.unsafeCheckOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), c.getPackageName())
+                : legacyCheckOp(ops, c);
         return mode == AppOpsManager.MODE_ALLOWED;
+    }
+
+    @SuppressWarnings("deprecation")
+    private static int legacyCheckOp(AppOpsManager ops, Context c) {
+        return ops.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), c.getPackageName());
     }
 
     /** App en primer plano segun las estadisticas de uso (necesita acceso de uso). */
