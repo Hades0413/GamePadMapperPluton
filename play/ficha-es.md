@@ -59,7 +59,7 @@ La app usa la API de accesibilidad de Android solo para leer los botones de tu m
 Español e inglés. Proyecto personal y gratuito de Hades0413, con el código a la vista en GitHub.
 <!-- /completa -->
 
-## Novedades de la versión 1.6 (máx. 500)
+## Novedades de la versión 1.7 (máx. 500)
 
 <!-- novedades -->
 • Perfiles de la comunidad dentro de la app: mira dónde toca cada botón, filtra por tu pantalla y valora si te funcionó.

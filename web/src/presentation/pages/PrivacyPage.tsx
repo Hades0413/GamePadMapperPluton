@@ -19,7 +19,9 @@ export default function PrivacyPage() {
 
       <h2>{t('La app de Android')}</h2>
       <ul>
-        <li>{tr('<b>No recoge ni envía datos personales.</b> No tiene cuentas, anuncios ni analíticas.')}</li>
+        <li>{tr('<b>Sin anuncios ni analíticas.</b> No necesitas cuenta para usarla; solo la copia en la nube (opcional) usa tu cuenta de GitHub.')}</li>
+        <li>{tr('<b>Copia en la nube (opcional):</b> si inicias sesión con GitHub en la app, tus perfiles se guardan de forma privada (solo tú los ves) junto a tu cuenta. Se borran con «Borrar la copia» o al borrar tu cuenta. La sesión se guarda cifrada en el teléfono y se borra al cerrar sesión.')}</li>
+        <li>{tr('<b>Mandos de la comunidad</b> (modo root o Shizuku): la app descarga la lista pública de mandos aprobados; no envía nada de tu mando (su identificador se calcula y se busca en el teléfono).')}</li>
         <li>
           {tr('El <b>servicio de accesibilidad</b> se usa solo para leer los botones del mando y tocar la pantalla donde tú configuras. Lo que ocurre en la pantalla y lo que pulsas no se guarda ni se envía a ningún sitio.')}
         </li>

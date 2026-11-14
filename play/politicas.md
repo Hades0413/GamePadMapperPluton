@@ -5,7 +5,7 @@ política de privacidad de la web (`web/src/presentation/pages/PrivacyPage.tsx`)
 esta versión (copia en la nube con GitHub y mandos de la comunidad): actualiza la página de
 privacidad antes de enviar el formulario (ver «Cambios pendientes en la privacidad» al final).
 
-Manifiesto revisado: `app/AndroidManifest.xml` (versión 1.6, versionCode 8).
+Manifiesto revisado: `app/AndroidManifest.xml` (versión 1.7, versionCode 9).
 
 ---
 

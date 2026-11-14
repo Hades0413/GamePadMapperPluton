@@ -59,7 +59,7 @@ The app uses Android's accessibility API only to read your gamepad's buttons and
 Spanish and English. A free personal project by Hades0413, with its source code available on GitHub.
 <!-- /completa -->
 
-## What's new in 1.6 (max 500)
+## What's new in 1.7 (max 500)
 
 <!-- novedades -->
 • Community profiles inside the app: see where each button touches, filter by your screen and rate whether it worked.

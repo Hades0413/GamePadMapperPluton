@@ -5,7 +5,7 @@ desarrollador. Español e inglés.
 
 | Archivo | Qué es |
 |---|---|
-| [`ficha-es.md`](ficha-es.md) / [`ficha-en.md`](ficha-en.md) | Nombre, descripción breve y completa, y Novedades de la 1.6 (comprobado con `comprobar-ficha.sh`) |
+| [`ficha-es.md`](ficha-es.md) / [`ficha-en.md`](ficha-en.md) | Nombre, descripción breve y completa, y Novedades de la 1.7 (comprobado con `comprobar-ficha.sh`) |
 | [`prueba-cerrada.md`](prueba-cerrada.md) | Plan de 14 días con ≥ 12 testers, checklist de Play Console, mensaje para reclutar (ES/EN) y respuestas para «Solicitar acceso a producción» |
 | [`testers.csv`](testers.csv) | Plantilla de seguimiento de testers (guarda la copia con correos FUERA del repositorio) |
 | [`politicas.md`](politicas.md) | Seguridad de los datos, declaración de la API de Accesibilidad, servicio en primer plano, permisos, clasificación IARC y público objetivo |
@@ -22,10 +22,7 @@ make apk                                     # o el APK que vayas a enseñar
 
 ## Antes de subir esta versión
 
-- **Versión**: la 1.6 (versionCode 8) ya se publicó en Releases. Si el AAB de Play lleva lo de esta
-  rama (mandos de la comunidad en modo root/Shizuku y copia en la nube), sube la versión:
-  `make bump V=1.7` (versionCode 9) y usa las mismas Novedades. Si subes la 1.6 tal cual, quita de
-  las Novedades las dos líneas de «Mandos genéricos…» y «Copia… en la nube».
+- **Versión**: 1.7 (versionCode 9), con los mandos de la comunidad en modo root y la copia en la nube. Sube el AAB de `make aab`.
 - **Módulo root**: esta rama trae gpmapper **v7** (lee `mando.map`). La app avisa a quien tenga la
   v6 de que actualice el módulo.
 - **Privacidad**: actualiza la página de privacidad de la web (ver final de `politicas.md`).

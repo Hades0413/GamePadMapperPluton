@@ -334,7 +334,11 @@ export const EN: Readonly<Record<string, string>> = {
   'Esta política cubre la app <b>Gamepad Mapper Plutón</b> para Android (<c>com.gamepadmapper.app</c>) y esta web. Las dos son un proyecto personal de Hades0413, gratuito y sin anuncios.':
     'This policy covers the <b>Gamepad Mapper Plutón</b> Android app (<c>com.gamepadmapper.app</c>) and this website. Both are a personal project by Hades0413, free and ad-free.',
   'La app de Android': 'The Android app',
-  '<b>No recoge ni envía datos personales.</b> No tiene cuentas, anuncios ni analíticas.': '<b>It doesn\'t collect or send personal data.</b> No accounts, ads or analytics.',
+  '<b>Sin anuncios ni analíticas.</b> No necesitas cuenta para usarla; solo la copia en la nube (opcional) usa tu cuenta de GitHub.': '<b>No ads or analytics.</b> You don\'t need an account to use it; only the optional cloud backup uses your GitHub account.',
+  '<b>Copia en la nube (opcional):</b> si inicias sesión con GitHub en la app, tus perfiles se guardan de forma privada (solo tú los ves) junto a tu cuenta. Se borran con «Borrar la copia» o al borrar tu cuenta. La sesión se guarda cifrada en el teléfono y se borra al cerrar sesión.':
+    '<b>Cloud backup (optional):</b> if you sign in with GitHub in the app, your profiles are stored privately (only you can see them) with your account. They are deleted with «Borrar la copia» or when you delete your account. The session is stored encrypted on the phone and deleted when you sign out.',
+  '<b>Mandos de la comunidad</b> (modo root o Shizuku): la app descarga la lista pública de mandos aprobados; no envía nada de tu mando (su identificador se calcula y se busca en el teléfono).':
+    '<b>Community controllers</b> (root or Shizuku mode): the app downloads the public list of approved controllers; it sends nothing about your controller (its identifier is computed and looked up on the phone).',
   'El <b>servicio de accesibilidad</b> se usa solo para leer los botones del mando y tocar la pantalla donde tú configuras. Lo que ocurre en la pantalla y lo que pulsas no se guarda ni se envía a ningún sitio.':
     'The <b>accessibility service</b> is used only to read your controller buttons and tap the screen where you set it up. What happens on screen and what you press is never stored or sent anywhere.',
   'Tus perfiles se guardan solo en tu teléfono, en la carpeta de la app.': 'Your profiles are stored only on your phone, in the app\'s folder.',
