@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+/* Colores de la app (fondo del icono #3B2148). Se usan como bg-surface, text-muted, etc. */
+@theme {
+  --color-bg: #110a17;
+  --color-surface: #1b1224;
+  --color-surface-2: #251832;
+  --color-line: #3a2a4a;
+  --color-ink: #f4effa;
+  --color-muted: #b3a5c4;
+  --color-brand: #3b2148;
+  --color-primary: #b088f9;
+  --color-primary-strong: #9061f9;
+  --color-accent: #4dd4c0;
+  --color-danger: #f87171;
+  --color-success: #4ade80;
+  --color-warning: #fbbf24;
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, Consolas, monospace;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+    background: var(--color-bg);
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply min-h-dvh bg-bg font-sans text-ink antialiased;
+  }
+  ::selection {
+    @apply bg-primary/40;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-primary;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@utility card {
+  @apply rounded-2xl border border-line bg-surface;
+}
+
+@utility input {
+  @apply w-full rounded-xl border border-line bg-surface-2 px-3 py-2 text-ink placeholder:text-muted/60
+    focus:border-primary focus:outline-none disabled:opacity-60;
+}
+
+@utility prose-page {
+  @apply max-w-3xl space-y-4 leading-relaxed text-muted;
+  & h2 { @apply pt-4 text-xl font-semibold text-ink; }
+  & strong { @apply text-ink; }
+  & ul { @apply list-disc space-y-1 pl-6; }
+  & a { @apply text-primary underline underline-offset-2; }
+}

@@ -1,0 +1,66 @@
+# Mantenimiento de la base de datos de la comunidad (Supabase):
+#  - Cada dia: una consulta de lectura para que el proyecto no se pause por inactividad
+#    (el plan gratuito lo pausa tras 7 dias sin uso).
+#  - Cada lunes: copia de seguridad de los datos PUBLICOS (juegos y perfiles publicados) como
+#    artefacto de la ejecucion (se guarda 90 dias). No incluye cuentas ni datos privados.
+# Usa las mismas variables publicas que la web: SUPABASE_URL y SUPABASE_ANON_KEY.
+name: supabase
+
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+    inputs:
+      backup:
+        description: 'Hacer tambien la copia de seguridad'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  mantener:
+    runs-on: ubuntu-24.04
+    env:
+      URL: ${{ vars.SUPABASE_URL }}
+      KEY: ${{ vars.SUPABASE_ANON_KEY }}
+    steps:
+      - name: Consulta diaria
+        run: |
+          [ -n "$URL" ] && [ -n "$KEY" ] || { echo "Faltan las variables SUPABASE_URL / SUPABASE_ANON_KEY" >&2; exit 1; }
+          code=$(curl -s -o /dev/null -w '%{http_code}' -H "apikey: $KEY" "$URL/rest/v1/games?select=package&limit=1")
+          echo "Supabase respondio $code"
+          [ "$code" = 200 ]
+
+      - name: Copia de seguridad (lunes)
+        if: github.event_name == 'schedule' || inputs.backup
+        id: backup
+        run: |
+          if [ "${{ github.event_name }}" = schedule ] && [ "$(date -u +%u)" != 1 ]; then
+            echo "Hoy no es lunes: sin copia"; echo "hecha=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          mkdir -p copia
+          page() {  # descarga una tabla por paginas de 100 filas (limite del servidor)
+            local table=$1 query=$2 out=$3 from=0
+            echo '[' > "$out.tmp"; local first=1
+            while :; do
+              body=$(curl -sf -H "apikey: $KEY" -H "Range: $from-$((from + 99))" "$URL/rest/v1/$table?$query")
+              n=$(echo "$body" | jq 'length')
+              [ "$n" -gt 0 ] && { [ $first = 1 ] || echo ',' >> "$out.tmp"; echo "$body" | jq -c '.[]' | paste -sd, >> "$out.tmp"; first=0; }
+              [ "$n" -lt 100 ] && break
+              from=$((from + 100))
+            done
+            echo ']' >> "$out.tmp"; jq . "$out.tmp" > "$out"; rm "$out.tmp"
+            echo "$table: $(jq length "$out") filas"
+          }
+          page games 'select=package,name,icon_url,profile_count,created_at&order=package' copia/juegos.json
+          page game_profiles 'select=id,package,title,description,conf,like_count,created_at,updated_at,author:authors!game_profiles_author_id_fkey(username)&status=eq.published&order=created_at' copia/perfiles.json
+          echo "hecha=true" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: steps.backup.outputs.hecha == 'true'
+        with:
+          name: comunidad-${{ github.run_id }}
+          path: copia/
+          retention-days: 90

@@ -1,0 +1,9 @@
+# Interruptor: una pulsacion apoya el dedo, la siguiente lo levanta
+pulsa Y
+espera 30
+suelta Y
+espera 200
+pulsa Y
+espera 30
+suelta Y
+espera 30
