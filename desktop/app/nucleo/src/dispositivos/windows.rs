@@ -9,6 +9,7 @@ use super::{
     hat, normalizar, Cambio, Conexion, DescEntrada, ErrorMandos, EstadoCrudo, Evento, FuenteMandos, IdMando, InfoMando,
     Plataforma,
 };
+use std::sync::atomic::{AtomicU8, Ordering};
 use std::time::{Duration, Instant};
 use windows_sys::Win32::Foundation::ERROR_SUCCESS;
 use windows_sys::Win32::UI::Input::XboxController::{
@@ -35,6 +36,10 @@ const BOTONES: [(u16, &str); 10] = [
 ];
 const EJES: [&str; 6] = ["LX", "LY", "LT", "RX", "RY", "RT"];
 const INTERVALO_VACIAS: Duration = Duration::from_secs(1);
+
+/// Ranuras XInput (bit n = ranura n) ocupadas por nuestros mandos virtuales Xbox 360 de ViGEm:
+/// no se leen como mandos fisicos.
+pub static RANURAS_VIRTUALES: AtomicU8 = AtomicU8::new(0);
 
 struct Ranura {
     info: Option<InfoMando>,
@@ -156,6 +161,13 @@ impl FuenteMandos for FuenteXinput {
                 continue;
             }
             let n = n as u32;
+            // Las ranuras de nuestros mandos virtuales (ViGEm Xbox 360) no son mandos fisicos.
+            if RANURAS_VIRTUALES.load(Ordering::Relaxed) & (1 << n) != 0 {
+                if let Some(i) = r.info.take() {
+                    eventos.push(Evento::Desconectado { id: i.id });
+                }
+                continue;
+            }
             // SAFETY: XINPUT_STATE es POD; XInputGetState solo escribe en ella.
             let mut s: XINPUT_STATE = unsafe { std::mem::zeroed() };
             // SAFETY: puntero valido a una estructura local.
@@ -199,7 +211,8 @@ impl FuenteMandos for FuenteXinput {
         if poner_vibracion(n as u32, magnitud(fuerte), magnitud(debil)) != ERROR_SUCCESS {
             return Err(ErrorMandos::NoEncontrado);
         }
-        r.parar_vibracion = Some(Instant::now() + duracion);
+        // Duracion 0 = hasta la siguiente orden.
+        r.parar_vibracion = (!duracion.is_zero()).then(|| Instant::now() + duracion);
         Ok(())
     }
 }

@@ -183,8 +183,14 @@ pub trait FuenteMandos: Send {
     fn mandos(&self) -> Vec<InfoMando>;
     fn estado(&self, id: IdMando) -> Option<EstadoCrudo>;
     fn sondear(&mut self, espera: Duration, eventos: &mut Vec<Evento>);
-    /// Vibracion de prueba: intensidades 0..1 de los motores grande y pequeno.
+    /// Vibracion: intensidades 0..1 de los motores grande y pequeno durante `duracion`
+    /// (`Duration::ZERO` = hasta la siguiente orden; 0 y 0 la paran).
     fn vibrar(&mut self, id: IdMando, fuerte: f32, debil: f32, duracion: Duration) -> Result<(), ErrorMandos>;
+    /// Uso exclusivo del mando (EVIOCGRAB en Linux) mientras un mando virtual lo sustituye, para
+    /// que los juegos no vean la entrada dos veces. El sistema lo libera solo si la app se cierra.
+    fn capturar(&mut self, _id: IdMando, _capturar: bool) -> Result<(), ErrorMandos> {
+        Ok(())
+    }
 }
 
 /// La fuente de mandos del sistema en el que se compila.

@@ -14,7 +14,11 @@
 
 pub mod asistente;
 pub mod dispositivos;
+pub mod foco;
+pub mod juegos;
 pub mod mapeo;
 pub mod motor;
+pub mod opciones;
 pub mod salida;
 pub mod servicio;
+pub mod sistema;
