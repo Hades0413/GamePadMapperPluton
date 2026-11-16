@@ -557,6 +557,16 @@ static double learn_prev[ABS_CNT];
 static unsigned char prevp[NCODES], consumed[NCODES];  // combos SELECT+L1/R1
 static int switch_req = 0;                             // -1 / +1: cambiar de perfil
 
+// Modificador de capa que ademas tiene accion propia ("L1 = tap ..." y "L1+DPAD_UP = ..."):
+// - se suelta sin haber usado ninguna capa -> toque corto con su accion;
+// - se mantiene MOD_HOLD_US sin usar capa -> su accion queda apoyada como un boton normal;
+// - se usa una capa mientras esta pulsado -> solo la capa (si ya estaba apoyado, se levanta).
+#define MOD_HOLD_US 200000LL
+#define MOD_TAP_MS 50
+enum { MOD_LIBRE, MOD_ESPERA, MOD_USADO, MOD_PROPIO };
+static unsigned char mod_estado[NCODES];
+static long long mod_t0[NCODES];
+
 static inline int pressed(int c) { return keyp[c] || virt[c]; }
 int gpm_pulsado(int c) { return c >= 0 && c < NCODES && pressed(c); }
 
@@ -593,6 +603,7 @@ void gpm_soltar_todo(void) {
             if (axrt[a][d].active) { t_up(axrt[a][d].slot); axrt[a][d].active = 0; axrt[a][d].b = NULL; }
     for (int i = 0; i < NSLOTS; i++) if (slot_used[i]) t_up(i);
     memset(toggles, 0, sizeof toggles);
+    memset(mod_estado, 0, sizeof mod_estado);
     nswipes = 0;
     t_sync();
 }
@@ -668,12 +679,23 @@ static long long half_period_us(const binding_t *b) {
     return h < 15000 ? 15000 : h;
 }
 
+static void release_action(runtime_t *r);
+
+// Se ha usado una capa de este modificador: ya no hara su accion propia en esta pulsacion.
+static void mod_usado(int m) {
+    if (mod_estado[m] == MOD_PROPIO) release_action(&rt[m]);
+    mod_estado[m] = MOD_USADO;
+}
+
 // Si hay un modificador pulsado con capa para este boton (o eje), esa accion; si no, la normal.
 static const binding_t *resolve(int kind, int code, int axis, int dir) {
     for (int i = 0; i < cur->nlayers; i++) {
         const layer_t *L = &cur->layers[i];
         if (L->kind != kind || !pressed(L->mod)) continue;
-        if (kind == 0 ? L->code == code : (L->axis == axis && L->dir == dir)) return &L->bd;
+        if (kind == 0 ? L->code == code : (L->axis == axis && L->dir == dir)) {
+            mod_usado(L->mod);
+            return &L->bd;
+        }
     }
     return kind == 0 ? &cur->b[code] : &cur->ax[axis][dir];
 }
@@ -750,10 +772,71 @@ static void button_logic(int kind, int code, int axis, int dir, runtime_t *r, in
     }
 }
 
+static int accion_propia(const binding_t *b) {
+    return b->type != B_NONE && b->type != B_STICK && b->type != B_LOOK;
+}
+
+// Toque corto del modificador soltado sin usar capa (tap/turbo: apoyar y levantar a los MOD_TAP_MS;
+// el resto de acciones ya son de una vez).
+static void toque_corto(int c) {
+    const binding_t *b = resolve(0, c, 0, 0);
+    if (!accion_propia(b)) return;
+    if (b->type == B_TAP || b->type == B_TURBO) {
+        if (nswipes >= MAX_SWIPES) return;
+        rumble_pulse();
+        int s = t_down(b->x, b->y);
+        if (s < 0) return;
+        swipes[nswipes].slot = s;
+        swipes[nswipes].t0 = now_us();
+        swipes[nswipes].x1 = swipes[nswipes].x2 = b->x;
+        swipes[nswipes].y1 = swipes[nswipes].y2 = b->y;
+        swipes[nswipes].dur = MOD_TAP_MS;
+        nswipes++;
+        return;
+    }
+    runtime_t r = {0};
+    r.slot = -1;
+    press_action(b, &r);
+    release_action(&r);
+}
+
+// Modificador de capa con accion propia (ver MOD_HOLD_US). Sin accion propia no toca nunca.
+static void mod_logica(int c) {
+    int on = pressed(c) && !consumed[c];
+    if (!accion_propia(&cur->b[c])) {
+        mod_estado[c] = on && mod_estado[c] == MOD_USADO ? MOD_USADO : MOD_LIBRE;
+        return;
+    }
+    switch (mod_estado[c]) {
+        case MOD_LIBRE:
+            if (on) { mod_estado[c] = MOD_ESPERA; mod_t0[c] = now_us(); }
+            break;
+        case MOD_ESPERA:
+            if (!on) { mod_estado[c] = MOD_LIBRE; toque_corto(c); }
+            else if (now_us() - mod_t0[c] >= MOD_HOLD_US) {
+                mod_estado[c] = MOD_PROPIO;
+                button_logic(0, c, 0, 0, &rt[c], 1);
+            }
+            break;
+        case MOD_PROPIO:
+            if (!on) { mod_estado[c] = MOD_LIBRE; button_logic(0, c, 0, 0, &rt[c], 0); }
+            break;
+        default:   // MOD_USADO
+            if (!on) mod_estado[c] = MOD_LIBRE;
+            break;
+    }
+}
+
+static int mod_esperando(void) {
+    for (int c = 0; c < NCODES; c++) if (mod_estado[c] == MOD_ESPERA) return 1;
+    return 0;
+}
+
 static void apply_buttons(void) {
     for (int c = 0; c < NCODES; c++) {
         if (c == CODE_LS || c == CODE_RS) continue;
-        int on = pressed(c) && !consumed[c] && !cur->is_mod[c];
+        if (cur->is_mod[c]) { mod_logica(c); continue; }
+        int on = pressed(c) && !consumed[c];
         if (!on && !rt[c].active) continue;
         button_logic(0, c, 0, 0, &rt[c], on);
     }
@@ -770,6 +853,9 @@ static void apply_buttons(void) {
 static int timed_actions(void) {
     long long n = now_us();
     int any = 0;
+    // Modificador con accion propia mantenido sin usar capa: pasado MOD_HOLD_US, su accion.
+    for (int c = 0; c < NCODES; c++)
+        if (mod_estado[c] == MOD_ESPERA) { mod_logica(c); any = 1; }
     for (int c = 0; c < NCODES + ABS_CNT * 2; c++) {
         runtime_t *r = c < NCODES ? &rt[c] : &axrt[(c - NCODES) / 2][(c - NCODES) % 2];
         if (!r->active || !r->b || r->b->type != B_TURBO) continue;
@@ -786,8 +872,9 @@ static int timed_actions(void) {
     for (int i = 0; i < nswipes; i++) {
         double k = (n - swipes[i].t0) / (swipes[i].dur * 1000.0);
         if (k > 1) k = 1;
-        t_move(swipes[i].slot, swipes[i].x1 + (swipes[i].x2 - swipes[i].x1) * k,
-               swipes[i].y1 + (swipes[i].y2 - swipes[i].y1) * k);
+        if (swipes[i].x1 != swipes[i].x2 || swipes[i].y1 != swipes[i].y2)   // fijo: toque corto
+            t_move(swipes[i].slot, swipes[i].x1 + (swipes[i].x2 - swipes[i].x1) * k,
+                   swipes[i].y1 + (swipes[i].y2 - swipes[i].y1) * k);
         if (k >= 1) {
             t_up(swipes[i].slot);
             swipes[i] = swipes[--nswipes];
@@ -919,7 +1006,7 @@ static void look_tick(int code, double dt_ticks) {
 
 static int needs_ticks(void) {
     if (!cur) return 0;
-    if (nswipes > 0) return 1;
+    if (nswipes > 0 || mod_esperando()) return 1;
     for (int c = 0; c < NCODES; c++) if (rt[c].active && rt[c].b && rt[c].b->type == B_TURBO) return 1;
     for (int a = 0; a < ABS_CNT; a++)
         for (int d = 0; d < 2; d++) if (axrt[a][d].active && axrt[a][d].b && axrt[a][d].b->type == B_TURBO) return 1;

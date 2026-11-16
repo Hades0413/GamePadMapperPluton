@@ -822,7 +822,7 @@ public class PadService extends AccessibilityService {
         update();
     }
 
-    /** Botones que se usan como modificador de capa ("L2+A"): no tocan por si solos. */
+    /** Botones que se usan como modificador de capa ("L2+A"): su accion propia, ver modLogic. */
     private Set<String> mods = new HashSet<>();
     /** Botones base con alguna accion (sin capa o en alguna capa). */
     private final List<String> bases = new ArrayList<>();
@@ -1025,11 +1025,82 @@ public class PadService extends AccessibilityService {
     private final Map<String, Inj.Ptr> toggled = new HashMap<>();   // interruptores apoyados (por clave)
     private final List<Swipe> swipes = new ArrayList<>();
 
+    // Modificador de capa que ademas tiene accion propia ("L1 = tap" y "L1+DPAD_UP = ..."), igual
+    // que gpmapper: soltado sin usar capa -> toque corto; mantenido MOD_HOLD_MS sin usar capa -> su
+    // accion queda apoyada; si se usa una capa -> solo la capa (si ya estaba apoyado, se levanta).
+    private static final long MOD_HOLD_MS = 200;
+    private final Map<String, Long> modWait = new HashMap<>();   // pulsado, esperando (desde cuando)
+    private final Set<String> modUsed = new HashSet<>();         // ya se uso una capa en esta pulsacion
+    private final Runnable modHold = new Runnable() {
+        @Override
+        public void run() {
+            if (cur != null && enabled && !daemonRunning && !learning) update();
+        }
+    };
+
+    private static boolean ownAction(Profile.Binding b) {
+        return b != null && !Profile.STICK.equals(b.type) && !Profile.LOOK.equals(b.type);
+    }
+
+    private void modUsado(String m) {
+        modWait.remove(m);
+        Act own = acts.remove(m);
+        if (own != null) release(own);
+        modUsed.add(m);
+    }
+
+    private void modLogic(String m) {
+        boolean on = pressed(m) && !consumed.contains(m);
+        boolean has = ownAction(cur.bindings.get(m));
+        if (!on) {
+            Long t0 = modWait.remove(m);
+            Act a = acts.remove(m);
+            if (a != null) release(a);
+            else if (t0 != null && has) quickTap(m);
+            modUsed.remove(m);
+            return;
+        }
+        if (!has || modUsed.contains(m) || acts.containsKey(m)) return;
+        long n = SystemClock.uptimeMillis();
+        Long t0 = modWait.get(m);
+        if (t0 == null) {
+            modWait.put(m, n);
+            handler.postDelayed(modHold, MOD_HOLD_MS);
+        } else if (n - t0 >= MOD_HOLD_MS) {
+            modWait.remove(m);
+            Profile.Binding b = resolve(m);
+            if (!ownAction(b)) return;
+            Act a = new Act();
+            a.b = b;
+            acts.put(m, a);
+            press(a);
+        } else {
+            handler.postDelayed(modHold, MOD_HOLD_MS - (n - t0));
+        }
+    }
+
+    /** Modificador soltado sin usar capa: un toque corto con su accion (el resto ya son de una vez). */
+    private void quickTap(String m) {
+        Profile.Binding b = resolve(m);
+        if (!ownAction(b)) return;
+        if (Profile.TAP.equals(b.type) || Profile.TURBO.equals(b.type)) {
+            rumble();
+            inj.tap(sx(b.x), sy(b.y));
+            return;
+        }
+        Act a = new Act();
+        a.b = b;
+        press(a);
+        release(a);
+    }
+
     private void update() {
         updateDerived();
         if (cur == null || !enabled || daemonRunning) return;
+        for (String m : mods) modLogic(m);
         for (String base : bases) {
-            boolean on = pressed(base) && !consumed.contains(base) && !mods.contains(base);
+            if (mods.contains(base)) continue;
+            boolean on = pressed(base) && !consumed.contains(base);
             Act a = acts.get(base);
             if (on && a == null) {
                 Profile.Binding b = resolve(base);
@@ -1057,7 +1128,10 @@ public class PadService extends AccessibilityService {
         for (String m : mods) {
             if (!pressed(m)) continue;
             Profile.Binding b = cur.bindings.get(m + "+" + base);
-            if (b != null) return b;
+            if (b != null) {
+                modUsado(m);
+                return b;
+            }
         }
         return cur.bindings.get(base);
     }
@@ -1620,6 +1694,9 @@ public class PadService extends AccessibilityService {
         for (Runnable r : macroTasks) handler.removeCallbacks(r);
         macroTasks.clear();
         acts.clear();
+        handler.removeCallbacks(modHold);
+        modWait.clear();
+        modUsed.clear();
         toggled.clear();
         swipes.clear();
         rt.clear();

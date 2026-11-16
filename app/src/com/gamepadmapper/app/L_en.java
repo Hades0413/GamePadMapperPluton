@@ -38,7 +38,7 @@ final class L_en {
         m.put(" juegos", " games");
         m.put(" Los grises de arriba parecen menú/pausa y no se usan.", " The grey ones at the top look like menu/pause and are not used.");
         m.put(" nuevos", " new");
-        m.put(" pasa a ser solo modificador (no toca por sí solo).", " becomes a modifier only (it does not touch by itself).");
+        m.put(" solo hace su propia acción si lo pulsas sin combinar: un toque al soltarlo, o apoyado si lo mantienes.", " only does its own action when pressed alone: a tap on release, or held if you keep it pressed.");
         m.put(" perfil", " profile");
         m.put(" perfiles", " profiles");
         m.put(" perfiles en la copia. ", " profiles in the backup. ");

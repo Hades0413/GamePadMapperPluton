@@ -73,7 +73,7 @@ typedef struct {
     binding_t ax[ABS_CNT][2];    // ejes como botones: [eje][0 = negativo, 1 = positivo]
     layer_t *layers;             // GPM_MAX_LAYERS
     int nlayers;
-    unsigned char *is_mod;       // GPM_NCODES: boton usado como modificador (no toca por si solo)
+    unsigned char *is_mod;       // GPM_NCODES: boton usado como modificador (accion propia solo sin combinar)
 } profile_t;
 
 // Eje del mando al conectarlo (como input_absinfo de Linux).
