@@ -61,7 +61,7 @@
 #ifndef GPM_VERSION
 #define GPM_VERSION "dev"
 #endif
-#define GPM_BUILD 7
+#define GPM_BUILD 8
 
 #define logf_ gpm_log
 #define trim gpm_recortar

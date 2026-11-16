@@ -1,0 +1,1 @@
+Arreglado: un botón que también usas para combinaciones (por ejemplo L1 con L1 + cruceta) ya hace su propia acción cuando lo pulsas solo. Si usas el modo root, actualiza el módulo a la v8 desde la app.
