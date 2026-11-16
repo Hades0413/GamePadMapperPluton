@@ -1,0 +1,33 @@
+# 1. L1 pulsado y soltado sin capa: toque corto (50 ms) al soltar
+pulsa L1
+espera 80
+suelta L1
+espera 100
+# 2. L1 mantenido: a los 200 ms su toque queda apoyado hasta soltar
+pulsa L1
+espera 300
+suelta L1
+espera 50
+# 3. L1 + A enseguida: solo la capa (L1 no toca ni al soltar)
+pulsa L1
+espera 30
+pulsa A
+espera 40
+suelta A
+espera 10
+suelta L1
+espera 50
+# 4. L1 mantenido (ya tocando) y luego A: se levanta L1 y toca la capa
+pulsa L1
+espera 250
+pulsa A
+espera 40
+suelta A
+espera 10
+suelta L1
+espera 50
+# 5. A sola: su accion normal
+pulsa A
+espera 40
+suelta A
+espera 20

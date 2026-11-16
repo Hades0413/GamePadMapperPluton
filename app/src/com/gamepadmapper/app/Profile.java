@@ -50,6 +50,7 @@ import java.util.Map;
  * X  = toggle 1500 700             # una pulsacion mantiene el toque, otra lo suelta
  * Y  = swipe 1800 500 1800 200 150 # deslizar de (x1,y1) a (x2,y2) en 150 ms
  * L2+A = tap 1000 300              # capa: mientras se mantiene L2, A toca aqui
+ *                                  # (si L2 tiene accion propia, la hace solo pulsado sin combinar)
  * BTN_13A = tap 550 85   # cualquier boton detectado
  * AXIS_9+ = tap 372 398  # eje usado como boton (gatillo)
  * LS = stick 405 735 150
@@ -496,7 +497,7 @@ public class Profile {
         for (Binding x : all) bindings.put(x.key, x);
     }
 
-    /** Botones que se usan como modificador de alguna capa (no tocan por si solos). */
+    /** Botones que se usan como modificador de alguna capa (su accion propia, solo si se pulsan sin combinar). */
     public java.util.Set<String> modifiersInUse() {
         java.util.Set<String> s = new java.util.HashSet<>();
         for (String k : bindings.keySet()) {

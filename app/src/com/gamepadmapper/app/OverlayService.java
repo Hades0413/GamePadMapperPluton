@@ -2570,7 +2570,7 @@ public class OverlayService extends Service {
                 editPanel.addView(lsv);
                 if (!mod.isEmpty()) {
                     editPanel.addView(text(L.t("  Mantén ") + Profile.label(mod) + L.t(" y pulsa ") + Profile.label(base)
-                            + ". " + Profile.label(mod) + L.t(" pasa a ser solo modificador (no toca por sí solo)."),
+                            + ". " + Profile.label(mod) + L.t(" solo hace su propia acción si lo pulsas sin combinar: un toque al soltarlo, o apoyado si lo mantienes."),
                             11, C_TEXT2, false));
                 }
             }
