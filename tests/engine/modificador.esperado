@@ -1,0 +1,25 @@
+     0.000 perfil com.prueba.modificador 2400x1080 -> destino 2400x1080
+    80.000 abajo s=0 x=500.00 y=500.00
+    80.000 sync tocando=1
+   136.000 arriba s=0
+   136.000 sync tocando=0
+   380.000 abajo s=0 x=500.00 y=500.00
+   380.000 sync tocando=1
+   480.000 arriba s=0
+   480.000 sync tocando=0
+   560.000 abajo s=0 x=1000.00 y=300.00
+   560.000 sync tocando=1
+   600.000 arriba s=0
+   600.000 sync tocando=0
+   860.000 abajo s=0 x=500.00 y=500.00
+   860.000 sync tocando=1
+   910.000 arriba s=0
+   910.000 abajo s=0 x=1000.00 y=300.00
+   910.000 sync tocando=1
+   950.000 arriba s=0
+   950.000 sync tocando=0
+  1010.000 abajo s=0 x=100.00 y=100.00
+  1010.000 sync tocando=1
+  1050.000 arriba s=0
+  1050.000 sync tocando=0
+  1070.000 fin

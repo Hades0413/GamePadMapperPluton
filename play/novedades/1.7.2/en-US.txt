@@ -1,0 +1,1 @@
+Fixed: a button you also use for combos (for example L1 with L1 + D-pad) now does its own action when pressed alone. If you use root mode, update the module to v8 from the app.

@@ -51,14 +51,14 @@ solo a la pista **Prueba interna** (job `play` de `build.yml`, script `scripts/p
 
 ## Antes de subir esta versión
 
-- **Versión**: 1.7.1 (versionCode 10, optimizada con R8), con los mandos de la comunidad en modo root y la copia en la nube. Sube el AAB de `make aab`.
+- **Versión**: 1.7.2 (versionCode 11, optimizada con R8), con los mandos de la comunidad en modo root y la copia en la nube. Sube el AAB de `make aab`.
 - **Código ofuscado (R8)**: el AAB ya lleva el mapping (`BUNDLE-METADATA/.../proguard.map`), así
   que Play traduce solo las trazas de *Android vitals*. Si Play pidiera el archivo de
   desofuscación (o para una versión subida sin él): *Probar y publicar › Explorador de apps y
   paquetes* › la versión › *Descargas* › *Archivo de desofuscación* → sube
   `dist/GamepadMapper-<versión>-mapping.txt` (de la **misma** compilación que el AAB).
-- **Módulo root**: esta rama trae gpmapper **v7** (lee `mando.map`). La app avisa a quien tenga la
-  v6 de que actualice el módulo.
+- **Módulo root**: gpmapper **v8** (un modificador con acción propia ya toca por sí solo). La app
+  avisa a quien tenga la v7 o anterior de que actualice el módulo.
 - **Privacidad**: actualiza la página de privacidad de la web (ver final de `politicas.md`).
 
 ## Copia en la nube: pasos en Supabase (una sola vez)
